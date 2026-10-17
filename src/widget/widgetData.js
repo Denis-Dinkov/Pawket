@@ -11,14 +11,14 @@ export const WIDGET_EMOJI = {
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x || 0));
 
-// Short amount for the round lock-screen widget: 850, 1,2k, −42
+// Short amount for the round lock-screen widget: 850, 1.2k, −42
 export function shortAmount(n) {
   const sign = n < 0 ? '−' : '';
   const v = Math.abs(n);
   if (v < 1000) return `${sign}${Math.round(v)}`;
-  // Round down so we never show more than is actually left (1 988 → 1,9k)
+  // Round down so we never show more than is actually left (1,988 → 1.9k)
   const k = v < 10000 ? Math.floor(v / 100) / 10 : Math.floor(v / 1000);
-  return `${sign}${String(k).replace('.', ',')}k`;
+  return `${sign}${String(k)}k`;
 }
 
 // Serializable props: strings and numbers only, already formatted

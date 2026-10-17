@@ -102,20 +102,20 @@ export const INCOME_KINDS = [
 export const incomeKindById = (id) => INCOME_KINDS.find((k) => k.id === id) || INCOME_KINDS[INCOME_KINDS.length - 1];
 export const categoryColor = (id) => BUCKETS[categoryById(id)?.bucket]?.color || colors.muted;
 
-// 1240.5 → { sign: '', int: '1 240', dec: '50' }
+// 1240.5 → { sign: '', int: '1,240', dec: '50' }
 export function splitMoney(n) {
   const v = Number(n) || 0;
   const [int, dec] = Math.abs(v).toFixed(2).split('.');
   return {
     sign: v < 0 && Math.abs(v) >= 0.005 ? '−' : '',
-    int: int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'),
+    int: int.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
     dec,
   };
 }
 
 export const money = (n) => {
   const { sign, int, dec } = splitMoney(n);
-  return `${sign}${int},${dec}\u00A0€`;
+  return `${sign}${int}.${dec}\u00A0€`;
 };
 
 export const moneyShort = (n) => {

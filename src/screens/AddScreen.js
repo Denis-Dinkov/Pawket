@@ -31,7 +31,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
   const [mode, setMode] = useState(prefill.mode === 'income' ? 'income' : 'expense');
-  const [amount, setAmount] = useState(prefill.amount ? prefill.amount.toFixed(2).replace('.', ',') : '');
+  const [amount, setAmount] = useState(prefill.amount ? prefill.amount.toFixed(2) : '');
   const [picked, setPicked] = useState(null);
   const [kind, setKind] = useState('bonus');
   const [merchant, setMerchant] = useState(prefill.merchant || '');
@@ -91,7 +91,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
             value={amount}
             onChangeText={(t) => setAmount(cleanAmountInput(t))}
             maxLength={10}
-            placeholder="0,00"
+            placeholder="0.00"
             placeholderTextColor="#DCCDBF"
             keyboardType="decimal-pad"
             // The width follows the text so the "€" sits right next to the amount

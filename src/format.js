@@ -25,9 +25,9 @@ export const SOURCES = {
 
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-// Amount field: digits only, one decimal separator (comma) and at most 2 digits after it
+// Amount field: digits only, one decimal point (a typed comma becomes a dot) and at most 2 digits after it
 export function cleanAmountInput(text) {
-  const s = text.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
-  const [int, ...rest] = s.split(',');
-  return rest.length ? `${int},${rest.join('').slice(0, 2)}` : int;
+  const s = text.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+  const [int, ...rest] = s.split('.');
+  return rest.length ? `${int}.${rest.join('').slice(0, 2)}` : int;
 }

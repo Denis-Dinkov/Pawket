@@ -16,7 +16,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const now = new Date();
   const existing = getIncome(incomes, now.getFullYear(), now.getMonth());
-  const [incomeText, setIncomeText] = useState(existing ? String(existing).replace('.', ',') : '');
+  const [incomeText, setIncomeText] = useState(existing ? String(existing) : '');
   const [name, setName] = useState(DEFAULT_PET_NAME);
   const income = parseFloat(incomeText.replace(/\s/g, '').replace(',', '.')) || 0;
 
