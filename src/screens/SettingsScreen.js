@@ -35,7 +35,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
   const y = now.getFullYear();
   const m = now.getMonth();
   const current = getIncome(incomes, y, m);
-  const [incomeText, setIncomeText] = useState(current ? String(current) : '');
+  const [incomeText, setIncomeText] = useState(current ? String(current).replace('.', ',') : '');
   const [name, setName] = useState(pet?.name || '');
   const { stage, next } = stageFor(pet?.xp || 0);
 
