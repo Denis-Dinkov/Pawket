@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Pawket",
+    "slug": "pawket",
+    "version": "1.0.0",
+    "scheme": "pawket",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.denis.pawket"
+    },
+    "android": {
+      "package": "com.denis.pawket",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#D88648"
+      }
+    },
+    "web": {},
+    "plugins": [
+      "./plugins/withoutPushEntitlement",
+      "./plugins/withSceneLifecycle",
+      "expo-quick-actions",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.com.denis.pawket",
+          "widgets": [
+            {
+              "name": "BudgetWidget",
+              "displayName": "Бюджет и куче",
+              "description": "Колко остава от бюджета и как се чувства кучето",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Budget",
+              "label": "Бюджет и куче",
+              "description": "Колко остава от бюджета и как се чувства кучето",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png"
+  }
+}
