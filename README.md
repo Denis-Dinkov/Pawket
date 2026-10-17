@@ -1,110 +1,110 @@
 # Pawket
 
-Тракер на разходи по правилото 50/30/20 с дигитално кученце-тамагочи (кавалер кинг чарлз шпаньол). React Native (Expo SDK 57), iPhone и Android.
+A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Charles Spaniel). React Native (Expo SDK 57) for iPhone and Android. The app's UI is in Bulgarian.
 
-## Функции
-- **Начало**
-  - Избор на месец, по подразбиране текущият.
-  - Колко остава от дохода и ≈ €/ден до края на месеца.
-  - Карти „Доход“ и „Похарчено“, ленти 50/30/20.
-  - „Последни 10“ плащания или „Всички“, групирани по дни, с филтри по кофа и категория.
-  - Детайл за всеки разход: къде, за какво, кога, как е платен. Изтриване.
-- **Кучето** (тамагочи)
-  - **Настроение:** от оценката 50/30/20 за текущия месец. Нуждите се мерят спрямо целия месец, желанията спрямо изминалите дни.
-  - **Ситост:** пада за 72 часа. Храни се със запис на разход или с „Днес без разходи“.
-  - **Растеж:** +10 XP на активен ден, бонус за всеки затворен месец. Етапи: Кутре → Кученце → Кавалер → Шампион (с корона).
-  - **Съвети:** кучето дава съвети какво да подобриш, например темпо на желанията, ръст спрямо миналия месец, чести покупки при един магазин, абонаменти, дневен лимит.
-- **Статистика:** донът по категории, сравнение с миналия месец, детайл по категория, 50/30/20, „Какво да подобря“.
-- **Нов разход / доход** (превключвател „Разход | Доход“, бутонът „Запази“ е закрепен долу)
-  - Разход: сума, магазин („Къде“), бележка („За какво“), дата и категория. Категорията се запомня по магазин.
-  - **Собствени категории:** плочка „Нова“ във всяка част от 50/30/20 (име, икона, кофа). Управляват се от Настройки.
-  - **Доходи:** заплата, бонус, хонорар, подарък, връщане, друго. Заплатата замества месечния доход от настройките (не се брои двойно), останалите се добавят към бюджета за месеца. Натисни картата „Доход“ в Начало за списъка.
-- **Хаптика** при натискане на бутони, избор на категория, превключватели, запис и изтриване.
-- **Apple Pay → запис:** Shortcuts автоматизация отваря „Нов разход“ с попълнени сума и магазин. Ръководство има в Настройки.
-- **Уиджети:**
-  - iOS home screen: малък и среден (остатък, кучето, настроение, ленти 50/30/20, бутон „+“).
-  - iOS заключен екран: кръгъл (остатък като кръг), правоъгълен (куче, настроение, остатък, €/ден) и ред над часовника.
-  - Android home screen: остатък, кучето, ленти и бутон „+“ (Android няма уиджети за заключен екран).
-- **Бързо действие:** с дълго натискане на иконата → „Нов разход“.
-- **Данни:** пазят се локално (AsyncStorage). Старите данни от v1 се мигрират автоматично.
+## Features
+- **Home**
+  - Month picker, defaulting to the current month.
+  - How much of the income is left and ≈ €/day until the end of the month.
+  - "Income" and "Spent" cards, 50/30/20 bars.
+  - The latest 10 payments or "All", grouped by day, with filters by bucket and category.
+  - Details for every expense: where, what for, when and how it was paid. Delete.
+- **The dog** (tamagotchi)
+  - **Mood:** from the 50/30/20 score for the current month. Needs are measured against the whole month, wants against the days that have passed.
+  - **Fullness:** drops over 72 hours. Fed by logging an expense or tapping "No spending today".
+  - **Growth:** +10 XP per active day, plus a bonus for every closed month. Stages: Puppy → Young dog → Cavalier → Champion (with a crown).
+  - **Advice:** the dog suggests what to improve, e.g. the pace of wants, growth compared to last month, frequent purchases at one merchant, subscriptions, the daily limit.
+- **Statistics:** spending by category (donut), comparison with last month, per-category details, 50/30/20, "What to improve".
+- **New expense / income** (an "Expense | Income" switch; the "Save" button is pinned to the bottom)
+  - Expense: amount, merchant ("Where"), note ("What for"), date and category. The category is remembered per merchant.
+  - **Custom categories:** a "New" tile in every part of 50/30/20 (name, icon, bucket). Managed from Settings.
+  - **Income:** salary, bonus, freelance, gift, refund, other. Salary replaces the monthly income from Settings (it isn't counted twice); the rest are added to the month's budget. Tap the "Income" card on Home for the list.
+- **Haptics** on button taps, category selection, switches, saving and deleting.
+- **Apple Pay → entry:** a Shortcuts automation opens "New expense" with the amount and merchant filled in. A guide is in Settings.
+- **Widgets:**
+  - iOS home screen: small and medium (remaining budget, the dog, mood, 50/30/20 bars, "+" button).
+  - iOS lock screen: circular (remaining as a gauge), rectangular (dog, mood, remaining, €/day) and an inline line above the clock.
+  - Android home screen: remaining budget, the dog, bars and a "+" button (Android has no lock screen widgets).
+- **Quick action:** long-press the app icon → "New expense".
+- **Data:** stored locally (AsyncStorage). Old v1 data is migrated automatically.
 
-## Стартиране
+## Getting started
 
-### Бърз преглед (без уиджети и Apple Pay)
+### Quick preview (no widgets or Apple Pay)
 ```bash
 npm install
-npm run go        # Expo Go: сканирай QR кода с телефона
-npm run web       # в браузъра
+npm run go        # Expo Go: scan the QR code with your phone
+npm run web       # in the browser
 ```
 
-### Пълно приложение (dev build)
-Уиджетите, Apple Pay записът и бързите действия изискват нативен билд.
+### Full app (dev build)
+Widgets, the Apple Pay entry and quick actions need a native build.
 
-- **iOS:** пълен Xcode от App Store и CocoaPods. Ако CocoaPods е инсталиран само за потребителя (`gem install --user-install cocoapods`), добави го в PATH:
+- **iOS:** full Xcode from the App Store and CocoaPods. If CocoaPods is installed for the user only (`gem install --user-install cocoapods`), add it to PATH:
   ```bash
   export PATH="$HOME/.gem/ruby/2.6.0/bin:$PATH" LANG=en_US.UTF-8
   ```
-  - За уиджета на реален iPhone трябва платен Apple Developer акаунт, защото App Group не е достъпен с безплатен Apple ID.
-  - В симулатора уиджетът работи и без него.
+  - The widget on a real iPhone needs a paid Apple Developer account, because App Groups aren't available with a free Apple ID.
+  - In the simulator the widget works without one.
   ```bash
-  npx expo run:ios            # симулатор
-  npx expo run:ios --device   # свързан iPhone
+  npx expo run:ios            # simulator
+  npx expo run:ios --device   # connected iPhone
   ```
-- **Android:** Android Studio (или `eas build -p android --profile preview` за APK).
+- **Android:** Android Studio (or `eas build -p android --profile preview` for an APK).
   ```bash
   npx expo run:android
   ```
 
-Папките `ios/` и `android/` се генерират от `app.json` (`npx expo prebuild`). Не ги редактирай ръчно.
+The `ios/` and `android/` folders are generated from `app.json` (`npx expo prebuild`) and aren't committed. Don't edit them by hand.
 
-### Тест на deep link-а в симулатора
+### Testing the deep link in the simulator
 ```bash
 xcrun simctl openurl booted "pawket://add?source=applepay&amount=12,50&merchant=Lidl"
 ```
 
-## Инсталиране на собствения iPhone (безплатен Apple ID)
-Release версия, която работи без Mac-а. Безплатният Apple ID не може да подпише App Group, затова уиджетът е изключен (`PAWKET_FREE=1`, виж `app.config.js`). Всичко друго работи.
+## Installing on your own iPhone (free Apple ID)
+A Release build that runs without the Mac. A free Apple ID can't sign an App Group, so the widget is left out (`PAWKET_FREE=1`, see `app.config.js`). Everything else works.
 
-Еднократно:
-1. Xcode → Settings → Accounts → „+“ → Apple ID → влез.
-2. Включи айфона с кабел и натисни „Trust“ (Довери се).
-3. На айфона: Settings → Privacy & Security → Developer Mode → включи (рестартира се).
+One-time setup:
+1. Xcode → Settings → Accounts → "+" → Apple ID → sign in.
+2. Connect the iPhone with a cable and tap "Trust".
+3. On the iPhone: Settings → Privacy & Security → Developer Mode → turn on (it restarts).
 
-Инсталиране:
+Install:
 ```bash
 npm run phone:prepare
 ```
 ```bash
 npm run phone
 ```
-При въпрос за устройство избери айфона, при въпрос за team избери своя „Personal Team“.
+When asked for a device, pick the iPhone; when asked for a team, pick your "Personal Team".
 
-При първо отваряне на телефона: Settings → General → VPN & Device Management → своя Apple ID → Trust.
+On first launch on the phone: Settings → General → VPN & Device Management → your Apple ID → Trust.
 
-Подписът с безплатен Apple ID важи 7 дни. После пусни `npm run phone` отново; данните остават.
+A free Apple ID signature lasts 7 days. Then run `npm run phone` again; your data is kept.
 
-За обратно към версията с уиджети (платен акаунт или симулатор): `npx expo prebuild --platform ios --clean`.
+To go back to the version with widgets (paid account or simulator): `npx expo prebuild --platform ios --clean`.
 
-## Apple Pay автоматизация
-Настройки → „Запис след Apple Pay“ показва стъпките и шаблона:
+## Apple Pay automation
+Settings → "Entry after Apple Pay" shows the steps and the template:
 ```
 pawket://add?source=applepay&amount=[Сума]&merchant=[Търговец]
 ```
-Изисква iOS 17+.
+`[Сума]` and `[Търговец]` are the Amount and Merchant variables of the Shortcuts transaction trigger, as named on an iPhone set to Bulgarian. Requires iOS 17+.
 
-## Структура
+## Structure
 ```
-App.js                        табове, модали, deep link, синхронизация на уиджетите
-index.js                      вход + Android widget task handler
-src/theme.js                  дизайн токени, категории, форматиране на суми
-src/budget.js                 месечни обобщения, оценка 50/30/20 (budgetScore)
-src/store.js                  данни v2 + миграция от v1, действия
-src/deeplink.js               pawket://add и разпознаване на сумата
-src/pet/logic.js              настроение, ситост, растеж, затваряне на месеци
-src/pet/advice.js             съветите на кучето
-src/pet/petShapes.js, Pet.js  SVG кучето (+ SVG текст за Android уиджета и иконата)
-src/screens/                  Начало, Статистика, Нов разход, Настройки, Onboarding, Apple Pay
-src/components/               списъци, листове, PetCard, донът, UI примитиви (ui/)
-src/widget/                   данни за уиджетите, iOS (expo-widgets), Android (react-native-android-widget)
-plugins/                      локален config plugin (маха ненужния push entitlement)
+App.js                        tabs, modals, deep links, widget sync
+index.js                      entry point + Android widget task handler
+src/theme.js                  design tokens, categories, money formatting
+src/budget.js                 monthly summaries, 50/30/20 score (budgetScore)
+src/store.js                  v2 data + migration from v1, actions
+src/deeplink.js               pawket://add and amount parsing
+src/pet/logic.js              mood, fullness, growth, closing months
+src/pet/advice.js             the dog's advice
+src/pet/petShapes.js, Pet.js  the SVG dog (+ SVG string for the Android widget and the icon)
+src/screens/                  Home, Statistics, New expense, Settings, Onboarding, Apple Pay guide
+src/components/               lists, sheets, PetCard, donut chart, UI primitives (ui/)
+src/widget/                   widget data, iOS (expo-widgets), Android (react-native-android-widget)
+plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the unused push entitlement)
 ```
