@@ -11,7 +11,7 @@ export default function Money({ value, size = 44, color = colors.text, prefix = 
       {prefix}
       {sign}
       {int}
-      <Text style={s.faded}>,{dec}</Text>
+      {!!dec && <Text style={s.faded}>,{dec}</Text>}
       <Text style={[s.faded, { fontSize: size * 0.6 }]}>{' €'}</Text>
     </Text>
   );
