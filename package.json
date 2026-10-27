@@ -9,7 +9,9 @@
     "android": "expo run:android",
     "web": "expo start --web",
     "phone:prepare": "PAWKET_FREE=1 expo prebuild --platform ios --clean",
-    "phone": "PAWKET_FREE=1 expo run:ios --device --configuration Release"
+    "phone": "PAWKET_FREE=1 expo run:ios --device --configuration Release",
+    "phone:update": "FORCE=1 ./scripts/phone-refresh.sh",
+    "phone:auto": "./scripts/phone-auto-setup.sh"
   },
   "dependencies": {
     "@expo-google-fonts/onest": "^0.4.2",

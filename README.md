@@ -108,3 +108,10 @@ src/components/               lists, sheets, PetCard, donut chart, UI primitives
 src/widget/                   widget data, iOS (expo-widgets), Android (react-native-android-widget)
 plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the unused push entitlement)
 ```
+
+### Automatic reinstall
+A free Apple ID signs the app for 7 days only. To keep it working without reinstalling by hand:
+```bash
+npm run phone:auto
+```
+This adds a background job on the Mac (every 4 hours and at login) that rebuilds and reinstalls the app over Wi-Fi when the signature has less than 3 days left or the code changed. The Mac has to be awake and on the same network as the iPhone at least once every few days. Log: `~/Library/Logs/pawket-phone.log`. Install right now: `npm run phone:update`.
