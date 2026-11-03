@@ -114,4 +114,4 @@ A free Apple ID signs the app for 7 days only. To keep it working without reinst
 ```bash
 npm run phone:auto
 ```
-This adds a background job on the Mac (every 4 hours and at login) that rebuilds and reinstalls the app over Wi-Fi when the signature has less than 3 days left or the code changed. The Mac has to be awake and on the same network as the iPhone at least once every few days. Log: `~/Library/Logs/pawket-phone.log`. Install right now: `npm run phone:update`.
+This adds a background job on the Mac (every 15 minutes and at login) that rebuilds the app when the signature has less than 3 days left or the code changed, and installs it over Wi-Fi on every iPhone in the signing profile (every phone the app was installed on from this Mac). A phone that is away gets the new build the next time it is on the same network as the Mac, which has to happen at least once every few days. To add a phone that isn't in the profile, connect it once and run `PAWKET_DEVICES=<udid> npm run phone:update`. Log: `~/Library/Logs/pawket-phone.log`. Install right now: `npm run phone:update`.
