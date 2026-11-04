@@ -246,7 +246,8 @@ function body() {
 }
 
 // Things around the dog: sparkles, "Zzz", a thought about a bone, a sweat drop
-function extras(expression) {
+// (also drawn around the painted Charlie in Pet.js)
+export function extras(expression) {
   switch (expression) {
     case 'ecstatic':
       return [star(22, 34, 9), star(190, 70, 6), star(193, 128, 5), star(176, 22, 5)];

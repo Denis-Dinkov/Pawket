@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, useWindowDimensions } from 'react-native';
 import { feedback } from '../haptics';
 import { motionReduced } from '../motion';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Touch from './ui/Touch';
 import Pet from '../pet/Pet';
+import RoomScene from './RoomScene';
 import { colors, radius, shadow } from '../theme';
 import { EXPRESSIONS, HUNGRY_AT } from '../pet/logic';
 import { themed } from '../themed';
@@ -89,21 +90,15 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
   const night = isNight(now);
   // Petting: a tap makes him hop and sends up hearts
   const [pats, setPats] = useState(0);
+  const { width } = useWindowDimensions();
   const pet_ = () => {
     feedback('light');
     setPats((n) => n + 1);
   };
   return (
     <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={{ height: height + insetTop, paddingTop: insetTop }}>
-      <View style={[s.window, { top: insetTop + 58 }, night && s.windowNight]}>
-        <View style={s.windowBar} />
-        {night && <Ionicons name="moon" size={14} color="#F5D77A" style={s.moon} />}
-      </View>
-      <View style={s.floor} />
-      <View style={s.bed} />
-      <View style={s.bowl} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {!hungry && <View style={s.food} />}
-      </View>
+      {/* The room shows the state too: a dark sky at night, an empty bowl when he's hungry */}
+      <RoomScene width={width} height={height + insetTop} top={insetTop} night={night} hungry={hungry} petName={pet.name} />
 
       <View style={s.top}>{top}</View>
 
@@ -130,23 +125,6 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
 
 const s = themed((c) => ({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6, zIndex: 3 },
-  window: {
-    position: 'absolute', right: 24, width: 62, height: 56, borderRadius: 10,
-    backgroundColor: c.window, borderWidth: 5, borderColor: c.windowFrame, overflow: 'hidden',
-  },
-  windowNight: { backgroundColor: '#22324A' },
-  windowBar: { position: 'absolute', left: '50%', marginLeft: -2, top: 0, bottom: 0, width: 4, backgroundColor: c.windowFrame },
-  moon: { position: 'absolute', top: 6, left: 8 },
-  floor: {
-    position: 'absolute', left: -40, right: -40, bottom: 0, height: 92, backgroundColor: c.floor,
-    borderTopLeftRadius: 400, borderTopRightRadius: 400,
-  },
-  bed: { position: 'absolute', bottom: 46, alignSelf: 'center', width: 176, height: 30, borderRadius: 100, backgroundColor: 'rgba(122,52,14,0.22)' },
-  bowl: {
-    position: 'absolute', bottom: 56, left: 30, width: 44, height: 18, borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
-    backgroundColor: c.bowl, alignItems: 'center',
-  },
-  food: { position: 'absolute', top: -6, width: 32, height: 9, borderRadius: 10, backgroundColor: '#B07A4A' },
   // A bit right of center, so the speech bubble has room on the left
   pet: { position: 'absolute', bottom: 30, left: '50%', marginLeft: -52 },
   bubble: {
