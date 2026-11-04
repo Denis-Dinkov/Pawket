@@ -124,10 +124,10 @@ export const missionsTotal = (pet) => Object.values(pet?.missionsDone || {}).red
 
 // Accessories: unlocked by habits, never bought with money
 export const REWARDS = [
-  { id: 'collar', name: 'Червена каишка', icon: 'medal-outline', need: 'Серия от 3 дни', test: (p) => p.bestStreak >= 3 },
+  { id: 'collar', name: 'Червен нашийник', icon: 'medal-outline', need: 'Серия от 3 дни', test: (p) => p.bestStreak >= 3 },
   { id: 'bandana', name: 'Синьо шалче', icon: 'triangle-outline', need: 'Серия от 7 дни', test: (p) => p.bestStreak >= 7 },
   { id: 'bow', name: 'Папийонка', icon: 'ribbon-outline', need: '3 изпълнени мисии', test: (p) => p.missions >= 3 },
-  { id: 'hat', name: 'Парти шапка', icon: 'balloon-outline', need: 'Ниво „Кученце“', test: (p) => p.xp >= 250 },
+  { id: 'hat', name: 'Парти шапка', icon: 'balloon-outline', need: 'Етап „Младо куче“', test: (p) => p.xp >= 250 },
   { id: 'glasses', name: 'Слънчеви очила', icon: 'glasses-outline', need: 'Постигната цел', test: (p) => p.goalsDone >= 1 },
 ];
 

@@ -200,7 +200,7 @@ export default function PetScreen() {
             })}
             <Bar value={status.progress} color={colors.needs} height={6} label={`${pet.xp || 0} XP`} />
             <Text style={s.muted}>
-              {pet.xp || 0} XP{status.next ? ` · още ${status.next.xp - (pet.xp || 0)} до „${status.next.name}“` : ' · най-високото ниво'}
+              {pet.xp || 0} XP{status.next ? ` · още ${status.next.xp - (pet.xp || 0)} до „${status.next.name}“` : ' · най-високият етап'}
             </Text>
           </Card>
 

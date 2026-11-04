@@ -147,11 +147,11 @@ function Fullness({ status, pet, canFeed, onFeed, now }) {
       <Text style={s.h2}>Как да ме нахраниш</Text>
       <View style={s.card}>
         <Tip icon="add-circle" text="Запиши разход или доход — всеки запис ме храни." />
-        <Tip icon="restaurant" text="Ако днес наистина няма разходи, натисни „Днес без разходи“." />
+        <Tip icon="restaurant" text="Ако днес наистина няма разходи, натисни „Без разходи днес“." />
         <Tip icon="sparkles" text={`Всеки ден със запис ми дава +${DAILY_XP} XP за растеж.`} />
       </View>
       {canFeed && (
-        <Pill icon="restaurant" label="Днес без разходи — нахрани ме" variant="ink" onPress={onFeed} haptic="success" style={s.action} />
+        <Pill icon="restaurant" label="Без разходи днес — нахрани ме" variant="ink" onPress={onFeed} haptic="success" style={s.action} />
       )}
     </>
   );
@@ -195,7 +195,7 @@ function Growth({ status }) {
 
       <Text style={s.h2}>Как да порасна</Text>
       <View style={s.card}>
-        <Tip icon="calendar" text={`+${DAILY_XP} XP за всеки ден със запис (или „Днес без разходи“).`} />
+        <Tip icon="calendar" text={`+${DAILY_XP} XP за всеки ден със запис (или „Без разходи днес“).`} />
         <Tip icon="trophy" text="Бонус в края на месеца: 85+ → +150 XP, 65+ → +80 XP, 45+ → +30 XP." />
         {status.score != null && (
           <Tip

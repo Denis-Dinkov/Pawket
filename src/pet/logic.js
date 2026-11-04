@@ -5,7 +5,7 @@ import { colors } from '../theme';
 
 export const STAGES = [
   { key: 'kitten', name: 'Кутре', xp: 0 },
-  { key: 'young', name: 'Кученце', xp: 250 },
+  { key: 'young', name: 'Младо куче', xp: 250 },
   { key: 'adult', name: 'Кавалер', xp: 800 },
   { key: 'champion', name: 'Шампион', xp: 2000 },
 ];

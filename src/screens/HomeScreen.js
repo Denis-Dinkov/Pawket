@@ -74,7 +74,7 @@ function Legend({ ov }) {
               <Text style={s.legendName} numberOfLines={1}>{b.label}</Text>
             </View>
             <Text style={[s.legendValue, over && { color: colors.danger, fontWeight: '700' }]} numberOfLines={2}>
-              {over ? `над с ${moneyShort(ov.byBucket[k] - target)}` : `${moneyShort(ov.byBucket[k])} от ${moneyShort(target)}`}
+              {over ? `${moneyShort(ov.byBucket[k] - target)} над ${moneyShort(target)}` : `${moneyShort(ov.byBucket[k])} от ${moneyShort(target)}`}
             </Text>
           </View>
         );
@@ -106,7 +106,12 @@ const DockHeader = memo(
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
-              {todayLeft != null && <Text style={s.dockSub}>днес {money(Math.max(0, Math.round(todayLeft)))}</Text>}
+              {todayLeft != null &&
+                (todayLeft < 0 ? (
+                  <Text style={[s.dockSub, { color: colors.danger, fontWeight: '700' }]}>днес {money(Math.round(-todayLeft))} над лимита</Text>
+                ) : (
+                  <Text style={s.dockSub}>днес {money(Math.round(todayLeft))}</Text>
+                ))}
             </View>
           </LinearGradient>
         </Touch>
@@ -386,7 +391,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Money whole value={Math.abs(ov.remaining)} size={32} color={ov.remaining < 0 ? colors.danger : colors.text} />
               </View>
               {isCurrent && daily ? (
-                // Over the limit: "Днес 43 € от 36 €" and "над с 7 €"; otherwise "Остават 29 € от 36 € за днес"
+                // Over the limit: "Днес 43 €" and "7 € над лимита 36 €"; otherwise "Днес остават 29 € от 36 €"
                 <View
                   style={s.today}
                   accessible
@@ -399,7 +404,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                   <Text style={s.label}>{daily.over ? 'Днес' : 'Днес остават'}</Text>
                   <Money whole value={daily.over ? daily.spentToday : daily.left} size={22} color={daily.over ? colors.danger : colors.savings} />
                   <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]}>
-                    {daily.over ? `над ${moneyShort(daily.limit)} с ${moneyShort(-daily.left)}` : `от ${moneyShort(daily.limit)}`}
+                    {daily.over ? `${moneyShort(-daily.left)} над лимита ${moneyShort(daily.limit)}` : `от ${moneyShort(daily.limit)}`}
                   </Text>
                 </View>
               ) : !isCurrent && ov.score != null ? (

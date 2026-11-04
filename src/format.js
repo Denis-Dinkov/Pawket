@@ -25,6 +25,14 @@ export const SOURCES = {
   goal: { label: 'Към цел', icon: 'flag-outline' },
 };
 
+// 1-во, 2-ро, 4-то, 7-мо, 11-то, 21-во число
+export function dayOrdinal(n) {
+  const teen = n % 100 >= 11 && n % 100 <= 19;
+  const last = n % 10;
+  const suffix = teen ? 'то' : last === 1 ? 'во' : last === 2 ? 'ро' : last === 7 || last === 8 ? 'мо' : 'то';
+  return `${n}-${suffix}`;
+}
+
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // Amount field: digits only, one decimal separator (comma) and at most 2 digits after it

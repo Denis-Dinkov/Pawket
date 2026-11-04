@@ -2,11 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { monthKey, monthIncome } from './budget';
-import { setCustomCategories, CUSTOM_SHADES } from './theme';
+import { setCustomCategories, CUSTOM_SHADES, money } from './theme';
 import { evaluateClosedMonths, feedPet, stageFor } from './pet/logic';
-import { dueRecurring, goalProgress } from './plans';
+import { dueRecurring, goalProgress, resumedLastKey, WISH_HOURS } from './plans';
 import { weekMissions, weekKey, activityDays, streak, MISSION_XP } from './pet/missions';
 import { animateNextLayout } from './motion';
+import { scheduleWishReminder, cancelWishReminder } from './reminders';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -115,16 +116,28 @@ export function StoreProvider({ children }) {
   const closeMonths = useCallback(() => {
     const now = new Date();
     const due = dueRecurring(dataRef.current.recurring, now);
-    if (due.expenses.length) {
-      setData((d) => ({
-        ...d,
-        recurring: due.rules,
-        expenses: [...due.expenses.map((e) => ({ id: newId(), ...e })), ...d.expenses],
-      }));
+    const booked = due.expenses.map((e) => ({ id: newId(), ...e }));
+    if (booked.length) {
+      setData((d) => ({ ...d, recurring: due.rules, expenses: [...booked, ...d.expenses] }));
     }
-    const { pet, reports } = evaluateClosedMonths({ ...dataRef.current, now });
+    // The payments just booked belong to the months being closed, so they count in the score
+    const { reports } = evaluateClosedMonths({
+      ...dataRef.current,
+      expenses: [...booked, ...dataRef.current.expenses],
+      now,
+    });
     if (!reports.length) return;
-    setData((d) => ({ ...d, pet }));
+    // Only the scoring fields change, so the pet's newer state (fed, accessory) isn't overwritten.
+    // Months already closed by an earlier pass are skipped, so the bonus is never given twice.
+    setData((d) => {
+      if (!d.pet) return d;
+      const done = d.pet.evaluatedMonths || {};
+      const fresh = reports.filter((r) => !(r.key in done));
+      if (!fresh.length) return d;
+      const evaluatedMonths = { ...done, ...Object.fromEntries(fresh.map((r) => [r.key, r.score])) };
+      const xp = (d.pet.xp || 0) + fresh.reduce((a, r) => a + r.bonus, 0);
+      return { ...d, pet: { ...d.pet, evaluatedMonths, xp } };
+    });
     const shown = reports.filter((r) => r.score != null);
     if (shown.length) setPendingEvent((e) => ({ ...e, reports: shown }));
   }, []);
@@ -291,8 +304,16 @@ export function StoreProvider({ children }) {
       },
 
       // Recurring payments
+      // Resuming a paused rule skips the payments missed while it was paused
       updateRecurring: (id, patch) =>
-        setData((d) => ({ ...d, recurring: d.recurring.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+        setData((d) => ({
+          ...d,
+          recurring: d.recurring.map((r) => {
+            if (r.id !== id) return r;
+            const resumed = r.paused && patch.paused === false;
+            return { ...r, ...patch, ...(resumed && { lastKey: resumedLastKey(r) }) };
+          }),
+        })),
       // Past expenses of the rule stay; only future ones stop
       removeRecurring: (id) => setData((d) => ({ ...d, recurring: d.recurring.filter((r) => r.id !== id) })),
 
@@ -327,16 +348,21 @@ export function StoreProvider({ children }) {
       // The 48-hour rule: a wish waits two days before it can be bought
       addWish: ({ name, amount, categoryId }) => {
         animateNextLayout();
-        setData((d) => ({
-          ...d,
-          wishes: [{ id: newId(), name: name.trim(), amount, categoryId: categoryId || 'shopping', createdAt: new Date().toISOString() }, ...d.wishes],
-        }));
-        showToast({ text: `„${name.trim()}“ чака 48 часа. Ще ти напомня 🐾`, icon: 'hourglass-outline' });
+        const wish = { id: newId(), name: name.trim(), amount, categoryId: categoryId || 'shopping', createdAt: new Date().toISOString() };
+        setData((d) => ({ ...d, wishes: [wish, ...d.wishes] }));
+        // The toast promises a reminder only when one could actually be scheduled
+        scheduleWishReminder({ id: wish.id, name: wish.name, at: new Date(Date.now() + WISH_HOURS * 3600000) }).then((scheduled) =>
+          showToast({
+            text: scheduled ? `„${wish.name}“ чака 48 часа. Ще ти напомня 🐾` : `„${wish.name}“ чака 48 часа в „Планове“ 🐾`,
+            icon: 'hourglass-outline',
+          })
+        );
       },
       // Skipping a wish puts its money into a goal (when there is one)
       resolveWish: (id, decision, goal) => {
         const wish = dataRef.current.wishes.find((w) => w.id === id);
         if (!wish) return;
+        cancelWishReminder(id);
         animateNextLayout();
         setData((d) => ({
           ...d,
@@ -352,15 +378,16 @@ export function StoreProvider({ children }) {
             ],
           }));
           showToast({
-            text: before.saved + wish.amount >= goal.target && !before.done ? `Целта „${goal.name}“ е постигната! 🎉` : `+${wish.amount} € към „${goal.name}“ вместо „${wish.name}“ 💪`,
+            text: before.saved + wish.amount >= goal.target && !before.done ? `Целта „${goal.name}“ е постигната! 🎉` : `+${money(wish.amount)} към „${goal.name}“ вместо „${wish.name}“ 💪`,
             icon: 'trophy',
             celebrate: true,
           });
         } else if (decision === 'skipped') {
-          showToast({ text: `Спести ${wish.amount} € 💪`, icon: 'trophy', celebrate: true });
+          showToast({ text: `Спести ${money(wish.amount)} 💪`, icon: 'trophy', celebrate: true });
         }
       },
       removeWish: (id) => {
+        cancelWishReminder(id);
         animateNextLayout();
         setData((d) => ({ ...d, wishes: d.wishes.filter((w) => w.id !== id) }));
       },

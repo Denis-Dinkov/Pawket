@@ -73,7 +73,7 @@ export function PetChips({ status, onStat, style }) {
         icon={<Ionicons name="star" size={13} color={colors.warning} />}
         label={status.stage.name}
         onPress={() => onStat('growth')}
-        a11y={`Ниво ${status.stage.name}, ${Math.round(status.progress * 100)} процента до следващото`}
+        a11y={`Етап ${status.stage.name}, ${Math.round(status.progress * 100)} процента до следващото`}
       />
     </View>
   );
@@ -103,7 +103,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
       <View style={s.top}>{top}</View>
 
       <Touch style={s.bubble} onPress={onBubble} accessibilityLabel={`${pet.name} казва: ${bubble}`} accessibilityHint="Отваря всички съвети">
-        <Text style={s.bubbleText} numberOfLines={3}>{bubble}</Text>
+        <Text style={s.bubbleText} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{bubble}</Text>
         {bubbleAction ? (
           <Touch haptic="success" style={s.bubbleBtn} onPress={bubbleAction.onPress}>
             <Text style={s.bubbleBtnText}>{bubbleAction.label}</Text>

@@ -18,7 +18,7 @@ import Pill from '../components/ui/Pill';
 import { remindersAvailable, requestReminderPermission } from '../reminders';
 import { liveActivityAvailable } from '../widget/liveActivity';
 import { backupAvailable, shareBackup, pickBackup } from '../backup';
-import { dayLabel } from '../format';
+import { dayLabel, plural } from '../format';
 import { themed } from '../themed';
 
 const parseMoney = (t) => parseFloat(String(t).replace(/\s/g, '').replace(',', '.')) || 0;
@@ -72,7 +72,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
       if (!backup) return;
       const count = backup.data.expenses.length;
       const when = backup.exportedAt ? dayLabel(backup.exportedAt) : 'неизвестна дата';
-      confirm('Възстановяване от архив', `Архив от ${when} с ${count} разхода. Сегашните данни ще бъдат заменени.`, () => {
+      confirm('Възстановяване от архив', `Архив от ${when} с ${plural(count, 'разход', 'разхода')}. Сегашните данни ще бъдат заменени.`, () => {
         restoreData(backup);
         showToast({ text: 'Данните са възстановени', icon: 'checkmark-circle' });
         onClose();
@@ -233,7 +233,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             <IconBadge icon="notifications-outline" color={colors.primary} size={40} />
             <View style={{ flex: 1 }}>
               <Text style={s.linkTitle}>Вечерно напомняне</Text>
-              <Text style={s.hint}>Само в дните без запис: „{pet?.name} е гладен — днес харчи ли нещо?“</Text>
+              <Text style={s.hint}>Само в дните без запис: „{pet?.name} е гладен — похарчи ли нещо днес?“</Text>
             </View>
             <Switch value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel="Вечерно напомняне" />
           </View>

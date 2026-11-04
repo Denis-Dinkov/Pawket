@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/ui/AppText';
 import { useStore } from '../store';
 import { colors, money, pct, radius, categoryById, BUCKETS, MONTHS, currentColorScheme } from '../theme';
-import { cleanAmountInput, dayLabel } from '../format';
+import { cleanAmountInput, dayLabel, dayOrdinal } from '../format';
 import { goalProgress, monthlyNeeded, upcomingPayments, GOAL_ICONS, averageNeeds, wishHoursLeft, FUND_PRESETS } from '../plans';
 import Appear from '../components/ui/Appear';
 import Card from '../components/ui/Card';
@@ -252,7 +252,7 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
         <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.max(1, d - 1))} accessibilityLabel="По-рано">
           <Ionicons name="remove" size={20} color={colors.text} />
         </Touch>
-        <Text style={s.dayText} accessibilityLiveRegion="polite">{day}-о число</Text>
+        <Text style={s.dayText} accessibilityLiveRegion="polite">{dayOrdinal(day)} число</Text>
         <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.min(31, d + 1))} accessibilityLabel="По-късно">
           <Ionicons name="add" size={20} color={colors.text} />
         </Touch>
@@ -271,6 +271,13 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
     </Sheet>
   );
 }
+
+// "март", or "март 2027" when the deadline isn't this year
+const deadlineLabel = (iso) => {
+  const d = new Date(iso);
+  const name = MONTHS[d.getMonth()].toLowerCase();
+  return d.getFullYear() === new Date().getFullYear() ? name : `${name} ${d.getFullYear()}`;
+};
 
 export default function PlansScreen({ onAdd }) {
   const { goals, recurring, expenses, wishes, addGoal, updateGoal, removeGoal, contributeGoal, updateRecurring, removeRecurring, showToast, addWish, resolveWish, removeWish } =
@@ -338,10 +345,8 @@ export default function PlansScreen({ onAdd }) {
                         icon="bag-check-outline"
                         label="Купувам"
                         variant="outline"
-                        onPress={() => {
-                          resolveWish(w.id, 'bought');
-                          onAdd({ amount: w.amount, merchant: '', note: w.name, categoryId: w.categoryId });
-                        }}
+                        // The wish is marked as bought only when the expense is saved, so "Отказ" keeps it
+                        onPress={() => onAdd({ amount: w.amount, merchant: '', note: w.name, categoryId: w.categoryId, wishId: w.id })}
                       />
                     </View>
                   )}
@@ -393,7 +398,7 @@ export default function PlansScreen({ onAdd }) {
                     </Text>
                     <Text style={s.hint}>
                       {money(saved)} от {money(g.target)}
-                      {g.deadline ? ` · до ${MONTHS[new Date(g.deadline).getMonth()].toLowerCase()}` : ''}
+                      {g.deadline ? ` · до ${deadlineLabel(g.deadline)}` : ''}
                     </Text>
                   </View>
                   <Text style={[s.goalPct, done && { color: colors.savings }]}>{pct(progress)}</Text>

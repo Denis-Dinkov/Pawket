@@ -55,6 +55,17 @@ export function dueRecurring(rules = [], now = new Date()) {
   return { expenses, rules: changed ? updated : rules };
 }
 
+/**
+ * The lastKey for a paused rule that is turned back on: the payments whose date passed while it was paused
+ * are skipped, so resuming doesn't book them all at once. The next one is booked on its usual day.
+ */
+export function resumedLastKey(rule, now = new Date()) {
+  const thisMonth = ruleDate(rule, now.getFullYear(), now.getMonth());
+  const prev = shiftMonth(now.getFullYear(), now.getMonth(), -1);
+  const key = thisMonth <= now ? monthKey(now.getFullYear(), now.getMonth()) : monthKey(prev.year, prev.month);
+  return key > rule.lastKey ? key : rule.lastKey;
+}
+
 // The next payment of every active rule, soonest first: [{ rule, date }]
 export function upcomingPayments(rules = [], now = new Date()) {
   return rules
@@ -97,17 +108,22 @@ export function monthlyNeeded(goal, saved, now = new Date()) {
 
 export const GOAL_ICONS = ['airplane', 'home', 'car', 'gift', 'laptop', 'school', 'medkit', 'paw', 'heart', 'umbrella', 'bicycle', 'phone-portrait'];
 
+// Categories spent evenly through the month, so their daily average can be projected
+export const VARIABLE_CATEGORIES = new Set(['groceries', 'transport', 'dining', 'fun']);
+
 /**
  * Where the month will end at today's pace: what's left, minus the recurring payments still due,
- * minus the usual daily spending (needs + wants, without recurring and goal entries) for the days left.
+ * minus the usual daily spending in the everyday categories (food, transport, dining, fun) for the days left.
  * Returns { end, perDayVariable, daysLeft } or null outside the current month.
  */
 export function monthForecast(ov, now = new Date(), pending = 0) {
   const { isCurrent, daysLeft, daysInMonth } = ov.progress;
   if (!isCurrent || !ov.income) return null;
   const elapsed = Math.max(1, daysInMonth - daysLeft + 1);
+  // Only categories spent evenly through the month are extrapolated (same set as the advice).
+  // One-off costs like rent, bills or a big purchase are already in `remaining` and must not be multiplied by the days left.
   const variable = ov.list
-    .filter((e) => e.source !== 'recurring' && !e.goalId && ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
+    .filter((e) => e.source !== 'recurring' && !e.goalId && VARIABLE_CATEGORIES.has(e.categoryId))
     .reduce((a, e) => a + e.amount, 0);
   const perDayVariable = variable / elapsed;
   // Today is partly spent already, so it counts as half a day

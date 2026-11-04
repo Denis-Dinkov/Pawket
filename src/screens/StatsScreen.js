@@ -37,7 +37,7 @@ function verdict(bucket, actual, target) {
   return { text: `Превишено с ${money(actual - target)}`, color: colors.danger };
 }
 
-const scoreColor = (score) => (score >= 85 ? colors.savings : score >= 60 ? colors.warning : colors.danger);
+const scoreColor = (score) => (score >= 85 ? colors.savings : score >= 65 ? colors.warning : colors.danger);
 
 export default function StatsScreen({ year, month, onMonthChange, onAdd }) {
   const store = useStore();

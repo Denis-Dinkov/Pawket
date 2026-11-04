@@ -64,7 +64,7 @@ export async function syncReminders({ enabled, hour = 20, petName = 'Чарли'
         identifier: `${PREFIX}${i}`,
         content: {
           title: `${petName} е гладен 🦴`,
-          body: 'Днес харчи ли нещо? Запиши го или натисни „Без разходи днес“.',
+          body: 'Похарчи ли нещо днес? Запиши го или натисни „Без разходи днес“.',
           categoryIdentifier: CATEGORY,
           data: { kind: 'evening' },
         },
@@ -74,6 +74,37 @@ export async function syncReminders({ enabled, hour = 20, petName = 'Чарли'
   } catch {
     // Notifications aren't critical — the app works without them
   }
+}
+
+const WISH_PREFIX = 'pawket-wish-';
+
+/**
+ * A one-off notification when a wish's 48 hours are up. It needs the notification permission already given
+ * (it isn't asked for here); returns true when the reminder was scheduled.
+ */
+export async function scheduleWishReminder({ id, name, at }) {
+  if (!Notifications) return false;
+  try {
+    const { granted } = await Notifications.getPermissionsAsync();
+    if (!granted || at <= new Date()) return false;
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${WISH_PREFIX}${id}`,
+      content: {
+        title: `48 часа минаха ⏳`,
+        body: `Още ли искаш „${name}“? Реши в „Планове“.`,
+        data: { kind: 'wish' },
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function cancelWishReminder(id) {
+  if (!Notifications) return;
+  Notifications.cancelScheduledNotificationAsync(`${WISH_PREFIX}${id}`).catch(() => {});
 }
 
 // Calls onAction('no-spend' | 'add') when a reminder (or one of its buttons) is tapped

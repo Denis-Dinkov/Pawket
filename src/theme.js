@@ -179,13 +179,17 @@ export const INCOME_KINDS = [
 export const incomeKindById = (id) => INCOME_KINDS.find((k) => k.id === id) || INCOME_KINDS[INCOME_KINDS.length - 1];
 export const categoryColor = (id) => BUCKETS[categoryById(id)?.bucket]?.color || colors.muted;
 
+// Thousands are grouped with a no-break space from 5 digits on, as in Bulgarian (CLDR bg):
+// 1240 → '1240', 12400 → '12 400', 1234567 → '1 234 567'
+const groupThousands = (int) => (int.length < 5 ? int : int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'));
+
 // 1240.5 → { sign: '', int: '1240', dec: '50' }; dec is '' for whole amounts (2200 → '2200')
 export function splitMoney(n) {
   const v = Number(n) || 0;
   const [int, dec] = Math.abs(v).toFixed(2).split('.');
   return {
     sign: v < 0 && Math.abs(v) >= 0.005 ? '−' : '',
-    int,
+    int: groupThousands(int),
     dec: dec === '00' ? '' : dec,
   };
 }

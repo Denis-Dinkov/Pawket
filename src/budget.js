@@ -92,7 +92,7 @@ export function scoreVerdict(score) {
 export function budgetScoreParts({ income, byBucket, dayFrac = 1 }) {
   if (!income) return null;
   const I = income;
-  const { needs, wants, savings } = byBucket;
+  const { needs, wants } = byBucket;
   const wantsCap = 0.3 * I;
   const wantsAllowed = wantsCap * Math.max(dayFrac, 0.15);
   const room = I - needs - wants;
@@ -109,7 +109,9 @@ export function budgetScoreParts({ income, byBucket, dayFrac = 1 }) {
     { key: 'savings', penalty: Math.min(40, (Math.max(0, 0.2 * I - room) / I) * 150), value: Math.max(0, room) / I, target: 0.2 },
   ];
   let s = 100 - parts.reduce((a, p) => a + p.penalty, 0);
-  const overIncome = needs + wants + savings > I;
+  // Only spending over income caps the score. Savings above the leftover come from money saved earlier
+  // (e.g. moving existing savings into a goal), which isn't overspending.
+  const overIncome = needs + wants > I;
   if (overIncome) s = Math.min(s, 15);
   return { score: Math.max(0, Math.round(s)), parts, overIncome };
 }

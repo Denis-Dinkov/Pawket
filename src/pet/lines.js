@@ -15,8 +15,8 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
   const warn = advice.find((a) => a.tone === 'warn');
 
   if (status.score == null) return { text: 'Спя… Кажи ми колко е месечният ти доход и се събуждам 💤', tone: 'tip' };
-  if (status.fullness < HUNGRY_AT) return { text: 'Гладен съм! Днес харчи ли нещо? Запиши го и ме нахрани 🦴', tone: 'warn' };
-  if (warn?.id === 'over-income') return { text: 'Харчим повече, отколкото печелим 😢 Нека до края на месеца само най-нужното.', tone: 'warn' };
+  if (status.fullness < HUNGRY_AT) return { text: 'Гладен съм! Похарчи ли нещо днес? Запиши го и ме нахрани 🦴', tone: 'warn' };
+  if (warn?.id === 'over-income') return { text: 'Харчиш повече, отколкото печелиш 😢 До края на месеца — само най-нужното.', tone: 'warn' };
   if (daily?.over) {
     return {
       text: pick(['Днес малко прекалихме. Утре ще сме по-внимателни? 🙏', 'Ауу, скъп ден! Утре ден без желания? 🐾'], seed),

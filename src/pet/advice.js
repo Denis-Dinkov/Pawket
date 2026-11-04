@@ -1,7 +1,7 @@
 // The dog's advice: rules over the expenses, no internet. No RN imports.
 import { colors, getCategories, categoryById, money, pct, MONTHS } from '../theme';
 import { monthOverview, filterMonth, summarize, shiftMonth, dailyLimit } from '../budget';
-import { pendingSpend } from '../plans';
+import { pendingSpend, VARIABLE_CATEGORIES } from '../plans';
 
 // A concrete idea for each category
 const HINTS = {
@@ -22,7 +22,7 @@ const HINTS = {
 const normalizeMerchant = (m) => (m || '').trim().toLowerCase();
 
 // Categories spent evenly through the month that can be forecast
-const VARIABLE = new Set(['groceries', 'transport', 'dining', 'fun']);
+const VARIABLE = VARIABLE_CATEGORIES;
 
 /**
  * Returns a list of advice, ordered by importance:
@@ -47,7 +47,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
       add(90, {
         id: 'habit', tone: 'warn', icon: 'restaurant',
         title: `Няма записи от ${days} дни 🦴`,
-        text: 'Записвай разходите веднага след плащане — така нищо не се губи. Ако наистина не е имало разходи, натисни „Днес без разходи“ и ме нахрани.',
+        text: 'Записвай разходите веднага след плащане — така нищо не се губи. Ако наистина не е имало разходи, натисни „Без разходи днес“ и ме нахрани.',
       });
     }
   }
@@ -68,13 +68,14 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
       .map((c) => ({ ...c, value: byCategory[c.id] }))
       .sort((a, b) => b.value - a.value)[0];
 
-  // Over income
-  if (total > I) {
+  // Over income: spending only — money put into savings goals isn't overspending
+  const spent = byBucket.needs + byBucket.wants;
+  if (spent > I) {
     add(100, {
       id: 'over-income', tone: 'warn', icon: 'alert-circle',
       title: 'Харчиш повече, отколкото печелиш 😢',
-      text: `Разходите са ${money(total)} при доход ${money(I)} — с ${money(total - I)} отгоре. ${
-        isCurrent ? 'До края на месеца купувай само най-необходимото.' : 'Следващия месец започни с план за всяка кофа.'
+      text: `Разходите са ${money(spent)} при доход ${money(I)} — с ${money(spent - I)} отгоре. ${
+        isCurrent ? 'До края на месеца купувай само най-необходимото.' : 'Следващия месец започни с план за всяка част от 50/30/20.'
       }`,
     });
   }

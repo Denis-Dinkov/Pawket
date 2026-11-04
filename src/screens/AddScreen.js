@@ -8,6 +8,7 @@ import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radi
 import { getIncome } from '../budget';
 import { goalProgress } from '../plans';
 import { successFeedback, feedback } from '../haptics';
+import { dayOrdinal } from '../format';
 import IconBadge from '../components/ui/IconBadge';
 import Pill from '../components/ui/Pill';
 import Segmented from '../components/ui/Segmented';
@@ -47,7 +48,7 @@ const daysAgoOf = (iso) => {
  * prefill = { mode, amount, merchant, source } comes from Apple Pay, the widget or Home.
  */
 export default function AddScreen({ onDone, prefill = {} }) {
-  const { addExpense, updateExpense, addIncome, addCategory, merchants, incomes, expenses, goals, contributeGoal, showToast, addWish } = useStore();
+  const { addExpense, updateExpense, addIncome, addCategory, merchants, incomes, expenses, goals, contributeGoal, showToast, addWish, resolveWish } = useStore();
   const editing = prefill.edit || null;
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
@@ -103,6 +104,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
       if (kind === 'salary') payYourselfFirst(common.amount);
     } else {
       addExpense({ ...common, categoryId, merchant: merchant.trim(), source: prefill.source || 'manual' }, { repeat });
+      if (prefill.wishId) resolveWish(prefill.wishId, 'bought');
     }
     successFeedback();
     onDone({ ...common, type: mode });
@@ -263,7 +265,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
           )}
         </View>
         {repeat && !isIncome && (
-          <Text style={s.incomeHint}>Всеки месец на {new Date(Date.now() - daysAgo * 86400000).getDate()}-о число се записва сам. Управлява се от „Планове“.</Text>
+          <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(new Date(Date.now() - daysAgo * 86400000).getDate())} число се записва сам. Управлява се от „Планове“.</Text>
         )}
         {isIncome ? (
           <>
@@ -368,11 +370,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
           haptic={false}
           onPress={save}
           disabled={!valid}
-          style={[s.save, isIncome && { backgroundColor: colors.savings }, !valid && { opacity: 0.4 }]}
+          style={[s.save, isIncome && { backgroundColor: colors.savings }, !valid && { backgroundColor: colors.faint }]}
           accessibilityState={{ disabled: !valid }}
         >
-          <Ionicons name="checkmark" size={20} color={colors.onAccent} />
-          <Text style={s.saveText}>
+          <Ionicons name="checkmark" size={20} color={valid ? colors.onAccent : colors.muted} />
+          <Text style={[s.saveText, !valid && { color: colors.muted }]}>
             {valid ? `${editing ? 'Запази промените' : 'Запази'} · ${isIncome ? '+' : ''}${money(value)}` : hint}
           </Text>
         </Touch>
