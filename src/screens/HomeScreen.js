@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
 import { colors, BUCKETS, MONTHS, money, moneyShort, pct, radius, categoryById, currentColorScheme } from '../theme';
-import { monthOverview, sortByDateDesc, dailyLimit } from '../budget';
+import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { weekMissions, streak, activityDays } from '../pet/missions';
@@ -178,6 +178,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
 
   // The dog lives in the present; for a past month it comments on that month's result
   const forecast = monthForecast(current, now, pending);
+  // The main number: free to spend this month (current month), or what was left of a past one
+  const free = isCurrent ? freeToSpend(ov, pending) : null;
+  const heroValue = free ? free.free : ov.remaining;
   const bubble = isCurrent
     ? petLine({ status, daily, advice, activeToday: hasExpenseToday || pet.lastActiveDay === dayKey(now), goal: goal && { name: goal.g.name, done: goal.p.done }, now }).text
     : ov.score == null
@@ -386,9 +389,15 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             <View style={s.moneyRow}>
               <View style={{ flex: 1 }}>
                 <Text style={s.label}>
-                  {ov.remaining < 0 ? 'Над дохода с' : isCurrent ? `Остават до ${ov.progress.daysInMonth} ${MONTHS[month].toLowerCase()}` : `Остана от ${MONTHS[month].toLowerCase()}`}
+                  {free
+                    ? free.free < 0
+                      ? 'Над бюджета за харчене с'
+                      : `Свободни до ${ov.progress.daysInMonth} ${MONTHS[month].toLowerCase()}`
+                    : ov.remaining < 0
+                      ? 'Над дохода с'
+                      : `Остана от ${MONTHS[month].toLowerCase()}`}
                 </Text>
-                <Money whole value={Math.abs(ov.remaining)} size={32} color={ov.remaining < 0 ? colors.danger : colors.text} />
+                <Money whole value={Math.abs(heroValue)} size={32} color={heroValue < 0 ? colors.danger : colors.text} />
               </View>
               {isCurrent && daily ? (
                 // Over the limit: "Днес 43 €" and "7 € над лимита 36 €"; otherwise "Днес остават 29 € от 36 €"
@@ -447,23 +456,18 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Text style={s.footStrong}>{moneyShort(ov.byBucket.savings)}</Text>
               </View>
             </View>
-            {/* Forecast: where the month ends at today's pace, the recurring payments included */}
-            {isCurrent && forecast && current.list.length >= 3 && (
+            {/* Early warning only: the spending budget runs out before the month does at today's pace */}
+            {isCurrent && forecast && free && free.free >= 0 && forecast.end < 0 && current.list.length >= 3 && (
               <View
-                style={[s.forecast, { backgroundColor: forecast.end < 0 ? colors.dangerSoft : colors.savingsSoft }]}
+                style={[s.forecast, { backgroundColor: colors.dangerSoft }]}
                 accessible
-                accessibilityLabel={`Прогноза за края на месеца: ${forecast.end < 0 ? 'минус ' : ''}${moneyShort(Math.abs(forecast.end))}`}
+                accessibilityLabel={`При това темпо бюджетът свършва с ${moneyShort(-forecast.end)} преди края на месеца`}
               >
-                <Ionicons name={forecast.end < 0 ? 'trending-down' : 'trending-up'} size={16} color={forecast.end < 0 ? colors.danger : colors.savings} />
+                <Ionicons name="trending-down" size={16} color={colors.danger} />
                 <Text style={s.forecastText}>
-                  При това темпо месецът свършва с{' '}
-                  <Text style={{ fontWeight: '800', color: forecast.end < 0 ? colors.danger : colors.savings }}>
-                    {forecast.end < 0 ? '−' : '+'}
-                    {moneyShort(Math.abs(forecast.end))}
-                  </Text>
-                  {forecast.end < 0 && forecast.daysLeft > 1
-                    ? `. Свали харченето с ${moneyShort(Math.ceil(-forecast.end / forecast.daysLeft))}/ден.`
-                    : ''}
+                  При това темпо ще надхвърлиш бюджета с{' '}
+                  <Text style={{ fontWeight: '800', color: colors.danger }}>{moneyShort(-forecast.end)}</Text>
+                  {forecast.daysLeft > 1 ? `. Свали харченето с ${moneyShort(Math.ceil(-forecast.end / forecast.daysLeft))}/ден.` : '.'}
                 </Text>
               </View>
             )}
@@ -499,7 +503,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         expression={status.expression}
         stageKey={status.stage.key}
         bubble={bubble}
-        remaining={ov.remaining}
+        remaining={heroValue}
         todayLeft={isCurrent && daily ? daily.left : null}
       />
 

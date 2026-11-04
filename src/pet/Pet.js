@@ -80,7 +80,8 @@ function Pet({ expression = 'happy', stage = 'adult', size = 160, animate: anima
   // Blinking shows the closed-eyes picture on top for a moment (native opacity, no React render)
   const blink = useRef(new Animated.Value(0)).current;
   const jump = useRef(new Animated.Value(0)).current;
-  const first = useRef(true);
+  // The last bounceKey seen: effects re-run when a hidden tab comes back, and that mustn't count as a new jump
+  const lastBounce = useRef(bounceKey);
 
   useLoop(bob, motion.ms, animate);
 
@@ -107,10 +108,8 @@ function Pet({ expression = 'happy', stage = 'adult', size = 160, animate: anima
   }, [blinkFace, blink]);
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (lastBounce.current === bounceKey) return;
+    lastBounce.current = bounceKey;
     jump.setValue(0);
     Animated.sequence([
       Animated.timing(jump, { toValue: -size * 0.14, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: native }),

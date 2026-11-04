@@ -112,8 +112,9 @@ export const GOAL_ICONS = ['airplane', 'home', 'car', 'gift', 'laptop', 'school'
 export const VARIABLE_CATEGORIES = new Set(['groceries', 'transport', 'dining', 'fun']);
 
 /**
- * Where the month will end at today's pace: what's left, minus the recurring payments still due,
- * minus the usual daily spending in the everyday categories (food, transport, dining, fun) for the days left.
+ * Where the spending budget (see freeToSpend) ends at today's pace: what's free now, minus the usual daily
+ * spending in the everyday categories (food, transport, dining, fun) for the days left.
+ * A negative end means the 80% for needs and wants runs out before the month does.
  * Returns { end, perDayVariable, daysLeft } or null outside the current month.
  */
 export function monthForecast(ov, now = new Date(), pending = 0) {
@@ -127,7 +128,8 @@ export function monthForecast(ov, now = new Date(), pending = 0) {
     .reduce((a, e) => a + e.amount, 0);
   const perDayVariable = variable / elapsed;
   // Today is partly spent already, so it counts as half a day
-  const end = ov.remaining - pending - perDayVariable * Math.max(0, daysLeft - 0.5);
+  const free = 0.8 * ov.income - ov.byBucket.needs - ov.byBucket.wants - pending;
+  const end = free - perDayVariable * Math.max(0, daysLeft - 0.5);
   return { end, perDayVariable, daysLeft };
 }
 

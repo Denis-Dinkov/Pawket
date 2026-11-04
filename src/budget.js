@@ -165,6 +165,18 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
 }
 
 /**
+ * The app's main number: what's still free to spend on needs and wants this month — the 80% of income
+ * minus what they already took and the recurring payments still due. The 20% for savings stays untouched,
+ * so money put into goals doesn't lower it. Today's limit is this amount spread over the days left.
+ */
+export function freeToSpend(ov, pending = 0) {
+  if (!ov.income) return null;
+  const budget = 0.8 * ov.income;
+  const free = budget - ov.byBucket.needs - ov.byBucket.wants - pending;
+  return { free, budget, ratio: free / budget };
+}
+
+/**
  * Today's limit for needs and wants: what's left of the 80% after this month's spending and the recurring
  * payments still due, spread over the remaining days. It's computed as of the start of the day,
  * so it doesn't move with every expense; `left` is what remains of it today.

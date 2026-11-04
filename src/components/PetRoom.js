@@ -29,7 +29,11 @@ function Chip({ icon, label, value, color, onPress, a11y }) {
 // Hearts that float up from the dog when he's petted
 function Hearts({ id }) {
   const t = useRef(new Animated.Value(0)).current;
+  // Plays once per pat: a hidden tab coming back re-runs effects, which mustn't replay it
+  const played = useRef(null);
   useEffect(() => {
+    if (played.current === id) return;
+    played.current = id;
     t.setValue(0);
     Animated.timing(t, { toValue: 1, duration: 900, useNativeDriver: true }).start();
   }, [id, t]);

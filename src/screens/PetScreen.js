@@ -10,6 +10,9 @@ import { useStore } from '../store';
 import { colors, radius, currentColorScheme } from '../theme';
 import { petStatus, STAGES, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
+import { petLine } from '../pet/lines';
+import { dailyLimit } from '../budget';
+import { pendingSpend } from '../plans';
 import { weekMissions, streak, activityDays, rewardsState, missionsTotal, weekStart, MISSION_XP } from '../pet/missions';
 import { goalProgress } from '../plans';
 import { plural } from '../format';
@@ -79,6 +82,10 @@ export default function PetScreen() {
   const rewards = rewardsState({ pet, goalsDone });
   const start = weekStart(now);
   const activeToday = days.has(dayKey(now));
+  // The same speech line as on Home, so the dog says one thing in both places
+  const daily = dailyLimit(status.overview, now, pendingSpend(recurring, now));
+  const openGoal = goals.map((g) => ({ g, p: goalProgress(g, expenses) })).sort((a, b) => Number(a.p.done) - Number(b.p.done))[0];
+  const bubble = petLine({ status, daily, advice, activeToday, goal: openGoal && { name: openGoal.g.name, done: openGoal.p.done }, now }).text;
   const feed = () => {
     tapFeedback();
     checkInNoSpend();
@@ -97,7 +104,7 @@ export default function PetScreen() {
           now={now}
           insetTop={insets.top}
           height={300}
-          bubble={advice[0]?.title || 'Обичам те! Продължавай така 🐶'}
+          bubble={bubble}
           bubbleAction={!activeToday ? { label: 'Без разходи днес 🦴', onPress: feed } : null}
           onBubble={() => setStatOpen('mood')}
           onStat={setStatOpen}

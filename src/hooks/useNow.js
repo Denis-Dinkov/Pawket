@@ -16,6 +16,8 @@ export default function useNow(stepMinutes = 15) {
       const next = new Date();
       setNow((prev) => (slotOf(prev, stepMinutes) === slotOf(next, stepMinutes) ? prev : next));
     };
+    // Also on (re)mount: a hidden tab coming back into view may hold an old time
+    check();
     const id = setInterval(check, 60000);
     // Coming back to the app always refreshes: the dog's fullness and "today" should be exact then
     const sub = AppState.addEventListener('change', (st) => st === 'active' && setNow(new Date()));

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Modal, ActivityIndicator, Animated, Appearance, useColorScheme } from 'react-native';
+import React, { Activity, useCallback, useEffect, useRef, useState } from 'react';
+import { View, Modal, ActivityIndicator, Animated, Appearance, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +20,6 @@ import PetEventModal from './src/components/PetEventModal';
 import Toast from './src/components/Toast';
 import FlyingAmount from './src/components/FlyingAmount';
 import PawBurst from './src/components/PawBurst';
-import Appear from './src/components/ui/Appear';
 import { motionReduced } from './src/motion';
 import useIncomingAdd from './src/hooks/useIncomingAdd';
 import useWidgetSync from './src/widget/useWidgetSync';
@@ -103,7 +102,13 @@ function Main() {
   // The font ships in the bundle; if loading fails, the app falls back to the system font
   const [fontsLoaded, fontError] = useFonts({ Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold });
   const now = new Date();
-  const [tab, setTab] = useState('home');
+  const [tab, setTabState] = useState('home');
+  // Tabs opened once stay mounted (hidden), so switching back is instant and keeps the scroll position
+  const [visited, setVisited] = useState(['home']);
+  const setTab = useCallback((key) => {
+    setTabState(key);
+    setVisited((v) => (v.includes(key) ? v : [...v, key]));
+  }, []);
   // null = closed; otherwise the prefill for "New expense" ({ edit } edits an expense)
   const [adding, setAdding] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -111,7 +116,8 @@ function Main() {
   const [flying, setFlying] = useState(null);
   const clearFlying = useCallback(() => setFlying(null), []);
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() });
-  const onMonthChange = (year, month) => setPeriod({ year, month });
+  const onMonthChange = useCallback((year, month) => setPeriod({ year, month }), []);
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   // The Apple Pay automation, the widget "+" and the quick action all open "New expense"
   useIncomingAdd(setAdding);
@@ -149,20 +155,27 @@ function Main() {
 
   if (!pet) return <OnboardingScreen />;
 
-  const Screen = { home: HomeScreen, stats: StatsScreen, plans: PlansScreen, pet: PetScreen }[tab];
+  const SCREENS = { home: HomeScreen, stats: StatsScreen, plans: PlansScreen, pet: PetScreen };
 
   return (
     <View style={s.root}>
-      {/* A new tab fades and slides in instead of appearing at once */}
-      <Appear key={tab} style={{ flex: 1 }}>
-        <Screen
-          {...period}
-          onMonthChange={onMonthChange}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onAdd={setAdding}
-          onTab={setTab}
-        />
-      </Appear>
+      {/* Hidden tabs keep their state but run no effects (timers, animations) and render at low priority */}
+      {visited.map((key) => {
+        const Screen = SCREENS[key];
+        return (
+          <Activity key={key} mode={key === tab ? 'visible' : 'hidden'}>
+            <View style={StyleSheet.absoluteFill}>
+              <Screen
+                {...period}
+                onMonthChange={onMonthChange}
+                onOpenSettings={openSettings}
+                onAdd={setAdding}
+                onTab={setTab}
+              />
+            </View>
+          </Activity>
+        );
+      })}
       <TabBar tab={tab} onTab={setTab} onAdd={() => setAdding({})} petName={pet.name} />
       <FlyingAmount item={flying} onDone={clearFlying} />
       <ToastLayer />
