@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { View, Animated, Easing, Platform } from 'react-native';
 import Svg, { G, Path, Circle, Ellipse, Text as SvgText } from 'react-native-svg';
 import { petShapes } from './petShapes';
@@ -49,10 +49,12 @@ function useLoop(value, duration, enabled, from = 0, to = 1) {
 /**
  * Animated dog. bounceKey — change the value to make it jump (e.g. after feeding).
  */
-export default function Pet({ expression = 'happy', stage = 'adult', accessory = null, size = 160, animate: animateProp = true, bounceKey = 0, style, accessibilityLabel }) {
+function Pet({ expression = 'happy', stage = 'adult', accessory = null, size = 160, animate: animateProp = true, bounceKey = 0, style, accessibilityLabel }) {
   const animate = animateProp && !useReduceMotion();
   const motion = MOTION[expression] || MOTION.happy;
-  const [blink, setBlink] = useState(false);
+  const canBlink = animate && motion.blinks;
+  // Blinking swaps two prebuilt layers through a native opacity value instead of re-rendering the SVG
+  const blink = useRef(new Animated.Value(0)).current;
   const bob = useRef(new Animated.Value(0)).current;
   const wag = useRef(new Animated.Value(0)).current;
   const jump = useRef(new Animated.Value(0)).current;
@@ -62,15 +64,15 @@ export default function Pet({ expression = 'happy', stage = 'adult', accessory =
   useLoop(wag, motion.wagMs, animate && motion.wag > 0, -1, 1);
 
   useEffect(() => {
-    if (!animate || !motion.blinks) return undefined;
+    if (!canBlink) return undefined;
     let timer;
     let alive = true;
     const next = () => {
       timer = setTimeout(() => {
         if (!alive) return;
-        setBlink(true);
+        blink.setValue(1);
         timer = setTimeout(() => {
-          setBlink(false);
+          blink.setValue(0);
           next();
         }, 140);
       }, 2200 + Math.random() * 3000);
@@ -79,8 +81,9 @@ export default function Pet({ expression = 'happy', stage = 'adult', accessory =
     return () => {
       alive = false;
       clearTimeout(timer);
+      blink.setValue(0);
     };
-  }, [animate, motion.blinks]);
+  }, [canBlink, blink]);
 
   useEffect(() => {
     if (first.current) {
@@ -94,7 +97,34 @@ export default function Pet({ expression = 'happy', stage = 'adult', accessory =
     ]).start();
   }, [bounceKey, jump, size]);
 
-  const { main, tail, pivot, tailScale, tailAngle } = petShapes({ expression, stage, blink, accessory });
+  // The SVG trees are built once per look; the per-frame motion only moves the views around them
+  const { main, tail, pivot, tailScale, tailAngle } = useMemo(() => petShapes({ expression, stage, accessory }), [expression, stage, accessory]);
+  const closed = useMemo(() => (canBlink ? petShapes({ expression, stage, accessory, blink: true }).main : null), [canBlink, expression, stage, accessory]);
+  const tailSvg = useMemo(
+    () => (
+      <Svg width={size} height={size} viewBox="-100 -100 200 200">
+        <G transform={`scale(${tailScale})`}>{render(tail)}</G>
+      </Svg>
+    ),
+    [tail, tailScale, size]
+  );
+  const bodySvg = useMemo(
+    () => (
+      <Svg width={size} height={size} viewBox="0 0 200 200" style={{ position: 'absolute' }}>
+        {render(main)}
+      </Svg>
+    ),
+    [main, size]
+  );
+  const closedSvg = useMemo(
+    () =>
+      closed && (
+        <Svg width={size} height={size} viewBox="0 0 200 200">
+          {render(closed)}
+        </Svg>
+      ),
+    [closed, size]
+  );
   const unit = size / 200;
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -motion.bob * unit * 1.25] });
   const rotate = wag.interpolate({
@@ -120,13 +150,17 @@ export default function Pet({ expression = 'happy', stage = 'adult', accessory =
           transform: [{ rotate }],
         }}
       >
-        <Svg width={size} height={size} viewBox="-100 -100 200 200">
-          <G transform={`scale(${tailScale})`}>{render(tail)}</G>
-        </Svg>
+        {tailSvg}
       </Animated.View>
-      <Svg width={size} height={size} viewBox="0 0 200 200" style={{ position: 'absolute' }}>
-        {render(main)}
-      </Svg>
+      {bodySvg}
+      {closedSvg && (
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, opacity: blink }}>
+          {closedSvg}
+        </Animated.View>
+      )}
     </Animated.View>
   );
 }
+
+// Parents re-render often (store changes, timers); the dog only redraws when its own props change
+export default memo(Pet);

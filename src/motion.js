@@ -30,27 +30,51 @@ export function animateNextLayout() {
   });
 }
 
+// Text can't run on the native driver, so every visible step is a JS render (and a text re-measure).
+// Steps are capped at ~20 per second and skipped when the rounded value doesn't change.
+const ROLL_FRAME_MS = 50;
+
 /**
  * A number that rolls to its new value (400 ms) instead of jumping.
  * The first render shows the value right away; only later changes animate.
+ * step: the smallest visible change (1 for whole euros, 0.01 for cents).
  */
-export function useRollingNumber(value) {
+export function useRollingNumber(value, step = 0.01) {
   const [shown, setShown] = useState(value);
-  const anim = useRef(new Animated.Value(value)).current;
+  const shownRef = useRef(value);
   const first = useRef(true);
   useEffect(() => {
+    const set = (v) => {
+      if (v === shownRef.current) return;
+      shownRef.current = v;
+      setShown(v);
+    };
     if (first.current || reduceMotion) {
       first.current = false;
-      anim.setValue(value);
-      setShown(value);
+      set(value);
       return undefined;
     }
-    const id = anim.addListener(({ value: v }) => setShown(v));
-    Animated.timing(anim, { toValue: value, duration: DURATION.number, easing: EASE, useNativeDriver: false }).start(({ finished }) => {
-      if (finished) setShown(value);
-    });
-    return () => anim.removeListener(id);
-  }, [value, anim]);
+    const from = shownRef.current;
+    const round = (v) => Math.round(v / step) * step;
+    const start = Date.now();
+    let last = 0;
+    let raf;
+    const tick = () => {
+      const now = Date.now();
+      const p = Math.min(1, (now - start) / DURATION.number);
+      if (p >= 1) {
+        set(value);
+        return;
+      }
+      if (now - last >= ROLL_FRAME_MS) {
+        last = now;
+        set(round(from + (value - from) * EASE(p)));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, step]);
   return shown;
 }
 

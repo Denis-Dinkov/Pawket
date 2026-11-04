@@ -1,16 +1,28 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
-// Current time, refreshed every minute and when returning to the app
-export default function useNow(intervalMs = 60000) {
+// Which slot of the day a time falls into; screens only re-render when this changes
+const slotOf = (d, stepMinutes) => `${d.toDateString()}-${Math.floor((d.getHours() * 60 + d.getMinutes()) / stepMinutes)}`;
+
+/**
+ * Current time for the screens, refreshed every `stepMinutes` (15 by default) and when returning to the app.
+ * Every new value invalidates the screens' memoized budget and pet calculations, so it doesn't tick every minute:
+ * it checks once a minute but only publishes a new Date when the slot (or the day) changes.
+ */
+export default function useNow(stepMinutes = 15) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), intervalMs);
+    const check = () => {
+      const next = new Date();
+      setNow((prev) => (slotOf(prev, stepMinutes) === slotOf(next, stepMinutes) ? prev : next));
+    };
+    const id = setInterval(check, 60000);
+    // Coming back to the app always refreshes: the dog's fullness and "today" should be exact then
     const sub = AppState.addEventListener('change', (st) => st === 'active' && setNow(new Date()));
     return () => {
       clearInterval(id);
       sub.remove();
     };
-  }, [intervalMs]);
+  }, [stepMinutes]);
   return now;
 }

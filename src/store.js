@@ -11,6 +11,10 @@ import { animateNextLayout } from './motion';
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
 const Ctx = createContext(null);
+// The toast lives apart from the data, so showing or hiding it doesn't re-render every screen
+const ToastCtx = createContext(null);
+// Saving waits for a quiet moment instead of serializing everything during the animations after a change
+const SAVE_DELAY = 700;
 
 const EMPTY = {
   expenses: [],
@@ -83,9 +87,26 @@ export function StoreProvider({ children }) {
       .finally(() => setReady(true));
   }, []);
 
+  const saveTimer = useRef(null);
+  const unsaved = useRef(null);
+  const flush = useCallback(() => {
+    clearTimeout(saveTimer.current);
+    if (!unsaved.current) return;
+    const d = unsaved.current;
+    unsaved.current = null;
+    AsyncStorage.setItem(KEY, JSON.stringify(d)).catch(() => {});
+  }, []);
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify(data));
-  }, [data, ready]);
+    if (!ready) return;
+    unsaved.current = data;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flush, SAVE_DELAY);
+  }, [data, ready, flush]);
+  // Leaving the app saves right away, so nothing waits in the timer when iOS suspends it
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st !== 'active' && flush());
+    return () => sub.remove();
+  }, [flush]);
 
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -159,9 +180,7 @@ export function StoreProvider({ children }) {
       ...data,
       pendingEvent,
       dismissEvent: () => setPendingEvent(null),
-      toast,
       showToast,
-      dismissToast: () => setToast(null),
 
       createPet: ({ name, income }) => {
         const now = new Date();
@@ -180,8 +199,9 @@ export function StoreProvider({ children }) {
       },
 
       // repeat: true also creates a monthly rule; this expense is its first payment
+      // No LayoutAnimation here: it is added from the page sheet, where the list isn't in view,
+      // and a global layout animation would compete with the sheet closing
       addExpense: (e, { repeat = false } = {}) => {
-        animateNextLayout();
         setData((d) => {
           const merchant = (e.merchant || '').trim();
           const expense = {
@@ -406,10 +426,16 @@ export function StoreProvider({ children }) {
         setData(EMPTY);
       },
     }),
-    [ready, data, pendingEvent, toast, showToast]
+    [ready, data, pendingEvent, showToast]
   );
+  const toastValue = useMemo(() => ({ toast, dismissToast: () => setToast(null) }), [toast]);
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <ToastCtx.Provider value={toastValue}>{children}</ToastCtx.Provider>
+    </Ctx.Provider>
+  );
 }
 
 export const useStore = () => useContext(Ctx);
+export const useToast = () => useContext(ToastCtx);

@@ -5,7 +5,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold } from '@expo-google-fonts/onest';
-import { StoreProvider, useStore } from './src/store';
+import { StoreProvider, useStore, useToast } from './src/store';
 import { colors, shadow, applyScheme, money } from './src/theme';
 import { stageFor, dayKey } from './src/pet/logic';
 import { sameDay } from './src/format';
@@ -30,6 +30,9 @@ import { syncReminders, listenToReminders, ACTION_NO_SPEND } from './src/reminde
 import { syncLiveActivity } from './src/widget/liveActivity';
 import { themed } from './src/themed';
 
+// Widget and Dynamic Island updates wait until the flying amount after saving (~1.3 s) is done
+const SYNC_DELAY = 1500;
+
 const TABS = [
   { key: 'home', icon: 'home', label: 'Начало' },
   { key: 'stats', icon: 'stats-chart', label: 'Отчети' },
@@ -37,6 +40,18 @@ const TABS = [
   { key: 'plans', icon: 'flag', label: 'Планове' },
   { key: 'pet', icon: 'paw', label: 'Чарли' },
 ];
+
+// Only this re-renders when a toast comes and goes, not the whole screen behind it
+function ToastLayer() {
+  const { toast, dismissToast } = useToast();
+  return (
+    <>
+      {/* Goals and missions done: paws burst out */}
+      <PawBurst id={toast?.celebrate ? toast.id : null} />
+      <Toast toast={toast} onDismiss={dismissToast} />
+    </>
+  );
+}
 
 // The tab icon gives a small hop when its tab becomes active
 function TabIcon({ name, active }) {
@@ -83,7 +98,7 @@ function TabBar({ tab, onTab, onAdd, petName }) {
 }
 
 function Main() {
-  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, pendingEvent, dismissEvent, toast, dismissToast, checkInNoSpend } =
+  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, pendingEvent, dismissEvent, checkInNoSpend } =
     useStore();
   // The font ships in the bundle; if loading fails, the app falls back to the system font
   const [fontsLoaded, fontError] = useFonts({ Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold });
@@ -113,7 +128,7 @@ function Main() {
     if (!ready || !pet) return undefined;
     const t = setTimeout(
       () => syncLiveActivity({ enabled: settings.liveActivity !== false, data: { expenses, incomes, incomeEntries, recurring, pet } }),
-      600
+      SYNC_DELAY
     );
     return () => clearTimeout(t);
   }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity]);
@@ -150,9 +165,7 @@ function Main() {
       </Appear>
       <TabBar tab={tab} onTab={setTab} onAdd={() => setAdding({})} petName={pet.name} />
       <FlyingAmount item={flying} onDone={clearFlying} />
-      {/* Goals and missions done: paws burst out */}
-      <PawBurst id={toast?.celebrate ? toast.id : null} />
-      <Toast toast={toast} onDismiss={dismissToast} />
+      <ToastLayer />
 
       <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)}>
         <AddScreen

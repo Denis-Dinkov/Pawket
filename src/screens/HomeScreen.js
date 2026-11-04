@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { forwardRef, memo, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -83,6 +83,38 @@ function Legend({ ov }) {
   );
 }
 
+/**
+ * The room shrunk into a header bar once it scrolls away. It owns its "docked" flag (it only decides
+ * whether the bar takes touches), so crossing the threshold mid-scroll re-renders just this bar.
+ */
+const DockHeader = memo(
+  forwardRef(function DockHeader({ opacity, onPress, topInset, pet, expression, stageKey, bubble, remaining, todayLeft }, ref) {
+    const [docked, setDocked] = useState(false);
+    useImperativeHandle(ref, () => ({ setDocked }), []);
+    return (
+      <Animated.View pointerEvents={docked ? 'auto' : 'none'} style={[s.dockWrap, { opacity }]}>
+        <Touch haptic={false} onPress={onPress} accessibilityLabel="Нагоре">
+          <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={[s.dock, { paddingTop: topInset + 6 }]}>
+            <View style={s.dockPet}>
+              <Pet expression={expression} stage={stageKey} accessory={pet.accessory} size={52} animate={false} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.dockName} numberOfLines={1}>
+                {pet.name} · {EXPRESSIONS[expression].label.toLowerCase()}
+              </Text>
+              <Text style={s.dockSub} numberOfLines={1}>{bubble}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
+              {todayLeft != null && <Text style={s.dockSub}>днес {money(Math.max(0, Math.round(todayLeft)))}</Text>}
+            </View>
+          </LinearGradient>
+        </Touch>
+      </Animated.View>
+    );
+  })
+);
+
 export default function HomeScreen({ year, month, onMonthChange, onOpenSettings, onAdd, onTab }) {
   const store = useStore();
   const { expenses, incomes, incomeEntries, pet, recurring, goals, homeLayout, setHomeLayout, removeExpense, removeIncome, checkInNoSpend } = store;
@@ -157,7 +189,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   // The room shrinks into a header bar once it scrolls away; the dog stays on screen
   const dockAt = ROOM - 80;
   const dockOpacity = scrollY.interpolate({ inputRange: [dockAt - 30, dockAt], outputRange: [0, 1], extrapolate: 'clamp' });
-  const [docked, setDocked] = useState(false);
+  const dock = useRef(null);
+  const docked = useRef(false);
+  const scrollTop = useRef(() => scroll.current?.scrollTo({ y: 0, animated: true })).current;
 
   const sections = {
     plans: () => (
@@ -310,7 +344,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           useNativeDriver: true,
           listener: (e) => {
             const next = e.nativeEvent.contentOffset.y > dockAt - 30;
-            if (next !== docked) setDocked(next);
+            if (next !== docked.current) {
+              docked.current = next;
+              dock.current?.setDocked(next);
+            }
           },
         })}
       >
@@ -438,25 +475,18 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
       </Animated.ScrollView>
 
       {/* Docked header: the dog stays visible while scrolling */}
-      <Animated.View pointerEvents={docked ? 'auto' : 'none'} style={[s.dockWrap, { opacity: dockOpacity }]}>
-        <Touch haptic={false} onPress={() => scroll.current?.scrollTo({ y: 0, animated: true })} accessibilityLabel="Нагоре">
-          <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={[s.dock, { paddingTop: insets.top + 6 }]}>
-            <View style={s.dockPet}>
-              <Pet expression={status.expression} stage={status.stage.key} accessory={pet.accessory} size={52} animate={false} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.dockName} numberOfLines={1}>
-                {pet.name} · {EXPRESSIONS[status.expression].label.toLowerCase()}
-              </Text>
-              <Text style={s.dockSub} numberOfLines={1}>{bubble}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.dockAmount}>{money(Math.round(ov.remaining))}</Text>
-              {isCurrent && daily && <Text style={s.dockSub}>днес {money(Math.max(0, Math.round(daily.left)))}</Text>}
-            </View>
-          </LinearGradient>
-        </Touch>
-      </Animated.View>
+      <DockHeader
+        ref={dock}
+        opacity={dockOpacity}
+        onPress={scrollTop}
+        topInset={insets.top}
+        pet={pet}
+        expression={status.expression}
+        stageKey={status.stage.key}
+        bubble={bubble}
+        remaining={ov.remaining}
+        todayLeft={isCurrent && daily ? daily.left : null}
+      />
 
       <MonthPickerSheet visible={picker} onClose={() => setPicker(false)} expenses={expenses} year={year} month={month} onSelect={onMonthChange} />
       <ExpenseDetailSheet

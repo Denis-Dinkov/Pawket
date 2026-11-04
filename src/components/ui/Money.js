@@ -9,7 +9,7 @@ import { useRollingNumber } from '../../motion';
 // It rolls to a new value instead of jumping; whole shows whole euros (for summaries).
 export default function Money({ value, size = 44, color = colors.text, prefix = '', style, maxFontSizeMultiplier = 1.3, whole = false }) {
   const target = whole ? Math.round(Number(value) || 0) : Number(value) || 0;
-  const rolled = useRollingNumber(target);
+  const rolled = useRollingNumber(target, whole ? 1 : 0.01);
   const shown = rolled === target ? target : whole ? Math.round(rolled) : Math.round(rolled * 100) / 100;
   const { sign, int, dec } = splitMoney(shown);
   const final = splitMoney(target);

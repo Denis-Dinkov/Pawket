@@ -14,7 +14,8 @@ export default function useWidgetSync({ ready, expenses, incomes, incomeEntries,
 
   useEffect(() => {
     if (!ready) return undefined;
-    const t = setTimeout(push, 800);
+    // After the flying amount (~1.3 s), so the JSON work and the native call don't land mid-animation
+    const t = setTimeout(push, 1500);
     return () => clearTimeout(t);
   }, [ready, expenses, incomes, incomeEntries, recurring, categories, pet, push]);
 
