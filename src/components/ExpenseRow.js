@@ -18,13 +18,14 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
     ? [where, what].filter(Boolean).join(' · ') || BUCKETS[cat?.bucket]?.label
     : where || what || dayLabel(expense.date);
   const source = SOURCES[expense.source] || SOURCES.manual;
+  const deposit = !!expense.goalId;
 
   return (
     <Touch
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}
-      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
+      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${deposit ? ' заделени' : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
       accessibilityHint="Отваря подробности. Задръж, за да изтриеш."
     >
       <IconBadge icon={cat?.icon || 'help'} color={color} size={44} />
@@ -33,7 +34,7 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
         <Text style={s.sub} numberOfLines={1}>{subtitle}</Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={s.amount}>−{money(expense.amount)}</Text>
+        <Text style={[s.amount, deposit && { color: colors.savings }]}>{deposit ? '' : '−'}{money(expense.amount)}</Text>
         <View style={s.meta}>
           {expense.source !== 'manual' && <Ionicons name={source.icon} size={12} color={colors.muted} />}
           <Text style={s.metaText}>{detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}</Text>

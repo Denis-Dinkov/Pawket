@@ -1,6 +1,6 @@
 // The dog's advice: rules over the expenses, no internet. No RN imports.
 import { colors, getCategories, categoryById, money, pct, MONTHS } from '../theme';
-import { monthOverview, filterMonth, summarize, shiftMonth, dailyLimit } from '../budget';
+import { monthOverview, filterMonth, summarize, shiftMonth, dailyLimit, countsInBudget } from '../budget';
 import { pendingSpend, VARIABLE_CATEGORIES } from '../plans';
 
 // A concrete idea for each category
@@ -179,7 +179,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
   const byMerchant = {};
   for (const e of list) {
     const key = normalizeMerchant(e.merchant);
-    if (!key || categoryById(e.categoryId)?.bucket === 'savings') continue;
+    if (!key || !countsInBudget(e) || categoryById(e.categoryId)?.bucket === 'savings') continue;
     (byMerchant[key] ||= { name: e.merchant.trim(), count: 0, sum: 0 });
     byMerchant[key].count += 1;
     byMerchant[key].sum += e.amount;

@@ -97,7 +97,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd }) {
               <Text style={s.hint}>Няма разходи за {MONTHS[month].toLowerCase()}.</Text>
             ) : (
               <>
-                <DonutChart segments={cats.map((c) => ({ key: c.id, name: c.name, value: c.value, color: c.shade }))} total={total} label="похарчени" />
+                <DonutChart segments={cats.map((c) => ({ key: c.id, name: c.name, value: c.value, color: c.shade }))} total={total} label={byBucket.savings > 0 ? "похарчени и заделени" : "похарчени"} />
                 <Text style={s.donutHint}>
                   {cats.length === 1
                     ? `Целият кръг е ${cats[0].name.toLowerCase()} — засега всички разходи за ${MONTHS[month].toLowerCase()} са в тази категория.`

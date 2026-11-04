@@ -1,5 +1,5 @@
 // Recurring payments and savings goals. Pure logic, no RN imports.
-import { monthKey, shiftMonth } from './budget';
+import { monthKey, shiftMonth, countsInBudget } from './budget';
 import { categoryById } from './theme';
 
 const parseKey = (key) => {
@@ -87,9 +87,9 @@ export function pendingThisMonth(rules = [], now = new Date()) {
 export const pendingSpend = (rules = [], now = new Date()) =>
   pendingThisMonth(rules.filter((r) => categoryById(r.categoryId)?.bucket !== 'savings'), now);
 
-// Goal progress: the money saved is the sum of the expenses booked to the goal
+// Goal progress: the deposits booked to the goal, minus what was paid out of it (fromGoalId)
 export function goalSaved(goal, expenses = []) {
-  return expenses.filter((e) => e.goalId === goal.id).reduce((a, e) => a + e.amount, 0);
+  return expenses.reduce((a, e) => (e.goalId === goal.id ? a + e.amount : e.fromGoalId === goal.id ? a - e.amount : a), 0);
 }
 
 export function goalProgress(goal, expenses = []) {
@@ -123,7 +123,7 @@ export function monthForecast(ov, now = new Date(), pending = 0) {
   // Only categories spent evenly through the month are extrapolated (same set as the advice).
   // One-off costs like rent, bills or a big purchase are already in `remaining` and must not be multiplied by the days left.
   const variable = ov.list
-    .filter((e) => e.source !== 'recurring' && !e.goalId && VARIABLE_CATEGORIES.has(e.categoryId))
+    .filter((e) => e.source !== 'recurring' && !e.goalId && countsInBudget(e) && VARIABLE_CATEGORIES.has(e.categoryId))
     .reduce((a, e) => a + e.amount, 0);
   const perDayVariable = variable / elapsed;
   // Today is partly spent already, so it counts as half a day
@@ -139,7 +139,7 @@ export function averageNeeds(expenses = [], now = new Date(), months = 3) {
     const sum = expenses
       .filter((e) => {
         const d = new Date(e.date);
-        return d.getFullYear() === year && d.getMonth() === month && categoryById(e.categoryId)?.bucket === 'needs';
+        return d.getFullYear() === year && d.getMonth() === month && countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs';
       })
       .reduce((a, e) => a + e.amount, 0);
     if (sum > 0) totals.push(sum);
@@ -148,7 +148,7 @@ export function averageNeeds(expenses = [], now = new Date(), months = 3) {
     return expenses
       .filter((e) => {
         const d = new Date(e.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && categoryById(e.categoryId)?.bucket === 'needs';
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs';
       })
       .reduce((a, e) => a + e.amount, 0);
   }

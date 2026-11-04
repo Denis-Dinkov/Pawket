@@ -1,6 +1,6 @@
 // "Your year with Charlie": a summary of one calendar year. Pure logic, no RN imports.
 import { getCategories } from './theme';
-import { monthOverview, filterMonth, summarize, budgetScore, monthIncome } from './budget';
+import { monthOverview, filterMonth, summarize, budgetScore, monthIncome, countsInBudget } from './budget';
 
 const normalizeMerchant = (m) => (m || '').trim().toLowerCase();
 
@@ -31,7 +31,7 @@ export function yearReview({ expenses = [], incomes = {}, incomeEntries = [], ye
   const merchants = {};
   list.forEach((e) => {
     const key = normalizeMerchant(e.merchant);
-    if (!key) return;
+    if (!key || !countsInBudget(e)) return;
     merchants[key] = merchants[key] || { name: e.merchant.trim(), value: 0, count: 0 };
     merchants[key].value += e.amount;
     merchants[key].count += 1;

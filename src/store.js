@@ -150,13 +150,16 @@ export function StoreProvider({ children }) {
   }, [ready, closeMonths]);
 
   // Weekly missions: a finished mission gives XP once. The best streak is remembered for the rewards.
+  // Runs only when the fields the missions read change, not on every settings or layout change
+  const { expenses: mExpenses, incomeEntries: mIncomeEntries, incomes: mIncomes, pet: mPet } = data;
   useEffect(() => {
-    if (!ready || !data.pet) return;
+    if (!ready || !mPet) return;
     const now = new Date();
-    const income = monthIncome(data, now.getFullYear(), now.getMonth()).total;
-    const fresh = weekMissions({ ...data, income, now }).filter((m) => m.done && !m.claimed);
-    const current = streak(activityDays(data), now);
-    const best = data.pet.bestStreak || 0;
+    const src = { expenses: mExpenses, incomeEntries: mIncomeEntries, incomes: mIncomes, pet: mPet };
+    const income = monthIncome(src, now.getFullYear(), now.getMonth()).total;
+    const fresh = weekMissions({ ...src, income, now }).filter((m) => m.done && !m.claimed);
+    const current = streak(activityDays(src), now);
+    const best = mPet.bestStreak || 0;
     if (!fresh.length && current <= best) return;
     setData((d) => {
       if (!d.pet) return d;
@@ -174,7 +177,7 @@ export function StoreProvider({ children }) {
       };
     });
     if (fresh.length) showToast({ text: `Мисия изпълнена: ${fresh[0].title} · +${MISSION_XP * fresh.length} XP`, icon: 'trophy', celebrate: true });
-  }, [ready, data, showToast]);
+  }, [ready, mExpenses, mIncomeEntries, mIncomes, mPet, showToast]);
 
   // Celebration on reaching a new growth stage
   useEffect(() => {
@@ -289,6 +292,9 @@ export function StoreProvider({ children }) {
           incomeEntries: [{ id: newId(), note: '', kind: 'other', ...e }, ...d.incomeEntries],
           pet: feedPet(d.pet),
         })),
+
+      updateIncome: (id, patch) =>
+        setData((d) => ({ ...d, incomeEntries: d.incomeEntries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
 
       removeIncome: (id) => {
         const item = dataRef.current.incomeEntries.find((e) => e.id === id);

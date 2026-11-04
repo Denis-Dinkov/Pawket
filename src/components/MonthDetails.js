@@ -6,6 +6,7 @@ import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
 import { colors, BUCKETS, categoryById, money, moneyShort, pct, MONTHS } from '../theme';
 import { dayLabel, plural } from '../format';
+import { countsInBudget } from '../budget';
 import { themed } from '../themed';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
@@ -20,6 +21,7 @@ export function useMonthStats(ov, prevTotal, year, month) {
     const merchants = {};
     let biggest = null;
     for (const e of ov.list) {
+      if (!countsInBudget(e)) continue;
       const d = new Date(e.date);
       const day = byDay[d.getDate() - 1];
       day.total += e.amount;

@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import { colors, radius, MONTHS, moneyShort } from '../theme';
-import { monthKey } from '../budget';
+import { monthKey, countsInBudget } from '../budget';
 import Touch from './ui/Touch';
 import { themed } from '../themed';
 
@@ -13,6 +13,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
   const totals = useMemo(() => {
     const t = {};
     for (const e of expenses) {
+      if (!countsInBudget(e)) continue;
       const d = new Date(e.date);
       const k = monthKey(d.getFullYear(), d.getMonth());
       t[k] = (t[k] || 0) + e.amount;

@@ -6,14 +6,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, normalizeMerchant } from '../store';
 import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint } from '../theme';
 import { getIncome } from '../budget';
-import { goalProgress } from '../plans';
+import { goalProgress, goalSaved } from '../plans';
 import { successFeedback, feedback } from '../haptics';
-import { dayOrdinal } from '../format';
+import { dayOrdinal, dayLabel } from '../format';
 import IconBadge from '../components/ui/IconBadge';
 import Pill from '../components/ui/Pill';
 import Segmented from '../components/ui/Segmented';
 import Touch from '../components/ui/Touch';
 import NewCategorySheet from '../components/NewCategorySheet';
+import DatePickerSheet from '../components/DatePickerSheet';
 import useKeyboardHeight from '../hooks/useKeyboardHeight';
 import { themed } from '../themed';
 
@@ -43,26 +44,38 @@ const daysAgoOf = (iso) => {
 };
 
 /**
- * New expense or income, or editing an expense (prefill.edit).
+ * New expense or income, or editing an expense (prefill.edit) or an income entry (prefill.editIncome).
  * The amount comes first, typed on the app's own keypad; the categories used most often are one tap away.
  * prefill = { mode, amount, merchant, source } comes from Apple Pay, the widget or Home.
  */
 export default function AddScreen({ onDone, prefill = {} }) {
-  const { addExpense, updateExpense, addIncome, addCategory, merchants, incomes, expenses, goals, contributeGoal, showToast, addWish, resolveWish } = useStore();
+  const { addExpense, updateExpense, addIncome, addCategory, merchants, incomes, expenses, goals, contributeGoal, showToast, addWish, resolveWish, updateIncome } = useStore();
   const editing = prefill.edit || null;
+  const editingIncome = prefill.editIncome || null;
+  const editingAny = editing || editingIncome;
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  const [mode, setMode] = useState(prefill.mode === 'income' ? 'income' : 'expense');
-  const initialAmount = editing ? editing.amount : prefill.amount;
+  const [mode, setMode] = useState(prefill.mode === 'income' || editingIncome ? 'income' : 'expense');
+  const initialAmount = editingAny ? editingAny.amount : prefill.amount;
   // 42.8 → "42,80", 2200 → "2200"
   const [amount, setAmount] = useState(
     initialAmount ? (Number.isInteger(initialAmount) ? String(initialAmount) : initialAmount.toFixed(2).replace('.', ',')) : ''
   );
   const [picked, setPicked] = useState(editing?.categoryId || prefill.categoryId || null);
-  const [kind, setKind] = useState('bonus');
+  const [kind, setKind] = useState(editingIncome?.kind || 'bonus');
   const [merchant, setMerchant] = useState(editing?.merchant ?? prefill.merchant ?? '');
-  const [note, setNote] = useState(editing?.note || prefill.note || '');
-  const [daysAgo, setDaysAgo] = useState(editing ? daysAgoOf(editing.date) : 0);
+  const [note, setNote] = useState(editingAny?.note || prefill.note || '');
+  // The day of the entry (midnight); the time is added on save
+  const [day, setDay] = useState(() => {
+    const d = editingAny ? new Date(editingAny.date) : new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  });
+  const daysAgo = daysAgoOf(day);
+  const setDaysAgo = (n) => {
+    const d = new Date();
+    setDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() - n));
+  };
+  const [pickDate, setPickDate] = useState(false);
   const [repeat, setRepeat] = useState(false);
   const [allCats, setAllCats] = useState(false);
   // The keypad folds away after a category is picked, so the fields and the button are in view
@@ -70,6 +83,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
   const [newCategoryFor, setNewCategoryFor] = useState(null); // bucket or null
 
   const isIncome = mode === 'income';
+  // A payment out of a goal or sinking fund: its money was already counted as savings
+  const fromGoal = !isIncome && prefill.fromGoalId ? goals.find((g) => g.id === prefill.fromGoalId) : null;
   const remembered = merchants[normalizeMerchant(merchant)];
   const rememberedOk = remembered && categoryById(remembered) && !categoryById(remembered).archived;
   const categoryId = picked || (rememberedOk ? remembered : null);
@@ -94,16 +109,29 @@ export default function AddScreen({ onDone, prefill = {} }) {
 
   const save = () => {
     if (!valid) return;
-    const d = editing && daysAgo === daysAgoOf(editing.date) ? new Date(editing.date) : new Date();
-    if (!(editing && daysAgo === daysAgoOf(editing.date))) d.setDate(d.getDate() - daysAgo);
+    // An edit on the same day keeps its time; otherwise the chosen day gets the current time
+    const keep = editingAny && daysAgoOf(editingAny.date) === daysAgo;
+    const d = keep ? new Date(editingAny.date) : new Date();
+    if (!keep) d.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     const common = { amount: Math.round(value * 100) / 100, note: note.trim(), date: d.toISOString() };
     if (editing) {
       updateExpense(editing.id, { ...common, categoryId, merchant });
+    } else if (editingIncome) {
+      updateIncome(editingIncome.id, { ...common, kind });
     } else if (isIncome) {
       addIncome({ ...common, kind });
       if (kind === 'salary') payYourselfFirst(common.amount);
     } else {
-      addExpense({ ...common, categoryId, merchant: merchant.trim(), source: prefill.source || 'manual' }, { repeat });
+      addExpense(
+        {
+          ...common,
+          categoryId,
+          merchant: merchant.trim(),
+          source: fromGoal ? 'fund' : prefill.source || 'manual',
+          ...(fromGoal && { fromGoalId: fromGoal.id }),
+        },
+        { repeat: repeat && !fromGoal }
+      );
       if (prefill.wishId) resolveWish(prefill.wishId, 'bought');
     }
     successFeedback();
@@ -132,7 +160,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
   };
 
   // A pricey want can wait 48 hours on the wishlist instead
-  const canWait = !isIncome && !editing && value >= 50 && categoryById(categoryId)?.bucket === 'wants';
+  const canWait = !isIncome && !editingAny && !fromGoal && value >= 50 && categoryById(categoryId)?.bucket === 'wants';
   const wait = () => {
     addWish({ name: merchant.trim() || note.trim() || categoryById(categoryId).name, amount: Math.round(value * 100) / 100, categoryId });
     onDone(null);
@@ -171,7 +199,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
         <Touch onPress={() => onDone(null)} hitSlop={12} style={s.headerSide}>
           <Text style={s.cancel}>Отказ</Text>
         </Touch>
-        {editing ? (
+        {editingAny ? (
           <Text style={s.title}>Редакция</Text>
         ) : (
           <Segmented options={MODES} value={mode} onChange={setMode} style={{ width: 190 }} />
@@ -185,6 +213,9 @@ export default function AddScreen({ onDone, prefill = {} }) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
+        {fromGoal && (
+          <Pill small variant="soft" icon="wallet-outline" label={`От „${fromGoal.name}“ · ${money(goalSaved(fromGoal, expenses))}`} style={{ alignSelf: 'center', marginBottom: 6 }} />
+        )}
         {prefill.source === 'applepay' && !isIncome && !editing && (
           <Pill small variant="ink" icon="logo-apple" label="Плащане с Apple Pay" style={{ alignSelf: 'center', marginBottom: 6 }} />
         )}
@@ -218,7 +249,19 @@ export default function AddScreen({ onDone, prefill = {} }) {
           {DAYS.map((l, i) => (
             <Pill key={l} haptic="select" small label={l} variant={daysAgo === i ? 'active' : 'outline'} onPress={() => setDaysAgo(i)} />
           ))}
-          {daysAgo > 2 && <Pill small label={`Преди ${daysAgo} дни`} variant="active" />}
+          {/* Any earlier day: the chip shows the picked date */}
+          <Pill
+            haptic="select"
+            small
+            icon="calendar-outline"
+            label={daysAgo > 2 ? dayLabel(day.toISOString()) : 'Друга дата'}
+            variant={daysAgo > 2 ? 'active' : 'outline'}
+            onPress={() => {
+              Keyboard.dismiss();
+              setPickDate(true);
+            }}
+            accessibilityLabel={daysAgo > 2 ? `Дата: ${dayLabel(day.toISOString())}, смени` : 'Друга дата, отваря календар'}
+          />
         </View>
 
         <View style={s.fields}>
@@ -248,7 +291,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
               accessibilityLabel="Бележка"
             />
           </View>
-          {!isIncome && !editing && (
+          {!isIncome && !editing && !fromGoal && (
             <View style={[s.field, s.sep]}>
               <Ionicons name="repeat" size={18} color={colors.muted} />
               <Text style={[s.input, { color: colors.text }]}>Всеки месец</Text>
@@ -264,8 +307,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
             </View>
           )}
         </View>
+        {fromGoal && (
+          <Text style={s.incomeHint}>Плащането намалява „{fromGoal.name}“ и не се брои в разходите за месеца — парите вече са заделени.</Text>
+        )}
         {repeat && !isIncome && (
-          <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(new Date(Date.now() - daysAgo * 86400000).getDate())} число се записва сам. Управлява се от „Планове“.</Text>
+          <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(day.getDate())} число се записва сам. Управлява се от „Планове“.</Text>
         )}
         {isIncome ? (
           <>
@@ -375,10 +421,12 @@ export default function AddScreen({ onDone, prefill = {} }) {
         >
           <Ionicons name="checkmark" size={20} color={valid ? colors.onAccent : colors.muted} />
           <Text style={[s.saveText, !valid && { color: colors.muted }]}>
-            {valid ? `${editing ? 'Запази промените' : 'Запази'} · ${isIncome ? '+' : ''}${money(value)}` : hint}
+            {valid ? `${editingAny ? 'Запази промените' : 'Запази'} · ${isIncome ? '+' : ''}${money(value)}` : hint}
           </Text>
         </Touch>
       </View>
+
+      <DatePickerSheet visible={pickDate} value={day} onSelect={setDay} onClose={() => setPickDate(false)} />
 
       <NewCategorySheet
         visible={!!newCategoryFor}

@@ -34,7 +34,8 @@ export default function StatsHero({ ov, month, onOpenScore }) {
   return (
     <View>
       <Text style={s.label}>
-        Похарчено през {monthName}
+        {/* The total includes the money put into savings, so it isn't called just "spent" then */}
+        {byBucket.savings > 0 ? 'Похарчено и заделено' : 'Похарчено'} през {monthName}
         {progress.isCurrent ? ' досега' : ''}
       </Text>
       <Money value={total} size={40} color={colors.text} />

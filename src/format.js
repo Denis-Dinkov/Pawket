@@ -23,6 +23,7 @@ export const SOURCES = {
   widget: { label: 'Уиджет', icon: 'apps-outline' },
   recurring: { label: 'Повтарящо се', icon: 'repeat' },
   goal: { label: 'Към цел', icon: 'flag-outline' },
+  fund: { label: 'От спестявания', icon: 'wallet-outline' },
 };
 
 // 1-во, 2-ро, 4-то, 7-мо, 11-то, 21-во число

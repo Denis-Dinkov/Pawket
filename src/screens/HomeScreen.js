@@ -422,19 +422,29 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             ) : (
               <Pill icon="settings-outline" label="Задай месечния си доход" variant="soft" onPress={onOpenSettings} />
             )}
+            {/* Income, spending and the money put aside: three equal columns, label over value */}
             <View style={s.moneyFoot}>
-              <Touch style={s.footItem} onPress={() => setIncomeOpen(true)} accessibilityHint="Показва доходите за месеца">
-                <Ionicons name="arrow-down-circle" size={16} color={colors.savings} />
-                <Text style={s.footText}>
-                  Доход <Text style={s.footStrong}>{moneyShort(ov.income)}</Text>
-                </Text>
-                <Ionicons name="chevron-forward" size={13} color={colors.muted} />
+              <Touch style={s.footItem} onPress={() => setIncomeOpen(true)} accessibilityLabel={`Доход ${moneyShort(ov.income)}`} accessibilityHint="Показва доходите за месеца">
+                <View style={s.footHead}>
+                  <Ionicons name="arrow-down-circle" size={14} color={colors.savings} />
+                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Доход</Text>
+                  <Ionicons name="chevron-forward" size={12} color={colors.muted} />
+                </View>
+                <Text style={s.footStrong}>{moneyShort(ov.income)}</Text>
               </Touch>
-              <View style={s.footItem}>
-                <Ionicons name="arrow-up-circle" size={16} color={colors.wants} />
-                <Text style={s.footText}>
-                  Похарчено <Text style={s.footStrong}>{moneyShort(ov.total)}</Text>
-                </Text>
+              <View style={s.footItem} accessible accessibilityLabel={`Похарчено ${moneyShort(ov.byBucket.needs + ov.byBucket.wants)}`}>
+                <View style={s.footHead}>
+                  <Ionicons name="arrow-up-circle" size={14} color={colors.wants} />
+                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Похарчено</Text>
+                </View>
+                <Text style={s.footStrong}>{moneyShort(ov.byBucket.needs + ov.byBucket.wants)}</Text>
+              </View>
+              <View style={s.footItem} accessible accessibilityLabel={`Заделено ${moneyShort(ov.byBucket.savings)}`}>
+                <View style={s.footHead}>
+                  <Ionicons name="wallet" size={13} color={colors.savings} />
+                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Заделено</Text>
+                </View>
+                <Text style={s.footStrong}>{moneyShort(ov.byBucket.savings)}</Text>
               </View>
             </View>
             {/* Forecast: where the month ends at today's pace, the recurring payments included */}
@@ -510,6 +520,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         year={year}
         month={month}
         onDelete={removeIncome}
+        onEdit={(e) => {
+          setIncomeOpen(false);
+          openAdd({ editIncome: e });
+        }}
         onAdd={() => {
           setIncomeOpen(false);
           openAdd({ mode: 'income' });
@@ -556,12 +570,13 @@ const s = themed((c) => ({
   legendDot: { width: 9, height: 9, borderRadius: 3 },
   legendName: { color: c.text, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   legendValue: { color: c.muted, fontSize: 12 },
-  moneyFoot: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderColor: c.faint, paddingTop: 10, gap: 8, flexWrap: 'wrap' },
+  moneyFoot: { flexDirection: 'row', borderTopWidth: 1, borderColor: c.faint, paddingTop: 10, gap: 8 },
   forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   forecastText: { flex: 1, color: c.text, fontSize: 13, lineHeight: 18 },
-  footItem: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 32 },
-  footText: { color: c.muted, fontSize: 13 },
-  footStrong: { color: c.text, fontWeight: '700' },
+  footItem: { flex: 1, gap: 2, minHeight: 44, justifyContent: 'center' },
+  footHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0, paddingRight: 2 },
+  footText: { color: c.muted, fontSize: 13, flexShrink: 1 },
+  footStrong: { color: c.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   duo: { flexDirection: 'row', gap: 10 },
   mini: { flex: 1, backgroundColor: c.card, borderRadius: 20, padding: 12, gap: 4 },
   miniHead: { color: c.muted, fontSize: 11.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },

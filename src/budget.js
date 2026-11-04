@@ -31,11 +31,37 @@ export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
   return { base, salary, extra, total: Math.max(base, salary) + extra, list };
 }
 
+/**
+ * Whether an expense counts in the month's budget. A payment out of a goal or sinking fund (fromGoalId) doesn't:
+ * its money was already counted as savings when it was put aside, so counting it again would double it.
+ */
+export const countsInBudget = (e) => !e.fromGoalId;
+
+// Entries grouped by month, built once per array. The store replaces the array on every change,
+// so a cached index is never stale, and the many per-render month lookups don't re-scan and re-parse every date.
+const monthIndex = new WeakMap();
+function indexByMonth(list) {
+  let index = monthIndex.get(list);
+  if (!index) {
+    index = new Map();
+    for (const e of list) {
+      const d = new Date(e.date);
+      const key = monthKey(d.getFullYear(), d.getMonth());
+      const bucket = index.get(key);
+      if (bucket) bucket.push(e);
+      else index.set(key, [e]);
+    }
+    monthIndex.set(list, index);
+  }
+  return index;
+}
+
+const EMPTY_LIST = Object.freeze([]);
+
+// The entries of one month, in the array's order. The result is shared: callers must not mutate it.
 export function filterMonth(expenses, year, month) {
-  return expenses.filter((e) => {
-    const d = new Date(e.date);
-    return d.getFullYear() === year && d.getMonth() === month;
-  });
+  if (!expenses?.length) return EMPTY_LIST;
+  return indexByMonth(expenses).get(monthKey(year, month)) || EMPTY_LIST;
 }
 
 export function summarize(list) {
@@ -43,6 +69,7 @@ export function summarize(list) {
   const byBucket = { needs: 0, wants: 0, savings: 0 };
   let total = 0;
   for (const e of list) {
+    if (!countsInBudget(e)) continue;
     const cat = categoryById(e.categoryId);
     total += e.amount;
     byCategory[e.categoryId] = (byCategory[e.categoryId] || 0) + e.amount;
@@ -144,7 +171,7 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
  */
 export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
   if (!ov.progress.isCurrent || !ov.income || !ov.progress.daysLeft) return null;
-  const today = ov.list.filter((e) => new Date(e.date).toDateString() === now.toDateString());
+  const today = ov.list.filter((e) => countsInBudget(e) && new Date(e.date).toDateString() === now.toDateString());
   const spentToday = today
     .filter((e) => ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
     .reduce((a, e) => a + e.amount, 0);

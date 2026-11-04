@@ -7,19 +7,19 @@ import useReduceMotion from '../hooks/useReduceMotion';
 // Charlie is a painted picture (cut out of the original illustration, bottom faded out).
 // Each mood has its own face; the moods with open eyes also have a closed-eyes version for blinking.
 const FACES = {
-  happy: require('../../assets/pet/charlie-happy.png'),
-  ecstatic: require('../../assets/pet/charlie-ecstatic.png'),
-  worried: require('../../assets/pet/charlie-worried.png'),
-  sad: require('../../assets/pet/charlie-sad.png'),
-  crying: require('../../assets/pet/charlie-crying.png'),
-  hungry: require('../../assets/pet/charlie-hungry.png'),
-  sleeping: require('../../assets/pet/charlie-sleeping.png'),
+  happy: require('../../assets/pet/charlie-happy.webp'),
+  ecstatic: require('../../assets/pet/charlie-ecstatic.webp'),
+  worried: require('../../assets/pet/charlie-worried.webp'),
+  sad: require('../../assets/pet/charlie-sad.webp'),
+  crying: require('../../assets/pet/charlie-crying.webp'),
+  hungry: require('../../assets/pet/charlie-hungry.webp'),
+  sleeping: require('../../assets/pet/charlie-sleeping.webp'),
 };
 const BLINKS = {
-  happy: require('../../assets/pet/charlie-happy-blink.png'),
-  worried: require('../../assets/pet/charlie-worried-blink.png'),
-  sad: require('../../assets/pet/charlie-sad-blink.png'),
-  hungry: require('../../assets/pet/charlie-hungry-blink.png'),
+  happy: require('../../assets/pet/charlie-happy-blink.webp'),
+  worried: require('../../assets/pet/charlie-worried-blink.webp'),
+  sad: require('../../assets/pet/charlie-sad-blink.webp'),
+  hungry: require('../../assets/pet/charlie-hungry-blink.webp'),
 };
 
 const TAGS = { path: Path, circle: Circle, ellipse: Ellipse };

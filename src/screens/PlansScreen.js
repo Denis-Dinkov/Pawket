@@ -304,6 +304,103 @@ export default function PlansScreen({ onAdd }) {
       <ScrollView contentContainerStyle={[s.container, { paddingTop: insets.top + 20 }]} showsVerticalScrollIndicator={false}>
         <Text style={s.title} accessibilityRole="header">Планове</Text>
 
+        {/* Recurring payments first: they shape every month */}
+        <View style={s.sectionHead}>
+          <Text style={s.section} accessibilityRole="header">Повтарящи се плащания</Text>
+          {monthlyTotal > 0 && <Text style={s.hint}>{money(monthlyTotal)}/месец</Text>}
+        </View>
+        {recurring.length === 0 ? (
+          <Card style={s.emptyCard}>
+            <Ionicons name="repeat" size={30} color={colors.primary} />
+            <Text style={s.emptyTitle}>Наем, сметки, абонаменти</Text>
+            <Text style={s.hintCenter}>При нов разход включи „Всеки месец“ и той ще се записва сам. Дневният лимит вече ги смята предварително.</Text>
+            <Pill icon="add" label="Нов разход" variant="ink" onPress={() => onAdd({})} />
+          </Card>
+        ) : (
+          <Card style={{ paddingVertical: 4 }}>
+            {[...upcoming.map((u) => ({ rule: u.rule, date: u.date })), ...paused.map((r) => ({ rule: r, date: null }))].map(({ rule, date }, i) => {
+              const cat = categoryById(rule.categoryId);
+              return (
+                <Touch key={rule.id} style={[s.ruleRow, i > 0 && s.sep]} onPress={() => setRuleEdit(rule)}>
+                  <IconBadge icon={cat?.icon || 'repeat'} color={BUCKETS[cat?.bucket]?.color || colors.muted} size={40} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.ruleName, rule.paused && { color: colors.muted }]} numberOfLines={1}>
+                      {rule.merchant || rule.note || cat?.name}
+                    </Text>
+                    <Text style={s.hint}>{rule.paused ? 'Спряно' : `Следващо: ${dayLabel(date.toISOString(), now)}`}</Text>
+                  </View>
+                  <Text style={s.ruleAmount}>{money(rule.amount)}</Text>
+                </Touch>
+              );
+            })}
+          </Card>
+        )}
+
+        <View style={s.sectionHead}>
+          <Text style={s.section} accessibilityRole="header">Цели и касички</Text>
+          <Pill small icon="add" label="Нова" variant="soft" onPress={() => setGoalEdit('new')} />
+        </View>
+        {!hasEmergency && needs > 0 && (
+          <Touch onPress={() => setGoalEdit({ preset: { kind: 'emergency' } })}>
+            <Card style={[s.goalHead, { borderColor: colors.needs }]}>
+              <IconBadge icon="umbrella" color={colors.needs} size={44} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.goalName}>Създай авариен фонд</Text>
+                <Text style={s.hint}>3 месеца нужди ≈ {money(Math.ceil((needs * 3) / 10) * 10)}. Спокойствие при неочакван разход.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+            </Card>
+          </Touch>
+        )}
+        {list.length === 0 ? (
+          <Card style={s.emptyCard}>
+            <Ionicons name="flag-outline" size={30} color={colors.savings} />
+            <Text style={s.emptyTitle}>Спестявай за нещо конкретно</Text>
+            <Text style={s.hintCenter}>Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към 20% спестявания.</Text>
+            <Pill icon="add" label="Създай цел" variant="ink" onPress={() => setGoalEdit('new')} />
+          </Card>
+        ) : (
+          list.map(({ g, saved, left, progress, done }) => {
+            const perMonth = monthlyNeeded(g, saved, now);
+            return (
+              <Card key={g.id} style={s.goal}>
+                <Touch style={s.goalHead} onPress={() => setGoalEdit(g)} accessibilityHint="Редактира целта">
+                  <IconBadge icon={done ? 'trophy' : g.icon} color={colors.savings} size={44} solid={done} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.goalName}>
+                      {g.name}
+                      {g.kind === 'fund' ? '  · касичка' : g.kind === 'emergency' ? `  · ${needs > 0 ? `${(saved / needs).toFixed(1).replace('.', ',')} мес.` : 'резерв'}` : ''}
+                    </Text>
+                    <Text style={s.hint}>
+                      {money(saved)} от {money(g.target)}
+                      {g.deadline ? ` · до ${deadlineLabel(g.deadline)}` : ''}
+                    </Text>
+                  </View>
+                  <Text style={[s.goalPct, done && { color: colors.savings }]}>{pct(progress)}</Text>
+                </Touch>
+                <Bar value={progress} color={colors.savings} height={8} label={`${g.name}: ${pct(progress)}`} />
+                <View style={s.goalFoot}>
+                  <Text style={[s.hint, { flex: 1 }]}>
+                    {done ? 'Постигната! 🎉' : perMonth ? `≈ ${money(Math.ceil(perMonth))} на месец до срока` : `Остават ${money(left)}`}
+                  </Text>
+                  {/* Paying the cost out of the goal doesn't count as spending again */}
+                  {saved > 0 && (
+                    <Pill
+                      small
+                      icon="card-outline"
+                      label="Плати"
+                      variant="outline"
+                      onPress={() => onAdd({ fromGoalId: g.id, note: g.name })}
+                      accessibilityLabel={`Плати от „${g.name}“`}
+                    />
+                  )}
+                  {!done && <Pill small icon="add" label="Сложи пари" variant="ink" onPress={() => setDeposit(g)} />}
+                </View>
+              </Card>
+            );
+          })
+        )}
+
         {/* The 48-hour wishlist */}
         <View style={s.sectionHead}>
           <Text style={s.section} accessibilityRole="header">Желания · 48 часа</Text>
@@ -359,91 +456,6 @@ export default function PlansScreen({ onAdd }) {
               </Appear>
             );
           })
-        )}
-
-        <View style={s.sectionHead}>
-          <Text style={s.section} accessibilityRole="header">Цели и касички</Text>
-          <Pill small icon="add" label="Нова" variant="soft" onPress={() => setGoalEdit('new')} />
-        </View>
-        {!hasEmergency && needs > 0 && (
-          <Touch onPress={() => setGoalEdit({ preset: { kind: 'emergency' } })}>
-            <Card style={[s.goalHead, { borderColor: colors.needs }]}>
-              <IconBadge icon="umbrella" color={colors.needs} size={44} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.goalName}>Създай авариен фонд</Text>
-                <Text style={s.hint}>3 месеца нужди ≈ {money(Math.ceil((needs * 3) / 10) * 10)}. Спокойствие при неочакван разход.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-            </Card>
-          </Touch>
-        )}
-        {list.length === 0 ? (
-          <Card style={s.emptyCard}>
-            <Ionicons name="flag-outline" size={30} color={colors.savings} />
-            <Text style={s.emptyTitle}>Спестявай за нещо конкретно</Text>
-            <Text style={s.hintCenter}>Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към 20% спестявания.</Text>
-            <Pill icon="add" label="Създай цел" variant="ink" onPress={() => setGoalEdit('new')} />
-          </Card>
-        ) : (
-          list.map(({ g, saved, left, progress, done }) => {
-            const perMonth = monthlyNeeded(g, saved, now);
-            return (
-              <Card key={g.id} style={s.goal}>
-                <Touch style={s.goalHead} onPress={() => setGoalEdit(g)} accessibilityHint="Редактира целта">
-                  <IconBadge icon={done ? 'trophy' : g.icon} color={colors.savings} size={44} solid={done} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.goalName}>
-                      {g.name}
-                      {g.kind === 'fund' ? '  · касичка' : g.kind === 'emergency' ? `  · ${needs > 0 ? `${(saved / needs).toFixed(1).replace('.', ',')} мес.` : 'резерв'}` : ''}
-                    </Text>
-                    <Text style={s.hint}>
-                      {money(saved)} от {money(g.target)}
-                      {g.deadline ? ` · до ${deadlineLabel(g.deadline)}` : ''}
-                    </Text>
-                  </View>
-                  <Text style={[s.goalPct, done && { color: colors.savings }]}>{pct(progress)}</Text>
-                </Touch>
-                <Bar value={progress} color={colors.savings} height={8} label={`${g.name}: ${pct(progress)}`} />
-                <View style={s.goalFoot}>
-                  <Text style={[s.hint, { flex: 1 }]}>
-                    {done ? 'Постигната! 🎉' : perMonth ? `≈ ${money(Math.ceil(perMonth))} на месец до срока` : `Остават ${money(left)}`}
-                  </Text>
-                  {!done && <Pill small icon="add" label="Сложи пари" variant="ink" onPress={() => setDeposit(g)} />}
-                </View>
-              </Card>
-            );
-          })
-        )}
-
-        <View style={s.sectionHead}>
-          <Text style={s.section} accessibilityRole="header">Повтарящи се плащания</Text>
-          {monthlyTotal > 0 && <Text style={s.hint}>{money(monthlyTotal)}/месец</Text>}
-        </View>
-        {recurring.length === 0 ? (
-          <Card style={s.emptyCard}>
-            <Ionicons name="repeat" size={30} color={colors.primary} />
-            <Text style={s.emptyTitle}>Наем, сметки, абонаменти</Text>
-            <Text style={s.hintCenter}>При нов разход включи „Всеки месец“ и той ще се записва сам. Дневният лимит вече ги смята предварително.</Text>
-            <Pill icon="add" label="Нов разход" variant="ink" onPress={() => onAdd({})} />
-          </Card>
-        ) : (
-          <Card style={{ paddingVertical: 4 }}>
-            {[...upcoming.map((u) => ({ rule: u.rule, date: u.date })), ...paused.map((r) => ({ rule: r, date: null }))].map(({ rule, date }, i) => {
-              const cat = categoryById(rule.categoryId);
-              return (
-                <Touch key={rule.id} style={[s.ruleRow, i > 0 && s.sep]} onPress={() => setRuleEdit(rule)}>
-                  <IconBadge icon={cat?.icon || 'repeat'} color={BUCKETS[cat?.bucket]?.color || colors.muted} size={40} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.ruleName, rule.paused && { color: colors.muted }]} numberOfLines={1}>
-                      {rule.merchant || rule.note || cat?.name}
-                    </Text>
-                    <Text style={s.hint}>{rule.paused ? 'Спряно' : `Следващо: ${dayLabel(date.toISOString(), now)}`}</Text>
-                  </View>
-                  <Text style={s.ruleAmount}>{money(rule.amount)}</Text>
-                </Touch>
-              );
-            })}
-          </Card>
         )}
       </ScrollView>
 

@@ -13,7 +13,7 @@ import { dayLabel } from '../format';
 import { themed } from '../themed';
 
 // Income for the month: the monthly income setting + recorded income entries
-export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onDelete }) {
+export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onEdit, onDelete }) {
   if (!info) return null;
   const replaced = info.salary > info.base;
   return (
@@ -39,8 +39,8 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
               key={e.id}
               style={[s.row, s.sep]}
               onLongPress={() => confirmDelete(e, () => onDelete(e.id))}
-              onPress={() => confirmDelete(e, () => onDelete(e.id))}
-              accessibilityHint="Изтрива дохода. Може да се отмени."
+              onPress={() => onEdit(e)}
+              accessibilityHint="Отваря дохода за промяна. Задръж, за да го изтриеш."
             >
               <IconBadge icon={k.icon} color={colors.savings} size={42} />
               <View style={{ flex: 1 }}>
@@ -54,7 +54,7 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
           );
         })}
       </View>
-      {info.list.length > 0 && <Text style={s.hint}>Натисни доход, за да го изтриеш.</Text>}
+      {info.list.length > 0 && <Text style={s.hint}>Натисни доход, за да го промениш. Задръж, за да го изтриеш.</Text>}
 
       <Touch style={s.add} onPress={onAdd}>
         <Ionicons name="add" size={20} color={colors.onAccent} />

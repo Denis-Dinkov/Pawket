@@ -7,7 +7,7 @@ import Money from './ui/Money';
 import Bar from './Bar';
 import { colors, BUCKETS, categoryById, getCategories, money, pct } from '../theme';
 import { sameDay, plural } from '../format';
-import { dailyLimit } from '../budget';
+import { dailyLimit, countsInBudget } from '../budget';
 import { themed } from '../themed';
 
 
@@ -21,7 +21,7 @@ export function TodayCard({ ov, now, pending = 0 }) {
       </Card>
     );
   }
-  const today = ov.list.filter((e) => sameDay(e.date, now));
+  const today = ov.list.filter((e) => countsInBudget(e) && sameDay(e.date, now));
   const spent = today.reduce((a, e) => a + e.amount, 0);
   const daily = dailyLimit(ov, now, pending);
   const limit = daily?.limit || 0;
