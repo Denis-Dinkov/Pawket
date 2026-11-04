@@ -3,6 +3,7 @@ import { Modal, View, Pressable, Animated, ScrollView, StyleSheet, Dimensions } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../../theme';
 import useKeyboardHeight from '../../hooks/useKeyboardHeight';
+import { themed } from '../../themed';
 
 // Bottom sheet with a translucent backdrop; footer stays pinned at the bottom (and above the keyboard)
 export default function Sheet({ visible, onClose, children, footer, scroll = true, maxHeight = 0.88 }) {
@@ -50,10 +51,10 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(17,16,24,0.45)' },
+const s = themed((colors) => ({
+  root: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   panel: { backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.faint, marginTop: 10 },
   content: { padding: 20 },
   footer: { paddingHorizontal: 20, paddingTop: 4 },
-});
+}));

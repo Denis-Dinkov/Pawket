@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing, Platform } from 'react-native';
 import Svg, { G, Path, Circle, Ellipse, Text as SvgText } from 'react-native-svg';
 import { petShapes } from './petShapes';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 const TAGS = { path: Path, circle: Circle, ellipse: Ellipse };
 const native = Platform.OS !== 'web';
@@ -48,7 +49,8 @@ function useLoop(value, duration, enabled, from = 0, to = 1) {
 /**
  * Animated dog. bounceKey — change the value to make it jump (e.g. after feeding).
  */
-export default function Pet({ expression = 'happy', stage = 'adult', size = 160, animate = true, bounceKey = 0, style }) {
+export default function Pet({ expression = 'happy', stage = 'adult', accessory = null, size = 160, animate: animateProp = true, bounceKey = 0, style, accessibilityLabel }) {
+  const animate = animateProp && !useReduceMotion();
   const motion = MOTION[expression] || MOTION.happy;
   const [blink, setBlink] = useState(false);
   const bob = useRef(new Animated.Value(0)).current;
@@ -92,7 +94,7 @@ export default function Pet({ expression = 'happy', stage = 'adult', size = 160,
     ]).start();
   }, [bounceKey, jump, size]);
 
-  const { main, tail, pivot, tailScale, tailAngle } = petShapes({ expression, stage, blink });
+  const { main, tail, pivot, tailScale, tailAngle } = petShapes({ expression, stage, blink, accessory });
   const unit = size / 200;
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -motion.bob * unit * 1.25] });
   const rotate = wag.interpolate({
@@ -101,7 +103,12 @@ export default function Pet({ expression = 'happy', stage = 'adult', size = 160,
   });
 
   return (
-    <Animated.View style={[{ width: size, height: size, transform: [{ translateY: Animated.add(bobY, jump) }] }, style]}>
+    <Animated.View
+      style={[{ width: size, height: size, transform: [{ translateY: Animated.add(bobY, jump) }] }, style]}
+      accessible={!!accessibilityLabel}
+      accessibilityRole={accessibilityLabel ? 'image' : undefined}
+      accessibilityLabel={accessibilityLabel}
+    >
       {/* The tail is a separate layer, centered on its base, so it rotates around it */}
       <Animated.View
         style={{

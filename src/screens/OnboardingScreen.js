@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, Keyboard, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, DEFAULT_PET_NAME } from '../store';
 import { colors, money, radius } from '../theme';
@@ -9,6 +10,7 @@ import { getIncome } from '../budget';
 import { cleanAmountInput } from '../format';
 import Pet from '../pet/Pet';
 import Touch from '../components/ui/Touch';
+import { themed } from '../themed';
 
 // First launch: the dog wakes up once you enter your income
 export default function OnboardingScreen() {
@@ -22,6 +24,7 @@ export default function OnboardingScreen() {
 
   return (
     <LinearGradient colors={[colors.heroFrom, colors.heroTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+      <StatusBar style="light" />
       {/* iOS lifts the content above the keyboard by itself and shows the field being edited */}
       <ScrollView
         contentContainerStyle={[s.container, { paddingTop: insets.top + 30, paddingBottom: insets.bottom + 24 }]}
@@ -43,7 +46,7 @@ export default function OnboardingScreen() {
                 onChangeText={(t) => setIncomeText(cleanAmountInput(t))}
             maxLength={10}
                 placeholder="0"
-                placeholderTextColor="#E9C9A8"
+                placeholderTextColor={colors.placeholder}
                 keyboardType="decimal-pad"
                 accessibilityLabel="Месечен доход в евро"
                 style={s.income}
@@ -86,11 +89,11 @@ export default function OnboardingScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   container: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 24 },
   h1: { color: '#fff', fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 8 },
   sub: { color: 'rgba(255,255,255,0.88)', fontSize: 15, textAlign: 'center', lineHeight: 21, marginTop: 10 },
-  card: { alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: 28, padding: 20, marginTop: 26 },
+  card: { alignSelf: 'stretch', backgroundColor: colors.card, borderRadius: 28, padding: 20, marginTop: 26 },
   label: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   row: { flexDirection: 'row', alignItems: 'baseline' },
   income: { flex: 1, minWidth: 0, fontSize: 38, fontWeight: '800', color: colors.text, paddingVertical: 4 },
@@ -99,5 +102,5 @@ const s = StyleSheet.create({
   splitItem: { fontSize: 12, fontWeight: '700', backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, overflow: 'hidden' },
   name: { fontSize: 20, fontWeight: '700', color: colors.text, paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.faint },
   btn: { alignSelf: 'stretch', backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 17, alignItems: 'center', marginTop: 20 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
+  btnText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
+}));

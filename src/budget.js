@@ -134,3 +134,19 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
     score: budgetScore({ income, byBucket: sum.byBucket, dayFrac: progress.dayFrac }),
   };
 }
+
+/**
+ * Today's limit for needs and wants: what's left of the 80% after this month's spending and the recurring
+ * payments still due, spread over the remaining days. It's computed as of the start of the day,
+ * so it doesn't move with every expense; `left` is what remains of it today.
+ */
+export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
+  if (!ov.progress.isCurrent || !ov.income || !ov.progress.daysLeft) return null;
+  const today = ov.list.filter((e) => new Date(e.date).toDateString() === now.toDateString());
+  const spentToday = today
+    .filter((e) => ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
+    .reduce((a, e) => a + e.amount, 0);
+  const start = 0.8 * ov.income - ov.byBucket.needs - ov.byBucket.wants + spentToday - pendingRecurring;
+  const limit = Math.max(0, start) / ov.progress.daysLeft;
+  return { limit, spentToday, left: limit - spentToday, over: spentToday > limit };
+}

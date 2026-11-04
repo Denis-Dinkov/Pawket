@@ -2,6 +2,8 @@
 import { moneyShort, money } from '../theme';
 import { petStatus, EXPRESSIONS } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
+import { dailyLimit } from '../budget';
+import { pendingSpend } from '../plans';
 // Labels come in as props — the iOS widget function can't see anything outside itself
 const labels = () => ({ needsLabel: 'Нужди', wantsLabel: 'Желания', savingsLabel: 'Спестявания' });
 
@@ -22,13 +24,14 @@ export function shortAmount(n) {
 }
 
 // Serializable props: strings and numbers only, already formatted
-export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], pet }, now = new Date()) {
+export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], recurring = [], pet }, now = new Date()) {
   if (!pet) {
     return { ...labels(), ready: 0, petName: 'Pawket', expression: 'sleeping', emoji: WIDGET_EMOJI.sleeping, moodLabel: 'Отвори приложението', remainingLabel: 'Остават', remainingText: '—', remainingShort: '—', leftRatio: 0, perDayText: '', tip: '', mood: 0, fullness: 0, needs: 0, wants: 0, savings: 0, stageKey: 'kitten' };
   }
   const st = petStatus({ expenses, incomes, incomeEntries, pet, now });
   const ov = st.overview;
-  const tip = getAdvice({ expenses, incomes, incomeEntries, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet.lastFedAt })[0];
+  const daily = dailyLimit(ov, now, pendingSpend(recurring, now));
+  const tip = getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet.lastFedAt })[0];
   const I = ov.income || 0;
   return {
     ...labels(),
@@ -46,7 +49,7 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], p
     remainingText: I ? moneyShort(Math.abs(ov.remaining)) : 'задай доход',
     remainingShort: I ? shortAmount(ov.remaining) : '—',
     leftRatio: I ? clamp01(ov.remaining / I) : 0,
-    perDayText: I && ov.progress.daysLeft ? `≈ ${money(ov.perDay)}/ден` : '',
+    perDayText: daily ? `≈ ${money(daily.limit)}/ден` : '',
     needs: I ? clamp01(ov.byBucket.needs / (0.5 * I)) : 0,
     wants: I ? clamp01(ov.byBucket.wants / (0.3 * I)) : 0,
     savings: I ? clamp01(ov.byBucket.savings / (0.2 * I)) : 0,
@@ -62,4 +65,27 @@ export function buildWidgetTimeline(data, now = new Date(), hours = 72, stepHour
     entries.push({ date, props: widgetProps(data, date) });
   }
   return entries;
+}
+
+// Props for the Live Activity (Dynamic Island): today's limit first, then the month
+export function activityProps({ expenses = [], incomes = {}, incomeEntries = [], recurring = [], pet }, now = new Date()) {
+  const st = petStatus({ expenses, incomes, incomeEntries, pet, now });
+  const ov = st.overview;
+  const daily = dailyLimit(ov, now, pendingSpend(recurring, now));
+  const left = daily ? Math.round(daily.left) : 0;
+  const tip = getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet.lastFedAt })[0];
+  return {
+    petName: pet.name,
+    stageKey: st.stage.key,
+    expression: st.expression,
+    emoji: WIDGET_EMOJI[st.expression],
+    moodLabel: EXPRESSIONS[st.expression].label.toLowerCase(),
+    todayLeft: Math.abs(left),
+    todayLeftText: daily ? moneyShort(Math.abs(left)) : '—',
+    over: daily?.over ? 1 : 0,
+    spentRatio: daily && daily.limit > 0 ? clamp01(daily.spentToday / daily.limit) : 0,
+    remainingText: ov.income ? `${ov.remaining < 0 ? 'Над дохода с' : 'Остават до края на месеца'} ${moneyShort(Math.abs(ov.remaining))}` : 'Задай доход в приложението',
+    remainingShort: ov.income ? `месец ${moneyShort(ov.remaining)}` : '',
+    tip: tip?.title || 'Всичко е наред 🐶',
+  };
 }

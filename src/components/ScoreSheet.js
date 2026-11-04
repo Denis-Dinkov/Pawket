@@ -7,6 +7,7 @@ import ProgressRing from './ui/ProgressRing';
 import { colors, MONTHS, money, pct } from '../theme';
 import { budgetScoreParts } from '../budget';
 import { EXPRESSIONS, expressionFor } from '../pet/logic';
+import { themed } from '../themed';
 
 function Row({ ok, title, detail, badge }) {
   return (
@@ -64,7 +65,7 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   head: { alignItems: 'center', gap: 8, marginBottom: 14 },
   score: { color: colors.text, fontSize: 26, fontWeight: '800' },
   title: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 4, textAlign: 'center' },
@@ -75,4 +76,4 @@ const s = StyleSheet.create({
   rowDetail: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
   badge: { fontSize: 14, fontWeight: '800' },
   foot: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 12 },
-});
+}));

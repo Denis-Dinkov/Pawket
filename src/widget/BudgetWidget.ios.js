@@ -9,7 +9,7 @@ import { createWidget } from 'expo-widgets';
 // it can't use anything outside itself except the @expo/ui components (see the expo-widgets docs).
 const BudgetWidget = (props, environment) => {
   'widget';
-  const bg = { type: 'linearGradient', colors: ['#C46D2D', '#EBA15E'], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } };
+  const bg = { type: 'linearGradient', colors: ['#9C4D1C', '#B45E25'], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } };
   const white = '#FFFFFF';
   const soft = '#FFF1E4';
   const family = environment.widgetFamily;

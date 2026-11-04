@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, BUCKETS, getCategories, MONTHS, money, pct, radius } from '../theme';
+import { colors, currentColorScheme, BUCKETS, getCategories, MONTHS, money, pct, radius } from '../theme';
 import { monthOverview, filterMonth, summarize, shiftMonth } from '../budget';
 import { getAdvice } from '../pet/advice';
+import { stageFor } from '../pet/logic';
 import useNow from '../hooks/useNow';
 import GradientHero from '../components/ui/GradientHero';
 import Card from '../components/ui/Card';
@@ -22,6 +23,10 @@ import StatsHero from '../components/StatsHero';
 import ScoreSheet from '../components/ScoreSheet';
 import useStatusScrim from '../hooks/useStatusScrim';
 import Touch from '../components/ui/Touch';
+import Pill from '../components/ui/Pill';
+import YearReviewSheet from '../components/YearReviewSheet';
+import { StatusBar } from 'expo-status-bar';
+import { themed } from '../themed';
 
 function verdict(bucket, actual, target) {
   if (bucket === 'savings') {
@@ -34,8 +39,10 @@ function verdict(bucket, actual, target) {
 
 const scoreColor = (score) => (score >= 85 ? colors.savings : score >= 60 ? colors.warning : colors.danger);
 
-export default function StatsScreen({ year, month, onMonthChange }) {
-  const { expenses, incomes, incomeEntries, pet, removeExpense } = useStore();
+export default function StatsScreen({ year, month, onMonthChange, onAdd }) {
+  const store = useStore();
+  const { expenses, incomes, incomeEntries, recurring, pet, removeExpense } = store;
+  const [review, setReview] = useState(false);
   const now = useNow();
   const scrim = useStatusScrim();
   const [picker, setPicker] = useState(false);
@@ -50,8 +57,8 @@ export default function StatsScreen({ year, month, onMonthChange }) {
     [expenses, prevYM.year, prevYM.month]
   );
   const advice = useMemo(
-    () => getAdvice({ expenses, incomes, incomeEntries, year, month, now, lastFedAt: pet?.lastFedAt }),
-    [expenses, incomes, incomeEntries, year, month, now, pet?.lastFedAt]
+    () => getAdvice({ expenses, incomes, incomeEntries, recurring, year, month, now, lastFedAt: pet?.lastFedAt }),
+    [expenses, incomes, incomeEntries, recurring, year, month, now, pet?.lastFedAt]
   );
 
   const stats = useMonthStats(ov, prev.total, year, month);
@@ -68,12 +75,16 @@ export default function StatsScreen({ year, month, onMonthChange }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar style={currentColorScheme() === 'dark' ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false} onScroll={scrim.onScroll} scrollEventThrottle={32}>
         <View style={s.overscroll} />
-        <GradientHero bottomSpace={56}>
-          <Text style={s.title}>Статистика</Text>
+        <GradientHero tone="room" bottomSpace={56}>
+          <View style={s.titleRow}>
+            <Text style={s.title} accessibilityRole="header">Отчети</Text>
+            <Pill small variant="white" icon="calendar-outline" label={`Твоята ${year}`} onPress={() => setReview(true)} />
+          </View>
           <View style={{ marginTop: 14 }}>
-            <MonthPill year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
+            <MonthPill tone="room" year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
           </View>
           <StatsHero ov={ov} month={month} onOpenScore={() => setScoreOpen(true)} />
         </GradientHero>
@@ -86,7 +97,7 @@ export default function StatsScreen({ year, month, onMonthChange }) {
               <Text style={s.hint}>Няма разходи за {MONTHS[month].toLowerCase()}.</Text>
             ) : (
               <>
-                <DonutChart segments={cats.map((c) => ({ key: c.id, value: c.value, color: c.shade }))} total={total} label="похарчени" />
+                <DonutChart segments={cats.map((c) => ({ key: c.id, name: c.name, value: c.value, color: c.shade }))} total={total} label="похарчени" />
                 <Text style={s.donutHint}>
                   {cats.length === 1
                     ? `Целият кръг е ${cats[0].name.toLowerCase()} — засега всички разходи за ${MONTHS[month].toLowerCase()} са в тази категория.`
@@ -113,7 +124,7 @@ export default function StatsScreen({ year, month, onMonthChange }) {
                         <View style={s.catHead}>
                           <Text style={s.small}>{pct(c.value / (total || 1))} от общо</Text>
                           {delta != null && Math.abs(delta) >= 0.01 && (
-                            <Text style={[s.delta, { color: delta > 0 ? colors.danger : colors.savings, backgroundColor: delta > 0 ? '#FDE7EB' : '#E3F7EF' }]}>
+                            <Text style={[s.delta, { color: delta > 0 ? colors.danger : colors.savings, backgroundColor: delta > 0 ? colors.dangerSoft : colors.savingsSoft }]}>
                               {delta > 0 ? '+' : '−'}
                               {pct(Math.abs(delta))} спрямо {MONTHS[prevYM.month].toLowerCase()}
                             </Text>
@@ -165,7 +176,7 @@ export default function StatsScreen({ year, month, onMonthChange }) {
                         {pct(actual / income)} <Text style={{ color: colors.muted }}>/ {pct(b.target)}</Text>
                       </Text>
                     </View>
-                    <Bar value={actual / income} marker={b.target} color={b.color} />
+                    <Bar value={actual / income} marker={b.target} color={b.color} label={`${b.label}: ${pct(actual / income)} от дохода, цел ${pct(b.target)}`} />
                     <View style={s.bucketFoot}>
                       <Text style={s.small}>
                         {money(actual)} от {money(target)}
@@ -193,6 +204,7 @@ export default function StatsScreen({ year, month, onMonthChange }) {
       </ScrollView>
       {scrim.overlay}
 
+      <YearReviewSheet visible={review} onClose={() => setReview(false)} year={year} data={store} pet={pet} stage={stageFor(pet?.xp || 0).stage.key} />
       <ScoreSheet visible={scoreOpen} onClose={() => setScoreOpen(false)} ov={ov} month={month} year={year} />
       <MonthPickerSheet visible={picker} onClose={() => setPicker(false)} expenses={expenses} year={year} month={month} onSelect={onMonthChange} />
 
@@ -207,6 +219,12 @@ export default function StatsScreen({ year, month, onMonthChange }) {
           <ExpenseDetail
             expense={selected}
             onBack={() => setSelected(null)}
+            onEdit={(e) => {
+              setCategory(null);
+              setSelected(null);
+              // iOS won't present a new modal while this sheet is still closing
+              setTimeout(() => onAdd?.({ edit: e }), 450);
+            }}
             onDelete={() => {
               removeExpense(selected.id);
               setSelected(null);
@@ -237,9 +255,10 @@ export default function StatsScreen({ year, month, onMonthChange }) {
   );
 }
 
-const s = StyleSheet.create({
-  overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.heroFrom },
-  title: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+const s = themed((colors) => ({
+  overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.roomFrom },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   sheet: {
     backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
     marginTop: -32, paddingHorizontal: 20, paddingTop: 20, minHeight: 600,
@@ -264,4 +283,4 @@ const s = StyleSheet.create({
   catSheetHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
   catSheetTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
   catSheetTotal: { color: colors.text, fontSize: 18, fontWeight: '800' },
-});
+}));

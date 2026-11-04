@@ -7,6 +7,7 @@ import Pill from './ui/Pill';
 import Pet from '../pet/Pet';
 import { colors, money } from '../theme';
 import { TONE_COLORS } from '../pet/advice';
+import { themed } from '../themed';
 
 export function AdviceCard({ tip }) {
   return (
@@ -42,11 +43,11 @@ export default function AdviceSheet({ visible, onClose, advice, petName, express
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   head: { alignItems: 'center', marginBottom: 16 },
   h1: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 4 },
   sub: { color: colors.muted, fontSize: 14, marginTop: 4, textAlign: 'center' },
   card: { flexDirection: 'row', gap: 12, backgroundColor: colors.card, borderRadius: 22, padding: 16 },
   title: { color: colors.text, fontSize: 15, fontWeight: '700' },
   text: { color: colors.muted, fontSize: 13.5, lineHeight: 19, marginTop: 4 },
-});
+}));

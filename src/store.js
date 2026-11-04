@@ -1,15 +1,39 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { monthKey } from './budget';
+import { monthKey, monthIncome } from './budget';
 import { setCustomCategories, CUSTOM_SHADES } from './theme';
 import { evaluateClosedMonths, feedPet, stageFor } from './pet/logic';
+import { dueRecurring, goalProgress } from './plans';
+import { weekMissions, weekKey, activityDays, streak, MISSION_XP } from './pet/missions';
+import { animateNextLayout } from './motion';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
 const Ctx = createContext(null);
 
-const EMPTY = { expenses: [], incomes: {}, incomeEntries: [], categories: [], merchants: {}, pet: null, homeLayout: null };
+const EMPTY = {
+  expenses: [],
+  incomes: {},
+  incomeEntries: [],
+  categories: [],
+  merchants: {},
+  pet: null,
+  homeLayout: null,
+  // Recurring payments: { id, amount, categoryId, merchant, note, day, lastKey, paused }
+  recurring: [],
+  // Savings goals: { id, name, icon, target, deadline?, createdAt, kind? }. The saved money is the expenses with goalId.
+  // kind: undefined (a goal), 'fund' (a sinking fund for a yearly cost), 'emergency' (the emergency fund)
+  goals: [],
+  // The 48-hour wishlist: { id, name, amount, categoryId, createdAt, decision?: 'bought' | 'skipped', decidedAt? }
+  wishes: [],
+  // theme: 'system' | 'light' | 'dark'; reminder: the evening notification
+  // liveActivity: Charlie and today's limit in the Dynamic Island
+  settings: { theme: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true },
+  lastBackupAt: null,
+};
+// Older saves lack the newer keys; settings are merged one level deep
+const withDefaults = (d) => ({ ...EMPTY, ...d, settings: { ...EMPTY.settings, ...(d?.settings || {}) } });
 export const DEFAULT_PET_NAME = 'Чарли';
 // The default name from back when the pet was a cat
 const OLD_DEFAULT_NAME = 'Мърка';
@@ -31,7 +55,7 @@ function migrateV1(v1) {
 async function load() {
   const raw = await AsyncStorage.getItem(KEY);
   if (raw) {
-    const data = { ...EMPTY, ...JSON.parse(raw) };
+    const data = withDefaults(JSON.parse(raw));
     if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME };
     return data;
   }
@@ -44,6 +68,9 @@ export function StoreProvider({ children }) {
   const [ready, setReady] = useState(false);
   // { reports?: [...], levelUp?: stage } — shown in PetEventModal
   const [pendingEvent, setPendingEvent] = useState(null);
+  // Short message at the bottom of the screen, optionally with an action ("Undo"): { id, text, actionLabel?, onAction? }
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((t) => setToast({ id: Date.now(), ...t }), []);
   const stageRef = useRef(null);
 
   // Custom categories are needed by the pure modules too (theme.categoryById)
@@ -63,9 +90,18 @@ export function StoreProvider({ children }) {
   const dataRef = useRef(data);
   dataRef.current = data;
 
-  // Closes past months on launch and when returning to the app
+  // On launch and when returning to the app: books the recurring payments that are due and closes past months
   const closeMonths = useCallback(() => {
-    const { pet, reports } = evaluateClosedMonths({ ...dataRef.current, now: new Date() });
+    const now = new Date();
+    const due = dueRecurring(dataRef.current.recurring, now);
+    if (due.expenses.length) {
+      setData((d) => ({
+        ...d,
+        recurring: due.rules,
+        expenses: [...due.expenses.map((e) => ({ id: newId(), ...e })), ...d.expenses],
+      }));
+    }
+    const { pet, reports } = evaluateClosedMonths({ ...dataRef.current, now });
     if (!reports.length) return;
     setData((d) => ({ ...d, pet }));
     const shown = reports.filter((r) => r.score != null);
@@ -78,6 +114,33 @@ export function StoreProvider({ children }) {
     const sub = AppState.addEventListener('change', (st) => st === 'active' && closeMonths());
     return () => sub.remove();
   }, [ready, closeMonths]);
+
+  // Weekly missions: a finished mission gives XP once. The best streak is remembered for the rewards.
+  useEffect(() => {
+    if (!ready || !data.pet) return;
+    const now = new Date();
+    const income = monthIncome(data, now.getFullYear(), now.getMonth()).total;
+    const fresh = weekMissions({ ...data, income, now }).filter((m) => m.done && !m.claimed);
+    const current = streak(activityDays(data), now);
+    const best = data.pet.bestStreak || 0;
+    if (!fresh.length && current <= best) return;
+    setData((d) => {
+      if (!d.pet) return d;
+      const key = weekKey(now);
+      const done = d.pet.missionsDone?.[key] || [];
+      const add = fresh.map((m) => m.id).filter((id) => !done.includes(id));
+      return {
+        ...d,
+        pet: {
+          ...d.pet,
+          bestStreak: Math.max(d.pet.bestStreak || 0, current),
+          xp: (d.pet.xp || 0) + add.length * MISSION_XP,
+          missionsDone: add.length ? { ...(d.pet.missionsDone || {}), [key]: [...done, ...add] } : d.pet.missionsDone,
+        },
+      };
+    });
+    if (fresh.length) showToast({ text: `Мисия изпълнена: ${fresh[0].title} · +${MISSION_XP * fresh.length} XP`, icon: 'trophy', celebrate: true });
+  }, [ready, data, showToast]);
 
   // Celebration on reaching a new growth stage
   useEffect(() => {
@@ -96,6 +159,9 @@ export function StoreProvider({ children }) {
       ...data,
       pendingEvent,
       dismissEvent: () => setPendingEvent(null),
+      toast,
+      showToast,
+      dismissToast: () => setToast(null),
 
       createPet: ({ name, income }) => {
         const now = new Date();
@@ -113,7 +179,9 @@ export function StoreProvider({ children }) {
         }));
       },
 
-      addExpense: (e) =>
+      // repeat: true also creates a monthly rule; this expense is its first payment
+      addExpense: (e, { repeat = false } = {}) => {
+        animateNextLayout();
         setData((d) => {
           const merchant = (e.merchant || '').trim();
           const expense = {
@@ -123,15 +191,63 @@ export function StoreProvider({ children }) {
             ...e,
             merchant,
           };
+          let { recurring } = d;
+          if (repeat) {
+            const date = new Date(expense.date);
+            const rule = {
+              id: newId(),
+              amount: expense.amount,
+              categoryId: expense.categoryId,
+              merchant,
+              note: expense.note,
+              day: date.getDate(),
+              lastKey: monthKey(date.getFullYear(), date.getMonth()),
+              paused: false,
+            };
+            expense.recurringId = rule.id;
+            recurring = [...recurring, rule];
+          }
           return {
             ...d,
             expenses: [expense, ...d.expenses],
-            merchants: merchant ? { ...d.merchants, [normalizeMerchant(merchant)]: e.categoryId } : d.merchants,
+            recurring,
+            merchants: merchant && !e.goalId ? { ...d.merchants, [normalizeMerchant(merchant)]: e.categoryId } : d.merchants,
             pet: feedPet(d.pet),
+          };
+        });
+      },
+
+      updateExpense: (id, patch) =>
+        setData((d) => {
+          const merchant = patch.merchant != null ? patch.merchant.trim() : undefined;
+          return {
+            ...d,
+            expenses: d.expenses.map((e) => (e.id === id ? { ...e, ...patch, ...(merchant != null && { merchant }) } : e)),
+            merchants: merchant && patch.categoryId ? { ...d.merchants, [normalizeMerchant(merchant)]: patch.categoryId } : d.merchants,
           };
         }),
 
-      removeExpense: (id) => setData((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) })),
+      // Deletes right away; the toast offers "Undo" for a few seconds
+      removeExpense: (id) => {
+        const index = dataRef.current.expenses.findIndex((e) => e.id === id);
+        const item = dataRef.current.expenses[index];
+        if (!item) return;
+        animateNextLayout();
+        setData((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
+        showToast({
+          text: 'Разходът е изтрит',
+          icon: 'trash-outline',
+          actionLabel: 'Отмени',
+          onAction: () => {
+            animateNextLayout();
+            setData((d) => {
+              const expenses = [...d.expenses];
+              expenses.splice(Math.min(index, expenses.length), 0, item);
+              return { ...d, expenses };
+            });
+          },
+        });
+      },
 
       // Income: { amount, kind, note, date }. The entry also feeds the dog.
       addIncome: (e) =>
@@ -141,7 +257,108 @@ export function StoreProvider({ children }) {
           pet: feedPet(d.pet),
         })),
 
-      removeIncome: (id) => setData((d) => ({ ...d, incomeEntries: d.incomeEntries.filter((e) => e.id !== id) })),
+      removeIncome: (id) => {
+        const item = dataRef.current.incomeEntries.find((e) => e.id === id);
+        if (!item) return;
+        animateNextLayout();
+        setData((d) => ({ ...d, incomeEntries: d.incomeEntries.filter((e) => e.id !== id) }));
+        showToast({
+          text: 'Доходът е изтрит',
+          icon: 'trash-outline',
+          actionLabel: 'Отмени',
+          onAction: () => setData((d) => ({ ...d, incomeEntries: [item, ...d.incomeEntries] })),
+        });
+      },
+
+      // Recurring payments
+      updateRecurring: (id, patch) =>
+        setData((d) => ({ ...d, recurring: d.recurring.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+      // Past expenses of the rule stay; only future ones stop
+      removeRecurring: (id) => setData((d) => ({ ...d, recurring: d.recurring.filter((r) => r.id !== id) })),
+
+      // Savings goals
+      addGoal: ({ name, icon, target, deadline, kind }) =>
+        setData((d) => ({
+          ...d,
+          goals: [
+            ...d.goals,
+            { id: newId(), name: name.trim(), icon, target, deadline: deadline || null, kind: kind || null, createdAt: new Date().toISOString() },
+          ],
+        })),
+      updateGoal: (id, patch) => setData((d) => ({ ...d, goals: d.goals.map((g) => (g.id === id ? { ...g, ...patch } : g)) })),
+      // The money already put aside stays in "Savings"
+      removeGoal: (id) => setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) })),
+      // A deposit is an expense in "Savings", so it counts towards the 20%
+      contributeGoal: (goal, amount) => {
+        const before = goalProgress(goal, dataRef.current.expenses);
+        setData((d) => ({
+          ...d,
+          expenses: [
+            { id: newId(), amount, categoryId: 'saving', merchant: '', note: goal.name, goalId: goal.id, source: 'goal', date: new Date().toISOString() },
+            ...d.expenses,
+          ],
+          pet: feedPet(d.pet),
+        }));
+        if (!before.done && before.saved + amount >= goal.target) {
+          showToast({ text: `Целта „${goal.name}“ е постигната! 🎉`, icon: 'trophy', celebrate: true });
+        }
+      },
+
+      // The 48-hour rule: a wish waits two days before it can be bought
+      addWish: ({ name, amount, categoryId }) => {
+        animateNextLayout();
+        setData((d) => ({
+          ...d,
+          wishes: [{ id: newId(), name: name.trim(), amount, categoryId: categoryId || 'shopping', createdAt: new Date().toISOString() }, ...d.wishes],
+        }));
+        showToast({ text: `„${name.trim()}“ чака 48 часа. Ще ти напомня 🐾`, icon: 'hourglass-outline' });
+      },
+      // Skipping a wish puts its money into a goal (when there is one)
+      resolveWish: (id, decision, goal) => {
+        const wish = dataRef.current.wishes.find((w) => w.id === id);
+        if (!wish) return;
+        animateNextLayout();
+        setData((d) => ({
+          ...d,
+          wishes: d.wishes.map((w) => (w.id === id ? { ...w, decision, decidedAt: new Date().toISOString() } : w)),
+        }));
+        if (decision === 'skipped' && goal) {
+          const before = goalProgress(goal, dataRef.current.expenses);
+          setData((d) => ({
+            ...d,
+            expenses: [
+              { id: newId(), amount: wish.amount, categoryId: 'saving', merchant: '', note: `${goal.name} (вместо ${wish.name})`, goalId: goal.id, source: 'goal', date: new Date().toISOString() },
+              ...d.expenses,
+            ],
+          }));
+          showToast({
+            text: before.saved + wish.amount >= goal.target && !before.done ? `Целта „${goal.name}“ е постигната! 🎉` : `+${wish.amount} € към „${goal.name}“ вместо „${wish.name}“ 💪`,
+            icon: 'trophy',
+            celebrate: true,
+          });
+        } else if (decision === 'skipped') {
+          showToast({ text: `Спести ${wish.amount} € 💪`, icon: 'trophy', celebrate: true });
+        }
+      },
+      removeWish: (id) => {
+        animateNextLayout();
+        setData((d) => ({ ...d, wishes: d.wishes.filter((w) => w.id !== id) }));
+      },
+
+      setAccessory: (accessory) => setData((d) => ({ ...d, pet: d.pet && { ...d.pet, accessory } })),
+
+      setSettings: (patch) => setData((d) => ({ ...d, settings: { ...d.settings, ...patch } })),
+
+      // Backup: the whole saved state as JSON, and restoring it
+      exportData: () => {
+        const at = new Date().toISOString();
+        setData((d) => ({ ...d, lastBackupAt: at }));
+        return { app: 'pawket', version: 2, exportedAt: at, data: { ...dataRef.current, lastBackupAt: at } };
+      },
+      restoreData: (backup) => {
+        setPendingEvent(null);
+        setData(withDefaults(backup.data));
+      },
 
       // New category { name, icon, bucket } → returns the id
       addCategory: ({ name, icon, bucket }) => {
@@ -189,7 +406,7 @@ export function StoreProvider({ children }) {
         setData(EMPTY);
       },
     }),
-    [ready, data, pendingEvent]
+    [ready, data, pendingEvent, toast, showToast]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

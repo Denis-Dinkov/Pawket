@@ -6,6 +6,7 @@ import Pill from './ui/Pill';
 import { colors, MONTHS, shadow } from '../theme';
 import { expressionFor } from '../pet/logic';
 import { successFeedback } from '../haptics';
+import { themed } from '../themed';
 
 // Monthly report (+XP) and a celebration on reaching a new growth stage
 export default function PetEventModal({ event, pet, stage, onClose }) {
@@ -48,8 +49,8 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
   );
 }
 
-const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(17,16,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+const s = themed((colors) => ({
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 32, padding: 24, alignItems: 'center', ...shadow },
   h1: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 6 },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
@@ -59,4 +60,4 @@ const s = StyleSheet.create({
   score: { color: colors.text, fontSize: 14, fontWeight: '700', marginRight: 12 },
   xp: { fontSize: 14, fontWeight: '800' },
   btn: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 20, paddingVertical: 14 },
-});
+}));

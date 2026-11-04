@@ -7,11 +7,12 @@ import Money from './ui/Money';
 import Bar from './Bar';
 import { colors, BUCKETS, categoryById, getCategories, money, pct } from '../theme';
 import { sameDay, plural } from '../format';
+import { dailyLimit } from '../budget';
+import { themed } from '../themed';
 
-const isSpend = (e) => ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket);
 
 // "Today": how much was spent today against the 50/30/20 daily limit
-export function TodayCard({ ov, now }) {
+export function TodayCard({ ov, now, pending = 0 }) {
   if (!ov.progress.isCurrent) {
     return (
       <Card>
@@ -22,10 +23,9 @@ export function TodayCard({ ov, now }) {
   }
   const today = ov.list.filter((e) => sameDay(e.date, now));
   const spent = today.reduce((a, e) => a + e.amount, 0);
-  const spentNW = today.filter(isSpend).reduce((a, e) => a + e.amount, 0);
-  // The limit is computed as of the start of the day, so it doesn't change with every expense
-  const startSpendable = 0.8 * ov.income - ov.byBucket.needs - ov.byBucket.wants + spentNW;
-  const limit = ov.income && ov.progress.daysLeft ? Math.max(0, startSpendable) / ov.progress.daysLeft : 0;
+  const daily = dailyLimit(ov, now, pending);
+  const limit = daily?.limit || 0;
+  const spentNW = daily?.spentToday || 0;
   const over = limit > 0 && spentNW > limit;
   return (
     <Card style={{ gap: 10 }}>
@@ -43,7 +43,7 @@ export function TodayCard({ ov, now }) {
       </View>
       {limit > 0 ? (
         <>
-          <Bar value={spentNW / limit} color={over ? colors.danger : colors.primary} height={8} />
+          <Bar value={spentNW / limit} color={over ? colors.danger : colors.primary} height={8} label={`Днес ${money(spentNW)} от ${money(limit)}`} />
           <Text style={s.muted}>Дневен лимит ≈ {money(limit)} за нужди и желания</Text>
         </>
       ) : (
@@ -81,7 +81,7 @@ export function TopCategoriesCard({ ov }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
   muted: { color: colors.muted, fontSize: 12.5 },
@@ -89,4 +89,4 @@ const s = StyleSheet.create({
   cat: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   catName: { color: colors.text, fontSize: 14.5, fontWeight: '600' },
   catValue: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
-});
+}));

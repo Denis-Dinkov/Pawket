@@ -5,10 +5,11 @@ import { Text } from './ui/AppText';
 import Money from './ui/Money';
 import Touch from './ui/Touch';
 import ProgressRing from './ui/ProgressRing';
-import { BUCKETS, MONTHS, money, pct } from '../theme';
+import { colors, BUCKETS, MONTHS, money, moneyShort, pct } from '../theme';
+import Bar from './Bar';
 import { scoreVerdict } from '../budget';
+import { themed } from '../themed';
 
-const WHITE_SOFT = 'rgba(255,255,255,0.82)';
 
 // Top of Statistics: how much was spent, out of what income, and the 50/30/20 score with an explanation
 export default function StatsHero({ ov, month, onOpenScore }) {
@@ -36,15 +37,15 @@ export default function StatsHero({ ov, month, onOpenScore }) {
         Похарчено през {monthName}
         {progress.isCurrent ? ' досега' : ''}
       </Text>
-      <Money value={total} size={40} color="#fff" />
+      <Money value={total} size={40} color={colors.text} />
       <Text style={s.sub}>
         {income
-          ? `от ${money(income)} доход · ${left >= 0 ? `остават ${money(left)}` : `над дохода с ${money(-left)}`}`
+          ? `от ${moneyShort(income)} доход · ${left >= 0 ? `остават ${moneyShort(left)}` : `над дохода с ${moneyShort(-left)}`}`
           : 'Задай месечен доход, за да видиш остатъка.'}
       </Text>
       {income > 0 && (
-        <View style={s.track} accessibilityLabel={`Похарчени ${pct(total / income)} от дохода`}>
-          <View style={[s.fill, { width: `${Math.min(100, (total / income) * 100)}%` }, left < 0 && s.fillOver]} />
+        <View style={{ marginTop: 12 }}>
+          <Bar value={total / income} color={left < 0 ? colors.danger : colors.primary} track={colors.card} label={`Похарчени ${pct(total / income)} от дохода`} />
         </View>
       )}
 
@@ -75,38 +76,35 @@ export default function StatsHero({ ov, month, onOpenScore }) {
         accessibilityRole="button"
         accessibilityLabel={`${scoreTitle}. ${scoreText}`}
       >
-        <ProgressRing value={hasData && income ? ov.score / 100 : 0} size={54} stroke={6} color="#fff" track="rgba(255,255,255,0.25)">
+        <ProgressRing value={hasData && income ? ov.score / 100 : 0} size={54} stroke={6} color={colors.primary} track={colors.faint}>
           <Text style={s.ringValue}>{hasData && income ? ov.score : '—'}</Text>
         </ProgressRing>
         <View style={{ flex: 1 }}>
           <Text style={s.scoreTitle}>{scoreTitle}</Text>
           <Text style={s.scoreText}>{scoreText}</Text>
         </View>
-        {hasData && income > 0 && <Ionicons name="chevron-forward" size={18} color="#fff" />}
+        {hasData && income > 0 && <Ionicons name="chevron-forward" size={18} color={colors.muted} />}
       </Touch>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  label: { color: WHITE_SOFT, fontSize: 14, fontWeight: '600', marginTop: 18 },
-  sub: { color: WHITE_SOFT, fontSize: 13.5, marginTop: 2 },
-  track: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)', marginTop: 12, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  fillOver: { backgroundColor: '#FFD1DA' },
-  bucketsCaption: { color: WHITE_SOFT, fontSize: 12, fontWeight: '600', marginTop: 16 },
+const s = themed((c) => ({
+  label: { color: c.muted, fontSize: 14, fontWeight: '600', marginTop: 18 },
+  sub: { color: c.muted, fontSize: 13.5, marginTop: 2 },
+  bucketsCaption: { color: c.muted, fontSize: 12, fontWeight: '600', marginTop: 16 },
   buckets: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   bucket: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, flexShrink: 1 },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  bucketName: { color: WHITE_SOFT, fontSize: 12, fontWeight: '600' },
-  bucketPct: { color: '#fff', fontSize: 17, fontWeight: '800', marginTop: 1 },
-  bucketOver: { color: '#FFD1DA' },
-  bucketTarget: { color: WHITE_SOFT, fontSize: 11.5 },
+  bucketName: { color: c.muted, fontSize: 12, fontWeight: '600' },
+  bucketPct: { color: c.text, fontSize: 17, fontWeight: '800', marginTop: 1 },
+  bucketOver: { color: c.danger },
+  bucketTarget: { color: c.muted, fontSize: 11.5 },
   score: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 12,
-    borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 20, backgroundColor: c.card,
   },
-  ringValue: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  scoreTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  scoreText: { color: WHITE_SOFT, fontSize: 12, lineHeight: 16, marginTop: 2 },
-});
+  ringValue: { color: c.text, fontSize: 16, fontWeight: '800' },
+  scoreTitle: { color: c.text, fontSize: 14, fontWeight: '700' },
+  scoreText: { color: c.muted, fontSize: 12, lineHeight: 16, marginTop: 2 },
+}));

@@ -5,6 +5,7 @@ import Sheet from './ui/Sheet';
 import { colors, radius, MONTHS, moneyShort } from '../theme';
 import { monthKey } from '../budget';
 import Touch from './ui/Touch';
+import { themed } from '../themed';
 
 // Month picker: years with expenses, months with their totals
 export default function MonthPickerSheet({ visible, onClose, expenses, year, month, onSelect }) {
@@ -47,8 +48,8 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
                   }}
                   style={[s.cell, active && s.active, future && { opacity: 0.35 }]}
                 >
-                  <Text style={[s.month, active && { color: '#fff' }]}>{name.slice(0, 3)}</Text>
-                  <Text style={[s.total, active && { color: 'rgba(255,255,255,0.8)' }]}>{total ? moneyShort(total) : '—'}</Text>
+                  <Text style={[s.month, active && { color: colors.onAccent }]}>{name.slice(0, 3)}</Text>
+                  <Text style={[s.total, active && { color: colors.onAccent, opacity: 0.8 }]}>{total ? moneyShort(total) : '—'}</Text>
                 </Touch>
               );
             })}
@@ -59,7 +60,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center' },
   year: { color: colors.muted, fontSize: 13, fontWeight: '700', marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -67,4 +68,4 @@ const s = StyleSheet.create({
   active: { backgroundColor: colors.primary },
   month: { color: colors.text, fontSize: 14, fontWeight: '700' },
   total: { color: colors.muted, fontSize: 11, marginTop: 3 },
-});
+}));

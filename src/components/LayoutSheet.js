@@ -7,6 +7,7 @@ import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
 import { colors, radius } from '../theme';
 import { HOME_SECTIONS, DEFAULT_LAYOUT, moveSection, toggleSection } from '../homeLayout';
+import { themed } from '../themed';
 
 const byKey = Object.fromEntries(HOME_SECTIONS.map((x) => [x.key, x]));
 
@@ -24,10 +25,10 @@ export default function LayoutSheet({ visible, onClose, layout, onChange }) {
             <View key={key} style={[s.row, i > 0 && s.sep]}>
               <IconBadge icon={sec.icon} color={hidden ? colors.muted : colors.primary} size={38} />
               <Text style={[s.name, hidden && { color: colors.muted }]}>{sec.name}</Text>
-              <Touch haptic="select" hitSlop={6} onPress={() => onChange(toggleSection(layout, key))} style={s.btn}>
+              <Touch haptic="select" hitSlop={6} onPress={() => onChange(toggleSection(layout, key))} style={s.btn} accessibilityLabel={`${hidden ? 'Покажи' : 'Скрий'} ${sec.name}`}>
                 <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={hidden ? colors.muted : colors.text} />
               </Touch>
-              <Touch haptic="select" hitSlop={6} disabled={i === 0} onPress={() => onChange(moveSection(layout, key, -1))} style={[s.btn, i === 0 && s.off]}>
+              <Touch haptic="select" hitSlop={6} disabled={i === 0} onPress={() => onChange(moveSection(layout, key, -1))} style={[s.btn, i === 0 && s.off]} accessibilityLabel={`Премести ${sec.name} нагоре`}>
                 <Ionicons name="chevron-up" size={20} color={colors.text} />
               </Touch>
               <Touch
@@ -36,6 +37,7 @@ export default function LayoutSheet({ visible, onClose, layout, onChange }) {
                 disabled={i === layout.order.length - 1}
                 onPress={() => onChange(moveSection(layout, key, 1))}
                 style={[s.btn, i === layout.order.length - 1 && s.off]}
+                accessibilityLabel={`Премести ${sec.name} надолу`}
               >
                 <Ionicons name="chevron-down" size={20} color={colors.text} />
               </Touch>
@@ -50,7 +52,7 @@ export default function LayoutSheet({ visible, onClose, layout, onChange }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   sub: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 14 },
   card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 12, paddingVertical: 4 },
@@ -61,4 +63,4 @@ const s = StyleSheet.create({
   off: { opacity: 0.25 },
   reset: { alignSelf: 'center', marginTop: 14, padding: 8 },
   resetText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
-});
+}));

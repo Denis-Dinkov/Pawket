@@ -6,6 +6,7 @@ import Pill from './ui/Pill';
 import { colors, BUCKETS, getCategories, categoryById, money } from '../theme';
 import { sortByDateDesc } from '../budget';
 import { dayLabel, plural } from '../format';
+import { themed } from '../themed';
 
 const matches = (filter, e) => {
   if (filter === 'all') return true;
@@ -80,7 +81,7 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   chipsWrap: { marginHorizontal: -20, marginBottom: 4 },
   chips: { gap: 8, paddingHorizontal: 20, paddingVertical: 4 },
   empty: { color: colors.muted, textAlign: 'center', marginVertical: 28 },
@@ -91,4 +92,4 @@ const s = StyleSheet.create({
   groupTotal: { color: colors.muted, fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
-});
+}));

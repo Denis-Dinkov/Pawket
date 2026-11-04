@@ -9,6 +9,7 @@ import Pet from '../pet/Pet';
 import { colors, radius, money, pct } from '../theme';
 import { budgetScoreParts } from '../budget';
 import { STAGES, EXPRESSIONS, HUNGRY_AT, DAILY_XP, monthEndBonus } from '../pet/logic';
+import { themed } from '../themed';
 
 const SCALE = [
   { from: 85, key: 'ecstatic' },
@@ -68,10 +69,10 @@ function Mood({ status, advice }) {
           const active = status.expression !== 'hungry' && status.expression === x.key;
           return (
             <View key={x.key} style={[s.scaleItem, active && { backgroundColor: EXPRESSIONS[x.key].color }]}>
-              <Text style={[s.scaleLabel, active && { color: '#fff' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              <Text style={[s.scaleLabel, active && { color: colors.onAccent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {x.key === 'ecstatic' ? 'Възторг' : EXPRESSIONS[x.key].label}
               </Text>
-              <Text style={[s.scaleFrom, active && { color: '#fff' }]}>{x.from}+</Text>
+              <Text style={[s.scaleFrom, active && { color: colors.onAccent }]}>{x.from}+</Text>
             </View>
           );
         })}
@@ -243,7 +244,7 @@ export default function PetStatSheet({ stat, onClose, status, pet, advice, canFe
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   head: { alignItems: 'center', marginBottom: 8 },
   title: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 4 },
   text: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 6 },
@@ -257,9 +258,9 @@ const s = StyleSheet.create({
   tipText: { flex: 1, color: colors.text, fontSize: 13.5, lineHeight: 19 },
   scale: { flexDirection: 'row', gap: 4, marginTop: 10 },
   scaleItem: { flex: 1, backgroundColor: colors.card, borderRadius: radius.badge, paddingVertical: 8, alignItems: 'center' },
-  scaleLabel: { color: colors.text, fontSize: 10, fontWeight: '700' },
-  scaleFrom: { color: colors.muted, fontSize: 10, marginTop: 2 },
+  scaleLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  scaleFrom: { color: colors.muted, fontSize: 11, marginTop: 2 },
   stage: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
   action: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 16, paddingVertical: 14 },
-});
+}));

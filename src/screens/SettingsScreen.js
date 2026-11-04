@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Alert, Platform, StyleSheet } from 'react-native';
+import { View, ScrollView, Alert, Platform, Switch, Linking } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
@@ -13,22 +13,74 @@ import Pet from '../pet/Pet';
 import ApplePayGuideScreen from './ApplePayGuideScreen';
 import Touch from '../components/ui/Touch';
 import NewCategorySheet from '../components/NewCategorySheet';
+import Segmented from '../components/ui/Segmented';
+import Pill from '../components/ui/Pill';
+import { remindersAvailable, requestReminderPermission } from '../reminders';
+import { liveActivityAvailable } from '../widget/liveActivity';
+import { backupAvailable, shareBackup, pickBackup } from '../backup';
+import { dayLabel } from '../format';
+import { themed } from '../themed';
 
 const parseMoney = (t) => parseFloat(String(t).replace(/\s/g, '').replace(',', '.')) || 0;
 
-function confirm(title, msg, onYes) {
+function confirm(title, msg, onYes, yes = 'Изтрий') {
   if (Platform.OS === 'web') {
     if (window.confirm(`${title}\n\n${msg}`)) onYes();
     return;
   }
   Alert.alert(title, msg, [
     { text: 'Отказ', style: 'cancel' },
-    { text: 'Изтрий', style: 'destructive', onPress: onYes },
+    { text: yes, style: 'destructive', onPress: onYes },
   ]);
 }
 
 export default function SettingsScreen({ onClose, onTryApplePay }) {
-  const { incomes, pet, categories, setIncomeFrom, setPetName, addCategory, removeCategory, resetAll } = useStore();
+  const { incomes, pet, categories, settings, lastBackupAt, setIncomeFrom, setPetName, addCategory, removeCategory, resetAll, setSettings, exportData, restoreData, showToast } =
+    useStore();
+  const reminder = settings.reminder;
+  const [backupBusy, setBackupBusy] = useState(false);
+  const backupAge = lastBackupAt ? Math.floor((Date.now() - new Date(lastBackupAt)) / 86400000) : null;
+
+  const toggleReminder = async (on) => {
+    if (!on) return setSettings({ reminder: { ...reminder, enabled: false } });
+    const granted = await requestReminderPermission();
+    if (!granted) {
+      Alert.alert('Известията са изключени', 'Разреши известията за Pawket от Настройки на телефона, за да получаваш напомняне.', [
+        { text: 'Отказ', style: 'cancel' },
+        { text: 'Отвори Настройки', onPress: () => Linking.openSettings() },
+      ]);
+      return undefined;
+    }
+    setSettings({ reminder: { ...reminder, enabled: true } });
+    return undefined;
+  };
+
+  const saveBackup = async () => {
+    setBackupBusy(true);
+    try {
+      await shareBackup(exportData());
+    } catch {
+      showToast({ text: 'Архивът не се запази. Опитай пак.', icon: 'alert-circle' });
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const loadBackup = async () => {
+    try {
+      const backup = await pickBackup();
+      if (!backup) return;
+      const count = backup.data.expenses.length;
+      const when = backup.exportedAt ? dayLabel(backup.exportedAt) : 'неизвестна дата';
+      confirm('Възстановяване от архив', `Архив от ${when} с ${count} разхода. Сегашните данни ще бъдат заменени.`, () => {
+        restoreData(backup);
+        showToast({ text: 'Данните са възстановени', icon: 'checkmark-circle' });
+        onClose();
+      }, 'Възстанови');
+    } catch (e) {
+      Alert.alert('Не мога да отворя архива', e.message);
+    }
+  };
   const [newCategory, setNewCategory] = useState(false);
   const mine = categories.filter((c) => !c.archived);
   const now = new Date();
@@ -129,7 +181,8 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
                 <Text style={[s.hint, { marginTop: 0 }]}>{BUCKETS[c.bucket].label}</Text>
               </View>
               <Touch
-                hitSlop={8}
+                hitSlop={12}
+                accessibilityLabel={`Изтрий категория ${c.name}`}
                 onPress={() =>
                   confirm('Изтриване на категория', `„${c.name}“ изчезва от избора. Старите разходи в нея се запазват.`, () =>
                     removeCategory(c.id)
@@ -142,6 +195,78 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           ))
         )}
       </Card>
+
+      <Card style={{ marginTop: 14, gap: 10 }}>
+        <Text style={s.label}>Тема</Text>
+        <Segmented
+          options={[
+            { key: 'system', label: 'Като телефона' },
+            { key: 'light', label: 'Светла' },
+            { key: 'dark', label: 'Тъмна' },
+          ]}
+          value={settings.theme}
+          onChange={(theme) => setSettings({ theme })}
+        />
+      </Card>
+
+      {liveActivityAvailable() && (
+        <Card style={{ marginTop: 14 }}>
+          <View style={s.switchRow}>
+            <IconBadge icon="phone-portrait-outline" color={colors.primary} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.linkTitle}>{pet?.name} в Dynamic Island</Text>
+              <Text style={s.hint}>До камерата: кучето и колко можеш да харчиш днес. Задръж, за да видиш повече.</Text>
+            </View>
+            <Switch
+              value={settings.liveActivity !== false}
+              onValueChange={(v) => setSettings({ liveActivity: v })}
+              trackColor={{ true: colors.primary }}
+              accessibilityLabel="Чарли в Dynamic Island"
+            />
+          </View>
+        </Card>
+      )}
+
+      {remindersAvailable() && (
+        <Card style={{ marginTop: 14, gap: 10 }}>
+          <View style={s.switchRow}>
+            <IconBadge icon="notifications-outline" color={colors.primary} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.linkTitle}>Вечерно напомняне</Text>
+              <Text style={s.hint}>Само в дните без запис: „{pet?.name} е гладен — днес харчи ли нещо?“</Text>
+            </View>
+            <Switch value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel="Вечерно напомняне" />
+          </View>
+          {reminder.enabled && (
+            <Segmented
+              options={[19, 20, 21, 22].map((h) => ({ key: String(h), label: `${h}:00` }))}
+              value={String(reminder.hour)}
+              onChange={(h) => setSettings({ reminder: { ...reminder, hour: Number(h) } })}
+            />
+          )}
+        </Card>
+      )}
+
+      {backupAvailable() && (
+        <Card style={{ marginTop: 14, gap: 10 }}>
+          <View style={s.switchRow}>
+            <IconBadge icon="cloud-upload-outline" color={colors.needs} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.linkTitle}>Архив на данните</Text>
+              <Text style={[s.hint, backupAge != null && backupAge > 30 && { color: colors.danger }, backupAge == null && { color: colors.warning }]}>
+                {backupAge == null
+                  ? 'Още няма архив. Данните са само на този телефон.'
+                  : `Последен архив: ${dayLabel(lastBackupAt)}${backupAge > 30 ? ' — време е за нов' : ''}`}
+              </Text>
+            </View>
+          </View>
+          <Text style={s.hint}>Запази файла във „Файлове → iCloud Drive“ (или Google Drive). Така разходите и растежът на {pet?.name} оцеляват при смяна на телефон.</Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            <Pill icon="share-outline" label={backupBusy ? 'Подготвям…' : 'Запази архив'} variant="ink" onPress={backupBusy ? undefined : saveBackup} />
+            <Pill icon="download-outline" label="Възстанови" variant="outline" onPress={loadBackup} />
+          </View>
+        </Card>
+      )}
 
       {Platform.OS !== 'android' && (
         <Touch onPress={() => setGuide(true)}>
@@ -181,7 +306,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   container: { padding: 20, paddingBottom: 60 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
@@ -200,7 +325,8 @@ const s = StyleSheet.create({
   catName: { color: colors.text, fontSize: 15, fontWeight: '600' },
   nameInput: { fontSize: 20, fontWeight: '800', color: colors.text, paddingVertical: 4 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   linkTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 28, paddingVertical: 12 },
   dangerText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
-});
+}));

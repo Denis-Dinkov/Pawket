@@ -1,6 +1,7 @@
 // The dog's advice: rules over the expenses, no internet. No RN imports.
-import { getCategories, categoryById, money, pct, MONTHS } from '../theme';
-import { monthOverview, filterMonth, summarize, shiftMonth } from '../budget';
+import { colors, getCategories, categoryById, money, pct, MONTHS } from '../theme';
+import { monthOverview, filterMonth, summarize, shiftMonth, dailyLimit } from '../budget';
+import { pendingSpend } from '../plans';
 
 // A concrete idea for each category
 const HINTS = {
@@ -27,7 +28,7 @@ const VARIABLE = new Set(['groceries', 'transport', 'dining', 'fun']);
  * Returns a list of advice, ordered by importance:
  * { id, tone: 'warn' | 'tip' | 'praise', icon, title, text, saving? }
  */
-export function getAdvice({ expenses, incomes, incomeEntries, year, month, now = new Date(), lastFedAt }) {
+export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], year, month, now = new Date(), lastFedAt }) {
   const ov = monthOverview({ expenses, incomes, incomeEntries, year, month, now });
   const CATEGORIES = getCategories(true);
   const { income: I, byBucket, byCategory, total, progress, list } = ov;
@@ -204,13 +205,16 @@ export function getAdvice({ expenses, incomes, incomeEntries, year, month, now =
     });
   }
 
-  // Daily limit
-  const spendable = 0.8 * I - byBucket.needs - byBucket.wants;
-  if (isCurrent && daysLeft > 0 && spendable > 0) {
+  // Daily limit — the same number as on Home, the recurring payments still due already taken out
+  const pending = pendingSpend(recurring, now);
+  const daily = dailyLimit(ov, now, pending);
+  if (daily && daily.limit > 0) {
     add(20, {
       id: 'daily-limit', tone: 'tip', icon: 'calendar-outline',
-      title: `Дневният ти лимит е ${money(spendable / daysLeft)}`,
-      text: `За да спазиш 50/30/20, до края на месеца (${daysLeft} дни) можеш да харчиш средно до ${money(spendable / daysLeft)} на ден, без спестяванията.`,
+      title: `Дневният ти лимит е ${money(daily.limit)}`,
+      text: `За да спазиш 50/30/20, до края на месеца (${daysLeft} дни) можеш да харчиш средно до ${money(daily.limit)} на ден, без спестяванията${
+        pending > 0 ? ` и след предстоящите плащания (${money(pending)})` : ''
+      }.`,
     });
   }
 
@@ -230,4 +234,8 @@ function finish(tips) {
   return tips.sort((a, b) => b.priority - a.priority).map(({ priority, ...t }) => t);
 }
 
-export const TONE_COLORS = { warn: '#E5484D', tip: '#B8622A', praise: '#1FBF87' };
+export const TONE_COLORS = {
+  get warn() { return colors.danger; },
+  get tip() { return colors.primary; },
+  get praise() { return colors.savings; },
+};

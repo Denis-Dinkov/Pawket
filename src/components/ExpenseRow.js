@@ -6,6 +6,7 @@ import IconBadge from './ui/IconBadge';
 import { colors, categoryById, BUCKETS, money } from '../theme';
 import { dayLabel, timeLabel, SOURCES } from '../format';
 import Touch from './ui/Touch';
+import { themed } from '../themed';
 
 // Expense row: compact (latest 10) or detailed (all, with time and source)
 export default function ExpenseRow({ expense, onPress, onLongPress, detailed = false }) {
@@ -23,6 +24,8 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}
+      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
+      accessibilityHint="Отваря подробности. Задръж, за да изтриеш."
     >
       <IconBadge icon={cat?.icon || 'help'} color={color} size={44} />
       <View style={{ flex: 1 }}>
@@ -32,7 +35,7 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={s.amount}>−{money(expense.amount)}</Text>
         <View style={s.meta}>
-          {expense.source !== 'manual' && <Ionicons name={source.icon} size={11} color={colors.muted} />}
+          {expense.source !== 'manual' && <Ionicons name={source.icon} size={12} color={colors.muted} />}
           <Text style={s.metaText}>{detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}</Text>
         </View>
       </View>
@@ -40,11 +43,11 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   sub: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
   amount: { color: colors.text, fontSize: 15, fontWeight: '700' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   metaText: { color: colors.muted, fontSize: 11.5 },
-});
+}));

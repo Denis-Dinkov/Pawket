@@ -6,6 +6,7 @@ import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
 import { colors, BUCKETS, categoryById, money, moneyShort, pct, MONTHS } from '../theme';
 import { dayLabel, plural } from '../format';
+import { themed } from '../themed';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 
@@ -218,7 +219,7 @@ export function TopMerchants({ stats, total }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { width: '48.4%', flexGrow: 1, backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 3 },
   tileLabel: { color: colors.muted, fontSize: 12, marginTop: 6 },
@@ -234,7 +235,7 @@ const s = StyleSheet.create({
   legend: { color: colors.muted, fontSize: 12, marginTop: 8 },
   week: { flexDirection: 'row', gap: 8, height: 140 },
   weekCol: { flex: 1, alignItems: 'center', gap: 4 },
-  weekValue: { color: colors.muted, fontSize: 9.5, height: 12 },
+  weekValue: { color: colors.muted, fontSize: 11, height: 12 },
   weekTrack: { flex: 1, width: '70%', justifyContent: 'flex-end', backgroundColor: colors.bg, borderRadius: 6, overflow: 'hidden' },
   weekBar: { width: '100%', borderRadius: 6 },
   weekDay: { color: colors.text, fontSize: 12, fontWeight: '700' },
@@ -244,4 +245,4 @@ const s = StyleSheet.create({
   mName: { color: colors.text, fontSize: 15, fontWeight: '600' },
   mSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
   mTotal: { color: colors.text, fontSize: 15, fontWeight: '700' },
-});
+}));

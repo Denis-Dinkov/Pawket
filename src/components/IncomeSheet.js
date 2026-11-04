@@ -10,6 +10,7 @@ import { confirmDelete } from './ExpenseDetailSheet';
 import { colors, radius, MONTHS, money, incomeKindById } from '../theme';
 import { sortByDateDesc } from '../budget';
 import { dayLabel } from '../format';
+import { themed } from '../themed';
 
 // Income for the month: the monthly income setting + recorded income entries
 export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onDelete }) {
@@ -37,8 +38,9 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
             <Touch
               key={e.id}
               style={[s.row, s.sep]}
-              onLongPress={() => confirmDelete(e, () => onDelete(e.id), 'дохода')}
-              onPress={() => confirmDelete(e, () => onDelete(e.id), 'дохода')}
+              onLongPress={() => confirmDelete(e, () => onDelete(e.id))}
+              onPress={() => confirmDelete(e, () => onDelete(e.id))}
+              accessibilityHint="Изтрива дохода. Може да се отмени."
             >
               <IconBadge icon={k.icon} color={colors.savings} size={42} />
               <View style={{ flex: 1 }}>
@@ -55,14 +57,14 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
       {info.list.length > 0 && <Text style={s.hint}>Натисни доход, за да го изтриеш.</Text>}
 
       <Touch style={s.add} onPress={onAdd}>
-        <Ionicons name="add" size={20} color="#fff" />
+        <Ionicons name="add" size={20} color={colors.onAccent} />
         <Text style={s.addText}>Добави доход</Text>
       </Touch>
     </Sheet>
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4, marginTop: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
@@ -76,5 +78,5 @@ const s = StyleSheet.create({
     flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.savings, borderRadius: radius.pill, paddingVertical: 15, marginTop: 18,
   },
-  addText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
+  addText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+}));

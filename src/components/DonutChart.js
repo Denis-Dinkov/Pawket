@@ -3,8 +3,10 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from './ui/AppText';
 import Svg, { Circle, G } from 'react-native-svg';
 import { colors, money, moneyShort } from '../theme';
+import { themed } from '../themed';
 
 // Donut chart: segments = [{ key, value, color }]
+// segments may carry a name — VoiceOver then reads the biggest ones
 export default function DonutChart({ segments, size = 190, stroke = 22, total, label = 'общо' }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -13,7 +15,16 @@ export default function DonutChart({ segments, size = 190, stroke = 22, total, l
   let offset = 0;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`${money(total ?? sum)} ${label}. ${segments
+        .filter((x) => x.name)
+        .slice(0, 5)
+        .map((x) => `${x.name} ${Math.round((x.value / sum) * 100)}%`)
+        .join(', ')}`}
+    >
       {/* Start at the top: rotate the whole Svg instead of G (rotation/origin don't work on web) */}
       <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
         <G>
@@ -46,8 +57,8 @@ export default function DonutChart({ segments, size = 190, stroke = 22, total, l
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   total: { color: colors.text, fontSize: 22, fontWeight: '800' },
   label: { color: colors.muted, fontSize: 12 },
-});
+}));

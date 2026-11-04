@@ -4,29 +4,34 @@ A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Char
 
 ## Features
 - **Home**
+  - Charlie's room on top: the dog, a speech bubble with the most important advice, and chips for mood, fullness and level. The room shows his state too: an empty bowl when he's hungry, a dark window at night.
+  - One money card without scrolling: what's left this month, **today's limit** (the 80% for needs and wants spread over the remaining days, minus the recurring payments still due), one 50/30/20 bar with "X of Y €" per part, income and spent.
+  - Below it: the next recurring payment and a goal, this week's missions, the latest expenses. The order and visibility are set with "Подреди началото".
+  - When scrolling, the room shrinks into a header bar with the dog, so he's always visible.
   - Month picker, defaulting to the current month.
-  - How much of the income is left and ≈ €/day until the end of the month.
-  - "Income" and "Spent" cards, 50/30/20 bars.
-  - The latest 10 payments or "All", grouped by day, with filters by bucket and category.
-  - Details for every expense: where, what for, when and how it was paid. Delete.
-- **The dog** (tamagotchi)
-  - **Mood:** from the 50/30/20 score for the current month. Needs are measured against the whole month, wants against the days that have passed.
-  - **Fullness:** drops over 72 hours. Fed by logging an expense or tapping "No spending today".
-  - **Growth:** +10 XP per active day, plus a bonus for every closed month. Stages: Puppy → Young dog → Cavalier → Champion (with a crown).
-  - **Advice:** the dog suggests what to improve, e.g. the pace of wants, growth compared to last month, frequent purchases at one merchant, subscriptions, the daily limit.
-- **Statistics:** spending by category (donut), comparison with last month, per-category details, 50/30/20, "What to improve".
-- **New expense / income** (an "Expense | Income" switch; the "Save" button is pinned to the bottom)
-  - Expense: amount, merchant ("Where"), note ("What for"), date and category. The category is remembered per merchant.
-  - **Custom categories:** a "New" tile in every part of 50/30/20 (name, icon, bucket). Managed from Settings.
-  - **Income:** salary, bonus, freelance, gift, refund, other. Salary replaces the monthly income from Settings (it isn't counted twice); the rest are added to the month's budget. Tap the "Income" card on Home for the list.
-- **Haptics** on button taps, category selection, switches, saving and deleting.
+- **New expense / income**
+  - The app's own keypad: the amount first, then the most used categories (one tap), "Всички" for the full 50/30/20 grid, "Where", "What for", date.
+  - "Всеки месец" turns the expense into a recurring payment.
+  - **Editing:** "Редактирай" in an expense's details opens the same screen.
+  - **Undo:** deleting is immediate, and a toast offers "Отмени" for 5 seconds.
+  - Custom categories, income kinds (salary replaces the monthly income; the rest are added) as before.
+- **Plans** (tab)
+  - **Savings goals:** name, icon, amount and an optional deadline (with "≈ X € per month"). "Сложи пари" books an expense in "Savings", so it counts towards the 20%.
+  - **Recurring payments:** booked automatically on their day each month (the last day in shorter months). Change the amount or day, pause or remove.
+- **Charlie** (tab)
+  - The streak (days with an entry) for this week, three weekly missions (+25 XP each), rewards (collar, bandana, bow tie, party hat, sunglasses) unlocked by habits and worn by the dog, growth stages, advice.
+  - **Year in review:** the best month, average score, top category and merchant, most expensive month, longest streak. Also in "Отчети".
+- **The dog** (tamagotchi): mood from the 50/30/20 score, fullness that drops over 72 hours, XP per active day and per closed month, stages Puppy → Young dog → Cavalier → Champion.
+- **Reports:** spending by category (donut), comparison with last month, days, weekdays, merchants, 50/30/20, "What to improve".
+- **Settings:** monthly income, the dog's name, custom categories, theme (system / light / dark), the evening reminder, backup.
+- **Evening reminder:** a local notification at 19–22 h, only on days without an entry, with "Без разходи днес" and "Запиши разход" buttons. Permission is asked when it's turned on.
+- **Backup:** "Запази архив" shares a JSON file (save it to Files → iCloud Drive or Google Drive); "Възстанови" reads it back.
+- **Accessibility:** all text has at least 4.5:1 contrast in both themes, the minimum font size is 11 pt, text follows the system size up to 200%, VoiceOver labels on bars, charts, rows and the dog, Reduce Motion stops the dog's animation.
 - **Apple Pay → entry:** a Shortcuts automation opens "New expense" with the amount and merchant filled in. A guide is in Settings.
-- **Widgets:**
-  - iOS home screen: small and medium (remaining budget, the dog, mood, 50/30/20 bars, "+" button).
-  - iOS lock screen: circular (remaining as a gauge), rectangular (dog, mood, remaining, €/day) and an inline line above the clock.
-  - Android home screen: remaining budget, the dog, bars and a "+" button (Android has no lock screen widgets).
+- **Widgets:** iOS home and lock screen, Android home screen.
+- **Dynamic Island (Live Activity):** Charlie next to the camera and what's left for today; the amount rolls to the new value after every entry. Long press shows his mood, a bar of today's spending and what's left of the month. Also on the Lock Screen. A new one starts each day when the app opens; it can be turned off in Settings.
 - **Quick action:** long-press the app icon → "New expense".
-- **Data:** stored locally (AsyncStorage). Old v1 data is migrated automatically.
+- **Data:** stored locally (AsyncStorage). Old data is migrated automatically.
 
 ## Getting started
 
@@ -94,19 +99,21 @@ pawket://add?source=applepay&amount=[Сума]&merchant=[Търговец]
 
 ## Structure
 ```
-App.js                        tabs, modals, deep links, widget sync
+App.js                        tabs, theme (light/dark), modals, deep links, reminders, widget + Live Activity sync
 index.js                      entry point + Android widget task handler
-src/theme.js                  design tokens, categories, money formatting
-src/budget.js                 monthly summaries, 50/30/20 score (budgetScore)
-src/store.js                  v2 data + migration from v1, actions
-src/deeplink.js               pawket://add and amount parsing
-src/pet/logic.js              mood, fullness, growth, closing months
-src/pet/advice.js             the dog's advice
-src/pet/petShapes.js, Pet.js  the SVG dog (+ SVG string for the Android widget and the icon)
-src/screens/                  Home, Statistics, New expense, Settings, Onboarding, Apple Pay guide
-src/components/               lists, sheets, PetCard, donut chart, UI primitives (ui/)
-src/widget/                   widget data, iOS (expo-widgets), Android (react-native-android-widget)
-plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the unused push entitlement)
+src/theme.js                  light/dark palettes, categories, money formatting
+src/themed.js                 style sheets that follow the live palette
+src/motion.js                 shared animation timings, rolling numbers, Reduce Motion
+src/budget.js                 monthly summaries, 50/30/20 score, today's limit
+src/plans.js                  recurring payments, goals, sinking funds, emergency fund, wishlist, forecast
+src/store.js                  saved data + migration, actions, undo, weekly missions
+src/reminders.js, backup.js   evening notification, backup file
+src/yearReview.js             the year in review
+src/pet/                      the dog: logic, advice, speech lines, missions and rewards, SVG shapes
+src/screens/                  Home, Reports, Plans, Charlie, New expense, Settings, Onboarding, Apple Pay guide
+src/components/               the room, sheets, lists, toast, charts, UI primitives (ui/)
+src/widget/                   widget data, iOS widget + Live Activity (expo-widgets), Android widget
+plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the push entitlement)
 ```
 
 ### Automatic reinstall

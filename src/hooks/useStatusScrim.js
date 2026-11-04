@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
+import { themed } from '../themed';
 
 // When the white sheet reaches the clock, a strip in the header color appears under the status bar.
 // Otherwise content scrolls under the clock, and iOS darkens the clock and keeps it dark even over the header.
@@ -29,9 +30,10 @@ export default function useStatusScrim(lead = 0) {
   return { onScroll, onSheetLayout, overlay };
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   scrim: {
-    position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.heroDeep,
-    shadowColor: colors.heroDeep, shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    // The light room color of the headers, so the clock stays readable over it
+    position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.roomFrom,
+    shadowColor: '#4A2A14', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
-});
+}));

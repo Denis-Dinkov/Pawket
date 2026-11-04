@@ -1,110 +1,222 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Keyboard, Platform, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, ScrollView, Keyboard, Platform, Switch } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, normalizeMerchant } from '../store';
-import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, shadow } from '../theme';
+import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint } from '../theme';
 import { getIncome } from '../budget';
-import { cleanAmountInput } from '../format';
-import { successFeedback } from '../haptics';
+import { goalProgress } from '../plans';
+import { successFeedback, feedback } from '../haptics';
 import IconBadge from '../components/ui/IconBadge';
 import Pill from '../components/ui/Pill';
 import Segmented from '../components/ui/Segmented';
 import Touch from '../components/ui/Touch';
 import NewCategorySheet from '../components/NewCategorySheet';
 import useKeyboardHeight from '../hooks/useKeyboardHeight';
+import { themed } from '../themed';
 
 const DAYS = ['Днес', 'Вчера', 'Преди 2 дни'];
 const MODES = [
   { key: 'expense', label: 'Разход' },
   { key: 'income', label: 'Доход' },
 ];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'del'];
+const QUICK = 6;
+
+// Typing on the keypad: digits, one comma, at most 2 decimals and 7 integer digits
+function press(amount, key) {
+  if (key === 'del') return amount.slice(0, -1);
+  if (key === ',') return amount.includes(',') ? amount : `${amount || '0'},`;
+  const [int, dec] = amount.split(',');
+  if (dec != null) return dec.length >= 2 ? amount : amount + key;
+  if (int === '0') return key;
+  return int.length >= 7 ? amount : amount + key;
+}
+
+const daysAgoOf = (iso) => {
+  const d = new Date(iso);
+  const today = new Date();
+  const diff = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+  return diff;
+};
 
 /**
- * New expense or income. prefill = { mode, amount, merchant, source } comes from Apple Pay, the widget or Home.
- * For an expense: if a category is remembered for the merchant, it's preselected.
- * The "Save" button is pinned to the bottom and always visible.
+ * New expense or income, or editing an expense (prefill.edit).
+ * The amount comes first, typed on the app's own keypad; the categories used most often are one tap away.
+ * prefill = { mode, amount, merchant, source } comes from Apple Pay, the widget or Home.
  */
 export default function AddScreen({ onDone, prefill = {} }) {
-  const { addExpense, addIncome, addCategory, merchants, incomes } = useStore();
+  const { addExpense, updateExpense, addIncome, addCategory, merchants, incomes, expenses, goals, contributeGoal, showToast, addWish } = useStore();
+  const editing = prefill.edit || null;
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
   const [mode, setMode] = useState(prefill.mode === 'income' ? 'income' : 'expense');
-  const [amount, setAmount] = useState(prefill.amount ? prefill.amount.toFixed(2).replace('.', ',') : '');
-  const [picked, setPicked] = useState(null);
+  const initialAmount = editing ? editing.amount : prefill.amount;
+  // 42.8 → "42,80", 2200 → "2200"
+  const [amount, setAmount] = useState(
+    initialAmount ? (Number.isInteger(initialAmount) ? String(initialAmount) : initialAmount.toFixed(2).replace('.', ',')) : ''
+  );
+  const [picked, setPicked] = useState(editing?.categoryId || prefill.categoryId || null);
   const [kind, setKind] = useState('bonus');
-  const [merchant, setMerchant] = useState(prefill.merchant || '');
-  const [note, setNote] = useState('');
-  const [daysAgo, setDaysAgo] = useState(0);
+  const [merchant, setMerchant] = useState(editing?.merchant ?? prefill.merchant ?? '');
+  const [note, setNote] = useState(editing?.note || prefill.note || '');
+  const [daysAgo, setDaysAgo] = useState(editing ? daysAgoOf(editing.date) : 0);
+  const [repeat, setRepeat] = useState(false);
+  const [allCats, setAllCats] = useState(false);
+  // The keypad folds away after a category is picked, so the fields and the button are in view
+  const [padOpen, setPadOpen] = useState(!(initialAmount > 0));
   const [newCategoryFor, setNewCategoryFor] = useState(null); // bucket or null
 
   const isIncome = mode === 'income';
   const remembered = merchants[normalizeMerchant(merchant)];
   const rememberedOk = remembered && categoryById(remembered) && !categoryById(remembered).archived;
   const categoryId = picked || (rememberedOk ? remembered : null);
-  const value = parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
+  const value = parseFloat(amount.replace(',', '.'));
   const valid = value > 0 && (isIncome || !!categoryId);
   const now = new Date();
   const baseIncome = getIncome(incomes, now.getFullYear(), now.getMonth());
 
+  // Quick categories: the remembered one first, then the most used in the last 60 days
+  const quick = useMemo(() => {
+    const since = Date.now() - 60 * 86400000;
+    const counts = {};
+    expenses.forEach((e) => {
+      if (new Date(e.date) >= since && !e.goalId) counts[e.categoryId] = (counts[e.categoryId] || 0) + 1;
+    });
+    const active = getCategories();
+    const ranked = [...active].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
+    // Only the remembered category jumps to the front; picking one doesn't reorder the row under the finger
+    const first = [rememberedOk ? remembered : null, editing?.categoryId, prefill.categoryId, ...ranked.map((c) => c.id)].filter(Boolean);
+    return [...new Set(first)].map(categoryById).filter((c) => c && !c.archived).slice(0, QUICK);
+  }, [expenses, rememberedOk, remembered]);
+
   const save = () => {
     if (!valid) return;
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
+    const d = editing && daysAgo === daysAgoOf(editing.date) ? new Date(editing.date) : new Date();
+    if (!(editing && daysAgo === daysAgoOf(editing.date))) d.setDate(d.getDate() - daysAgo);
     const common = { amount: Math.round(value * 100) / 100, note: note.trim(), date: d.toISOString() };
-    if (isIncome) {
+    if (editing) {
+      updateExpense(editing.id, { ...common, categoryId, merchant });
+    } else if (isIncome) {
       addIncome({ ...common, kind });
+      if (kind === 'salary') payYourselfFirst(common.amount);
     } else {
-      addExpense({ ...common, categoryId, merchant: merchant.trim(), source: prefill.source || 'manual' });
+      addExpense({ ...common, categoryId, merchant: merchant.trim(), source: prefill.source || 'manual' }, { repeat });
     }
     successFeedback();
     onDone({ ...common, type: mode });
   };
 
+  // Pay yourself first: right after a salary, offer to put 20% into a goal (the emergency fund first)
+  const payYourselfFirst = (salary) => {
+    const open = goals.filter((g) => !goalProgress(g, expenses).done);
+    const goal = open.find((g) => g.kind === 'emergency') || open[0];
+    const part = Math.round(salary * 0.2);
+    if (!goal) {
+      setTimeout(() => showToast({ text: `Заплатата е записана. Създай цел в „Планове“ и отделяй 20% (${money(part)}) веднага.`, icon: 'flag-outline' }), 500);
+      return;
+    }
+    setTimeout(
+      () =>
+        showToast({
+          text: `Първо плати на себе си: ${money(part)} към „${goal.name}“?`,
+          icon: 'wallet-outline',
+          actionLabel: 'Отдели',
+          onAction: () => contributeGoal(goal, part),
+        }),
+      500
+    );
+  };
+
+  // A pricey want can wait 48 hours on the wishlist instead
+  const canWait = !isIncome && !editing && value >= 50 && categoryById(categoryId)?.bucket === 'wants';
+  const wait = () => {
+    addWish({ name: merchant.trim() || note.trim() || categoryById(categoryId).name, amount: Math.round(value * 100) / 100, categoryId });
+    onDone(null);
+  };
+
   const hint = !(value > 0) ? 'Въведи сума' : 'Избери категория';
+  const accent = isIncome ? colors.savings : colors.text;
+
+  const CategoryTile = ({ c, fill }) => {
+    const b = BUCKETS[c.bucket];
+    const active = c.id === categoryId;
+    return (
+      <Touch
+        haptic="select"
+        onPress={() => {
+          Keyboard.dismiss();
+          setPicked(c.id);
+          if (value > 0) setPadOpen(false);
+        }}
+        style={[s.cat, fill && s.catFill, active && { borderColor: b.color, backgroundColor: tint(b.color, 0.1) }]}
+        accessibilityLabel={`${c.name}, ${b.label}`}
+        accessibilityState={{ selected: active }}
+      >
+        <IconBadge icon={c.icon} color={b.color} size={34} solid={active} />
+        <Text style={[s.catText, active && { fontWeight: '700' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {c.name}
+        </Text>
+      </Touch>
+    );
+  };
 
   return (
     // The sheet reaches the bottom edge of the screen, so exactly the keyboard height is covered
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: keyboard }}>
+      <View style={s.header}>
+        <Touch onPress={() => onDone(null)} hitSlop={12} style={s.headerSide}>
+          <Text style={s.cancel}>Отказ</Text>
+        </Touch>
+        {editing ? (
+          <Text style={s.title}>Редакция</Text>
+        ) : (
+          <Segmented options={MODES} value={mode} onChange={setMode} style={{ width: 190 }} />
+        )}
+        <View style={s.headerSide} />
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={s.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
-        <View style={s.header}>
-          <Touch onPress={() => onDone(null)} hitSlop={12}>
-            <Text style={s.cancel}>Отказ</Text>
-          </Touch>
-          <Segmented options={MODES} value={mode} onChange={setMode} style={{ width: 190 }} />
-          <View style={{ width: 50 }} />
-        </View>
-
-        {prefill.source === 'applepay' && !isIncome && (
-          <Pill small variant="ink" icon="logo-apple" label="Плащане с Apple Pay" style={{ alignSelf: 'center', marginTop: 16 }} />
+        {prefill.source === 'applepay' && !isIncome && !editing && (
+          <Pill small variant="ink" icon="logo-apple" label="Плащане с Apple Pay" style={{ alignSelf: 'center', marginBottom: 6 }} />
         )}
 
-        <View style={s.amountWrap}>
-          {isIncome && <Text style={[s.currency, { color: colors.savings, marginLeft: 0, marginRight: 4 }]}>+</Text>}
-          <TextInput
-            value={amount}
-            onChangeText={(t) => setAmount(cleanAmountInput(t))}
-            maxLength={10}
-            placeholder="0,00"
-            placeholderTextColor="#DCCDBF"
-            keyboardType="decimal-pad"
-            // The width follows the text so the "€" sits right next to the amount
-            style={[s.amount, isIncome && { color: colors.savings }, { width: Math.min(280, (amount.length || 4) * 31 + 12) }]}
-            autoFocus={!prefill.amount}
-          />
-          <Text style={s.currency}>€</Text>
-        </View>
+        <Touch
+          haptic="select"
+          pressScale={1}
+          onPress={() => {
+            Keyboard.dismiss();
+            setPadOpen(true);
+          }}
+          style={s.amountWrap}
+          accessibilityLabel={`Сума: ${amount || '0'} евро`}
+          accessibilityHint={padOpen ? undefined : 'Отваря клавиатурата за сумата'}
+          accessibilityLiveRegion="polite"
+        >
+          {isIncome && <Text style={[s.amount, { color: colors.savings }]}>+</Text>}
+          <Text style={[s.amount, { color: amount ? accent : colors.placeholder }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.2}>
+            {amount || '0'}
+          </Text>
+          <Text style={s.currency} maxFontSizeMultiplier={1.2}>€</Text>
+          {!padOpen && <Ionicons name="pencil" size={16} color={colors.muted} style={{ marginLeft: 4 }} />}
+        </Touch>
+        {!isIncome && rememberedOk && !picked && merchant.trim() !== '' && (
+          <Text style={s.remembered}>
+            {merchant.trim()} → {categoryById(remembered).name} (запомнено)
+          </Text>
+        )}
 
         <View style={s.chips}>
           {DAYS.map((l, i) => (
             <Pill key={l} haptic="select" small label={l} variant={daysAgo === i ? 'active' : 'outline'} onPress={() => setDaysAgo(i)} />
           ))}
+          {daysAgo > 2 && <Pill small label={`Преди ${daysAgo} дни`} variant="active" />}
         </View>
 
         <View style={s.fields}>
@@ -117,6 +229,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
                 placeholder="Къде? (магазин, заведение)"
                 placeholderTextColor={colors.muted}
                 style={s.input}
+                returnKeyType="next"
+                accessibilityLabel="Къде"
               />
             </View>
           )}
@@ -128,13 +242,32 @@ export default function AddScreen({ onDone, prefill = {} }) {
               placeholder={isIncome ? 'Бележка (напр. от кого)' : 'За какво? (бележка)'}
               placeholderTextColor={colors.muted}
               style={s.input}
+              returnKeyType="done"
+              accessibilityLabel="Бележка"
             />
           </View>
+          {!isIncome && !editing && (
+            <View style={[s.field, s.sep]}>
+              <Ionicons name="repeat" size={18} color={colors.muted} />
+              <Text style={[s.input, { color: colors.text }]}>Всеки месец</Text>
+              <Switch
+                value={repeat}
+                onValueChange={(v) => {
+                  feedback('select');
+                  setRepeat(v);
+                }}
+                trackColor={{ true: colors.primary }}
+                accessibilityLabel="Повтаря се всеки месец"
+              />
+            </View>
+          )}
         </View>
-
+        {repeat && !isIncome && (
+          <Text style={s.incomeHint}>Всеки месец на {new Date(Date.now() - daysAgo * 86400000).getDate()}-о число се записва сам. Управлява се от „Планове“.</Text>
+        )}
         {isIncome ? (
           <>
-            <Text style={[s.bucketLabel, { marginTop: 20, marginBottom: 10 }]}>Вид доход</Text>
+            <Text style={[s.bucketLabel, { marginTop: 18, marginBottom: 10 }]}>Вид доход</Text>
             <View style={s.grid}>
               {INCOME_KINDS.map((k) => {
                 const active = k.id === kind;
@@ -142,13 +275,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
                   <Touch
                     key={k.id}
                     haptic="select"
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setKind(k.id);
-                    }}
-                    style={[s.cat, active && { borderColor: colors.savings, backgroundColor: tint(colors.savings, 0.08) }]}
+                    onPress={() => setKind(k.id)}
+                    style={[s.cat, active && { borderColor: colors.savings, backgroundColor: tint(colors.savings, 0.1) }]}
+                    accessibilityState={{ selected: active }}
                   >
-                    <IconBadge icon={k.icon} color={colors.savings} size={38} solid={active} />
+                    <IconBadge icon={k.icon} color={colors.savings} size={34} solid={active} />
                     <Text style={[s.catText, active && { fontWeight: '700' }]} numberOfLines={1}>
                       {k.name}
                     </Text>
@@ -162,15 +293,10 @@ export default function AddScreen({ onDone, prefill = {} }) {
                 : 'Добавя се към месечния доход и увеличава бюджета за месеца по 50/30/20.'}
             </Text>
           </>
-        ) : (
+        ) : allCats ? (
           <>
-            {rememberedOk && !picked && (
-              <Text style={s.remembered}>
-                Запомнена категория за „{merchant.trim()}“: {categoryById(remembered).name}
-              </Text>
-            )}
             {Object.entries(BUCKETS).map(([bucket, b]) => (
-              <View key={bucket} style={{ marginTop: 20 }}>
+              <View key={bucket} style={{ marginTop: 16 }}>
                 <View style={s.bucketRow}>
                   <View style={[s.dot, { backgroundColor: b.color }]} />
                   <Text style={s.bucketLabel}>
@@ -180,46 +306,75 @@ export default function AddScreen({ onDone, prefill = {} }) {
                 <View style={s.grid}>
                   {getCategories()
                     .filter((c) => c.bucket === bucket)
-                    .map((c) => {
-                      const active = c.id === categoryId;
-                      return (
-                        <Touch
-                          haptic="select"
-                          key={c.id}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setPicked(c.id);
-                          }}
-                          style={[s.cat, active && { borderColor: b.color, backgroundColor: tint(b.color, 0.08) }]}
-                        >
-                          <IconBadge icon={c.icon} color={b.color} size={38} solid={active} />
-                          <Text style={[s.catText, active && { fontWeight: '700' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                            {c.name}
-                          </Text>
-                        </Touch>
-                      );
-                    })}
-                  <Touch onPress={() => setNewCategoryFor(bucket)} style={[s.cat, s.newCat]}>
-                    <Ionicons name="add" size={24} color={b.color} />
+                    .map((c) => (
+                      <CategoryTile key={c.id} c={c} />
+                    ))}
+                  <Touch onPress={() => setNewCategoryFor(bucket)} style={[s.cat, s.newCat]} accessibilityLabel={`Нова категория в ${b.label}`}>
+                    <Ionicons name="add" size={22} color={b.color} />
                     <Text style={[s.catText, { color: b.color, fontWeight: '700' }]}>Нова</Text>
                   </Touch>
                 </View>
               </View>
             ))}
+            <Pill small label="По-малко" icon="chevron-up" variant="outline" style={{ alignSelf: 'center', marginTop: 12 }} onPress={() => setAllCats(false)} />
           </>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14, marginHorizontal: -20 }} contentContainerStyle={s.quickRow}>
+            {quick.map((c) => (
+              <View key={c.id} style={s.quickCell}>
+                <CategoryTile c={c} fill />
+              </View>
+            ))}
+            <View style={s.quickCell}>
+              <Touch onPress={() => setAllCats(true)} style={[s.cat, s.newCat, s.catFill]} accessibilityLabel="Всички категории">
+                <Ionicons name="grid-outline" size={20} color={colors.primary} />
+                <Text style={[s.catText, { color: colors.primary, fontWeight: '700' }]}>Всички</Text>
+              </Touch>
+            </View>
+          </ScrollView>
         )}
+
       </ScrollView>
 
-      {/* Pinned button — always visible, including above the keyboard */}
+      {/* The keypad and the pinned button; the system keyboard takes their place while a text field is focused */}
       <View style={[s.footer, { paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 12) }]}>
+        {!keyboard && padOpen && (
+          <View style={s.pad}>
+            {KEYS.map((k) => (
+              <Touch
+                key={k}
+                haptic="select"
+                style={({ pressed }) => [s.key, pressed && { backgroundColor: colors.faint }]}
+                onPress={() => setAmount((a) => press(a, k))}
+                onLongPress={k === 'del' ? () => setAmount('') : undefined}
+                accessibilityLabel={k === 'del' ? 'Изтрий цифра' : k === ',' ? 'Запетая' : k}
+              >
+                {k === 'del' ? (
+                  <Ionicons name="backspace-outline" size={24} color={colors.text} />
+                ) : (
+                  <Text style={s.keyText} maxFontSizeMultiplier={1.3}>{k}</Text>
+                )}
+              </Touch>
+            ))}
+          </View>
+        )}
+        {canWait && (
+          <Touch haptic="select" style={s.waitBtn} onPress={wait} accessibilityHint="Записва го в Желания за 48 часа вместо като разход">
+            <Ionicons name="hourglass-outline" size={18} color={colors.wants} />
+            <Text style={s.waitText}>Не бързай: отложи за 48 часа</Text>
+          </Touch>
+        )}
         <Touch
           haptic={false}
           onPress={save}
           disabled={!valid}
-          style={[s.save, isIncome && { backgroundColor: colors.savings }, !valid && { opacity: 0.35 }]}
+          style={[s.save, isIncome && { backgroundColor: colors.savings }, !valid && { opacity: 0.4 }]}
+          accessibilityState={{ disabled: !valid }}
         >
-          <Ionicons name="checkmark" size={20} color="#fff" />
-          <Text style={s.saveText}>{valid ? `Запази · ${isIncome ? '+' : ''}${money(value)}` : hint}</Text>
+          <Ionicons name="checkmark" size={20} color={colors.onAccent} />
+          <Text style={s.saveText}>
+            {valid ? `${editing ? 'Запази промените' : 'Запази'} · ${isIncome ? '+' : ''}${money(value)}` : hint}
+          </Text>
         </Touch>
       </View>
 
@@ -236,37 +391,45 @@ export default function AddScreen({ onDone, prefill = {} }) {
   );
 }
 
-const s = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 30 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cancel: { color: colors.muted, fontSize: 15, width: 50 },
-  amountWrap: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginTop: 24 },
-  amount: { fontSize: 54, fontWeight: '800', color: colors.text, textAlign: 'center', letterSpacing: -1.5, padding: 0 },
-  currency: { fontSize: 30, color: colors.muted, marginLeft: 6, fontWeight: '700' },
-  chips: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 14 },
-  fields: { backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16, marginTop: 22 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
-  input: { flex: 1, minWidth: 0, paddingVertical: 15, fontSize: 15, color: colors.text },
-  remembered: { color: colors.primary, fontSize: 12.5, marginTop: 8, marginLeft: 6, fontWeight: '600' },
-  incomeHint: { color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 12, marginHorizontal: 4 },
+const s = themed((c) => ({
+  container: { paddingHorizontal: 20, paddingBottom: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  headerSide: { width: 60, minHeight: 44, justifyContent: 'center' },
+  title: { color: c.text, fontSize: 16, fontWeight: '700' },
+  cancel: { color: c.primary, fontSize: 15, fontWeight: '600' },
+  amountWrap: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginTop: 8, gap: 4 },
+  amount: { fontSize: 52, fontWeight: '800', letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+  currency: { fontSize: 28, color: c.muted, fontWeight: '700' },
+  chips: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  remembered: { color: c.primary, fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  fields: { backgroundColor: c.card, borderRadius: radius.card, paddingHorizontal: 16, marginTop: 16 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50 },
+  sep: { borderTopWidth: 1, borderColor: c.faint },
+  input: { flex: 1, minWidth: 0, paddingVertical: 13, fontSize: 15, color: c.text },
+  incomeHint: { color: c.muted, fontSize: 13, lineHeight: 18, marginTop: 10, marginHorizontal: 4 },
   bucketRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  bucketLabel: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  bucketLabel: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  quickRow: { paddingHorizontal: 20, gap: 8 },
+  quickCell: { width: 84 },
+  catFill: { width: '100%', maxWidth: '100%' },
   cat: {
-    width: '22.6%', aspectRatio: 0.95, borderRadius: 20, borderWidth: 1.5, borderColor: 'transparent',
-    backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 4,
+    width: '23%', flexGrow: 1, maxWidth: '24%', minHeight: 74, borderRadius: 18, borderWidth: 1.5, borderColor: 'transparent',
+    backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 5, padding: 5,
   },
-  newCat: { backgroundColor: 'transparent', borderColor: colors.faint, borderStyle: 'dashed' },
-  catText: { fontSize: 10.5, color: colors.text, letterSpacing: -0.2, alignSelf: 'stretch', textAlign: 'center' },
-  footer: {
-    paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.bg,
-    ...shadow, shadowOffset: { width: 0, height: -4 },
-  },
+  newCat: { backgroundColor: 'transparent', borderColor: c.faint, borderStyle: 'dashed' },
+  catText: { fontSize: 11.5, color: c.text, alignSelf: 'stretch', textAlign: 'center' },
+  footer: { paddingHorizontal: 12, paddingTop: 8, backgroundColor: c.bg, borderTopWidth: 1, borderColor: c.faint, gap: 8 },
+  pad: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  // Three columns: 31% each plus the two 6 px gaps fit on every phone width
+  key: { width: '31%', flexGrow: 1, height: 46, borderRadius: 14, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' },
+  keyText: { color: c.text, fontSize: 22, fontWeight: '600' },
   save: {
-    flexDirection: 'row', gap: 8, backgroundColor: colors.ink, borderRadius: radius.pill,
-    paddingVertical: 17, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 8, backgroundColor: c.ink, borderRadius: radius.pill,
+    minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16,
   },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
+  saveText: { color: c.onAccent, fontSize: 16, fontWeight: '700' },
+  waitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.wants },
+  waitText: { color: c.wants, fontSize: 14.5, fontWeight: '700' },
+}));

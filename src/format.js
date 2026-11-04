@@ -21,6 +21,8 @@ export const SOURCES = {
   manual: { label: 'Ръчно', icon: 'create-outline' },
   applepay: { label: 'Apple Pay', icon: 'logo-apple' },
   widget: { label: 'Уиджет', icon: 'apps-outline' },
+  recurring: { label: 'Повтарящо се', icon: 'repeat' },
+  goal: { label: 'Към цел', icon: 'flag-outline' },
 };
 
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

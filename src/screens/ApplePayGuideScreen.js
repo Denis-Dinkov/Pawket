@@ -9,6 +9,7 @@ import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
 import Pill from '../components/ui/Pill';
 import Touch from '../components/ui/Touch';
+import { themed } from '../themed';
 
 const STEPS = [
   ['Отвори „Команди“', 'Приложението Shortcuts → раздел „Автоматизация“ → бутон „+“.'],
@@ -86,7 +87,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   container: { padding: 20, paddingBottom: 60 },
   header: { flexDirection: 'row' },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2 },
@@ -100,10 +101,11 @@ const s = StyleSheet.create({
   stepTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   stepText: { color: colors.muted, fontSize: 13.5, lineHeight: 19, marginTop: 2 },
   section: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 10 },
-  template: { backgroundColor: colors.ink, borderRadius: radius.card, padding: 16, gap: 12 },
+  // A code block stays dark in both themes
+  template: { backgroundColor: '#2A1E16', borderRadius: radius.card, padding: 16, gap: 12 },
   code: { color: '#F3E6D8', fontFamily: 'Courier', fontSize: 13, lineHeight: 19 },
   copy: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
   copyText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   notes: { marginTop: 20, gap: 4 },
   note: { color: colors.muted, fontSize: 12.5, lineHeight: 18 },
-});
+}));

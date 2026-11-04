@@ -1,5 +1,6 @@
 // Tamagotchi logic for the dog: mood, fullness, growth. No RN imports.
 import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview } from '../budget';
+import { colors } from '../theme';
 
 
 export const STAGES = [
@@ -15,13 +16,14 @@ const STARVE_HOURS = 72;
 const MIN_EXPENSES_FOR_BONUS = 3;
 
 export const EXPRESSIONS = {
-  ecstatic: { label: 'Във възторг', color: '#1FBF87' },
-  happy: { label: 'Щастлив', color: '#1FBF87' },
-  worried: { label: 'Притеснен', color: '#F5A524' },
-  sad: { label: 'Тъжен', color: '#EF6C3A' },
-  crying: { label: 'Плаче', color: '#E5484D' },
-  hungry: { label: 'Гладен', color: '#F5A524' },
-  sleeping: { label: 'Спи', color: '#958779' },
+  // color is a getter so it follows the live palette (light / dark); every one is readable as text
+  ecstatic: { label: 'Във възторг', emoji: '🤩', get color() { return colors.savings; } },
+  happy: { label: 'Щастлив', emoji: '😊', get color() { return colors.savings; } },
+  worried: { label: 'Притеснен', emoji: '😟', get color() { return colors.warning; } },
+  sad: { label: 'Тъжен', emoji: '😢', get color() { return colors.orange; } },
+  crying: { label: 'Плаче', emoji: '😭', get color() { return colors.danger; } },
+  hungry: { label: 'Гладен', emoji: '🦴', get color() { return colors.warning; } },
+  sleeping: { label: 'Спи', emoji: '💤', get color() { return colors.muted; } },
 };
 
 export const dayKey = (d) => {
@@ -82,7 +84,9 @@ export function feedPet(pet, now = new Date()) {
   if (!pet) return pet;
   const today = dayKey(now);
   const gain = pet.lastActiveDay === today ? 0 : DAILY_XP;
-  return { ...pet, lastFedAt: now.toISOString(), lastActiveDay: today, xp: (pet.xp || 0) + gain };
+  // The active days feed the streak; the last ~4 months are enough
+  const activeDays = (pet.activeDays || []).includes(today) ? pet.activeDays || [] : [...(pet.activeDays || []), today].slice(-120);
+  return { ...pet, lastFedAt: now.toISOString(), lastActiveDay: today, activeDays, xp: (pet.xp || 0) + gain };
 }
 
 /**

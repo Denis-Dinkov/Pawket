@@ -18,6 +18,10 @@ export const setPetImages = (value) => {
   petImages = value;
 };
 
+// The dog's picture for a stage and mood, once PetSnapshots has written it to the shared folder
+export const getPetImagePath = (stageKey, expression) =>
+  petImages && petImages.stageKey === stageKey ? `${petImages.dir}/pet-${stageKey}-${expression}.png` : '';
+
 export function pushToNativeWidget(data) {
   if (!BudgetWidget) return;
   const entries = buildWidgetTimeline(data).map(({ date, props }) => ({
