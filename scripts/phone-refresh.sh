@@ -52,10 +52,16 @@ fi
 if [[ -n "$reason" ]]; then
   log "rebuilding: $reason"
   # Remove the nearly expired profile so Xcode asks Apple for a fresh 7-day one
+  # (and the widget extension's profile with it, which expires at the same time)
   if [[ -n "$profile_file" ]] && (( seconds_left < 3 * 86400 )); then
     rm -f "$profile_file"
+    for f in "$PROFILES"/*.mobileprovision(N); do
+      appid=$(security cms -D -i "$f" 2>/dev/null | plutil -extract Entitlements.application-identifier raw -o - - 2>/dev/null) || continue
+      [[ "$appid" == *".$BUNDLE_ID".* ]] && rm -f "$f"
+    done
   fi
-  if [[ ! -d ios || app.json -nt ios/Pawket.xcodeproj/project.pbxproj || package.json -nt ios/Podfile.lock ]]; then
+  # app.config.js decides which native parts are built (e.g. the widget), so it counts too
+  if [[ ! -d ios || app.json -nt ios/Pawket.xcodeproj/project.pbxproj || app.config.js -nt ios/Pawket.xcodeproj/project.pbxproj || package.json -nt ios/Podfile.lock ]]; then
     log "regenerating ios/"
     npx expo prebuild --platform ios --clean
   fi
@@ -68,7 +74,8 @@ else
   log "build up to date, profile valid for $(( seconds_left / 86400 )) more days"
 fi
 
-# Paired phones on the same network or cable; locked phones count too, since installing works without unlocking
+# Paired phones on the same network or cable. A locked phone shows up here but the install fails
+# (the developer disk image needs an unlocked phone); it is retried on the next run.
 reachable=(${(f)"$(xcrun devicectl list devices 2>/dev/null | grep -E ' (available|connected)' \
   | grep -E '\((iPhone|iPad)[0-9]+,[0-9]+\) +physical' | grep -oE '[0-9A-F]{8}-[0-9A-F]{16}' || true)"})
 
