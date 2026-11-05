@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, Pressable, Animated, StyleSheet, Dimensions, PanResponder, Platform } from 'react-native';
+import { Modal, View, Pressable, Animated, StyleSheet, Dimensions, PanResponder, Platform, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../../theme';
 import useKeyboardHeight from '../../hooks/useKeyboardHeight';
@@ -13,6 +13,11 @@ const CLOSE_VELOCITY = 0.9;
 // The bounce resists the finger (about half its travel), so pulling the content needs less offset
 const PULL_CLOSE = 60;
 const ANDROID = Platform.OS === 'android';
+// Handing over to another sheet (e.g. "Edit" opening the Add page): the closing one leaves quicker and
+// speeding up, without easing to a stop. Easing out to a standstill, then a pause while iOS swaps
+// the windows, then the next sheet starting read as a stop-and-go stutter.
+const HANDOFF_EXIT = 200;
+const HANDOFF_EASE = Easing.in(Easing.quad);
 
 // iOS won't present a new modal (e.g. "Edit" opening the Add page) while another one is still leaving,
 // and a fixed delay is either too short (a stutter) or too long (a pause). So the sheets count themselves,
@@ -169,9 +174,12 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
         setMounted(false);
         return;
       }
+      // Something waits for this sheet to go (afterSheetsClose): hand over instead of a full exit
+      const handoff = waiting.length > 0;
+      const exit = handoff ? HANDOFF_EXIT : DURATION.exit;
       Animated.parallel([
-        Animated.timing(y, { toValue: offscreen(), duration: DURATION.exit, easing: EASE_IN, useNativeDriver: true }),
-        Animated.timing(backdrop, { toValue: 0, duration: DURATION.exit, useNativeDriver: true }),
+        Animated.timing(y, { toValue: offscreen(), duration: exit, easing: handoff ? HANDOFF_EASE : EASE_IN, useNativeDriver: true }),
+        Animated.timing(backdrop, { toValue: 0, duration: exit, useNativeDriver: true }),
       ]).start(({ finished }) => finished && setMounted(false));
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
