@@ -72,7 +72,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
       if (!backup) return;
       const count = backup.data.expenses.length;
       const when = backup.exportedAt ? dayLabel(backup.exportedAt) : 'неизвестна дата';
-      confirm('Възстановяване от архив', `Архив от ${when} с ${plural(count, 'разход', 'разхода')}. Сегашните данни ще бъдат заменени.`, () => {
+      confirm('Възстановяване от архив', `Архив от ${when} с ${plural(count, 'плащане', 'плащания')}. Сегашните данни ще бъдат заменени.`, () => {
         restoreData(backup);
         showToast({ text: 'Данните са възстановени', icon: 'checkmark-circle' });
         onClose();

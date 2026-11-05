@@ -94,7 +94,8 @@ const DockHeader = memo(
     useImperativeHandle(ref, () => ({ setDocked }), []);
     return (
       <Animated.View pointerEvents={docked ? 'auto' : 'none'} style={[s.dockWrap, { opacity }]}>
-        <Touch haptic={false} onPress={onPress} accessibilityLabel="Нагоре">
+        {/* The shadow sits on a solid view: iOS draws it from the shape alone, not from the gradient's pixels on every frame */}
+        <Touch haptic={false} onPress={onPress} accessibilityLabel="Нагоре" style={s.dockShadow}>
           <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={[s.dock, { paddingTop: topInset + 6 }]}>
             <View style={s.dockPet}>
               <Pet expression={expression} stage={stageKey} {...outfitOf(pet)} size={52} animate={false} />
@@ -156,13 +157,16 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         : getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet?.lastFedAt }),
     [ov.progress.isCurrent, advice, expenses, incomes, incomeEntries, recurring, now, pet?.lastFedAt]
   );
-  const pending = pendingSpend(recurring, now);
-  const daily = dailyLimit(current, now, pending);
+  // Everything below is memoized: Home re-renders on every store change (and right when an entry is saved,
+  // while the sheet is closing), so nothing here should re-scan all expenses unless its inputs changed
+  const pending = useMemo(() => pendingSpend(recurring, now), [recurring, now]);
+  const daily = useMemo(() => dailyLimit(current, now, pending), [current, now, pending]);
   const recent = useMemo(() => sortByDateDesc(ov.list).slice(0, RECENT), [ov.list]);
-  const upcoming = upcomingPayments(recurring, now)[0];
-  const goal = goals
-    .map((g) => ({ g, p: goalProgress(g, expenses) }))
-    .sort((a, b) => Number(a.p.done) - Number(b.p.done))[0];
+  const upcoming = useMemo(() => upcomingPayments(recurring, now)[0], [recurring, now]);
+  const goal = useMemo(
+    () => goals.map((g) => ({ g, p: goalProgress(g, expenses) })).sort((a, b) => Number(a.p.done) - Number(b.p.done))[0],
+    [goals, expenses]
+  );
   // Home shows only what's real: a payment due within a week and an unfinished goal (empty prompts live in Plans)
   const upcomingSoon = upcoming && upcoming.date - now <= 7 * 86400000;
   const activeGoal = goal && !goal.p.done;
@@ -170,10 +174,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     () => weekMissions({ expenses, incomeEntries, pet, income: current.income, now }),
     [expenses, incomeEntries, pet, current.income, now]
   );
-  const currentStreak = streak(activityDays({ expenses, incomeEntries, pet }), now);
+  const currentStreak = useMemo(() => streak(activityDays({ expenses, incomeEntries, pet }), now), [expenses, incomeEntries, pet, now]);
 
   const { isCurrent } = ov.progress;
-  const hasExpenseToday = expenses.some((e) => e.source !== 'recurring' && sameDay(e.date, now));
+  const hasExpenseToday = useMemo(() => expenses.some((e) => e.source !== 'recurring' && sameDay(e.date, now)), [expenses, now]);
   const canFeed = !hasExpenseToday && pet.lastActiveDay !== dayKey(now) && (now.getHours() >= 18 || status.fullness < 60);
   const feed = () => {
     tapFeedback();
@@ -181,7 +185,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   };
 
   // The dog lives in the present; for a past month it comments on that month's result
-  const forecast = monthForecast(current, now, pending);
+  const forecast = useMemo(() => monthForecast(current, now, pending), [current, now, pending]);
   // The main number: free to spend this month (current month), or what was left of a past one
   const free = isCurrent ? freeToSpend(ov, pending) : null;
   const heroValue = free ? free.free : ov.remaining;
@@ -381,7 +385,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Text style={s.label}>
                   {free
                     ? free.free < 0
-                      ? 'Над бюджета за харчене с'
+                      ? 'Над бюджета с'
                       : `Свободни до ${ov.progress.daysInMonth} ${MONTHS[month].toLowerCase()}`
                     : ov.remaining < 0
                       ? 'Над дохода с'
@@ -577,10 +581,13 @@ const s = themed((c) => ({
   seeAllText: { color: c.primary, fontSize: 14, fontWeight: '700' },
   layoutBtn: { alignSelf: 'center', marginTop: 6, borderColor: c.faint },
   dockWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
+  dockShadow: {
+    backgroundColor: c.roomTo, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+    shadowColor: '#4A2A14', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+  },
   dock: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingBottom: 10,
-    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
-    shadowColor: '#4A2A14', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden',
   },
   dockPet: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   dockName: { color: c.text, fontSize: 14, fontWeight: '800' },

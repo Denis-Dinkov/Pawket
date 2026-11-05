@@ -1,7 +1,7 @@
 import React, { forwardRef, useRef, useState } from 'react';
 import { Animated, Pressable } from 'react-native';
 import { feedback } from '../../haptics';
-import { DURATION, motionReduced } from '../../motion';
+import { SPRING, motionReduced } from '../../motion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -17,7 +17,7 @@ const Touch = forwardRef(function Touch({ haptic = 'light', onPress, onLongPress
   const interactive = !!(onPress || onLongPress) && !rest.disabled;
   const to = (v) => {
     if (motionReduced() || pressScale === 1) return;
-    Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: v === 1 ? 6 : 0 }).start();
+    Animated.spring(scale, { toValue: v, useNativeDriver: true, ...SPRING.snappy }).start();
   };
   return (
     <AnimatedPressable

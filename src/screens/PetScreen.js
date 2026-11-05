@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, Animated } from 'react-native';
-import { motionReduced } from '../motion';
+import { motionReduced, SPRING } from '../motion';
 import Appear from '../components/ui/Appear';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
 import { colors, radius, currentColorScheme } from '../theme';
-import { petStatus, STAGES, dayKey } from '../pet/logic';
+import { petStatus, STAGES, STAGE_PERKS, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { petLine } from '../pet/lines';
 import { dailyLimit } from '../budget';
@@ -57,20 +57,13 @@ function StreakCount({ value, children }) {
   useEffect(() => {
     if (value > prev.current && !motionReduced()) {
       v.setValue(1.35);
-      Animated.spring(v, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }).start();
+      Animated.spring(v, { toValue: 1, useNativeDriver: true, ...SPRING.playful }).start();
     }
     prev.current = value;
   }, [value, v]);
   return <Animated.View style={{ transform: [{ scale: v }] }}>{children}</Animated.View>;
 }
 
-// What each stage adds, shown on the growth path
-const STAGE_PERKS = {
-  kitten: 'Начало: легло, купичка и топка',
-  young: 'плюшено мече и парти шапка',
-  adult: 'розетка в рамката на стената',
-  champion: 'корона, купа в рамката и златна купичка',
-};
 
 // Charlie's own tab: his room, the streak, this week's missions, rewards and the year in review
 export default function PetScreen() {

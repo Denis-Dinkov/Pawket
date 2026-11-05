@@ -227,6 +227,8 @@ export function StoreProvider({ children }) {
             source: 'manual',
             ...e,
             merchant,
+            // When it was written down (the date can be in the past): the streak counts this day
+            loggedAt: new Date().toISOString(),
           };
           let { recurring } = d;
           if (repeat) {
@@ -249,7 +251,8 @@ export function StoreProvider({ children }) {
             expenses: [expense, ...d.expenses],
             recurring,
             merchants: merchant && !e.goalId ? { ...d.merchants, [normalizeMerchant(merchant)]: e.categoryId } : d.merchants,
-            pet: feedPet(d.pet),
+            // Money the user already had isn't new activity: Charlie isn't fed for it
+            pet: expense.offBudget ? d.pet : feedPet(d.pet),
           };
         });
       },
@@ -290,7 +293,7 @@ export function StoreProvider({ children }) {
       addIncome: (e) =>
         setData((d) => ({
           ...d,
-          incomeEntries: [{ id: newId(), note: '', kind: 'other', ...e }, ...d.incomeEntries],
+          incomeEntries: [{ id: newId(), note: '', kind: 'other', ...e, loggedAt: new Date().toISOString() }, ...d.incomeEntries],
           pet: feedPet(d.pet),
         })),
 
@@ -353,6 +356,7 @@ export function StoreProvider({ children }) {
               goalId: goal.id,
               source: 'goal',
               date: new Date().toISOString(),
+              loggedAt: new Date().toISOString(),
               ...(existing && { offBudget: true }),
             },
             ...d.expenses,
@@ -392,7 +396,7 @@ export function StoreProvider({ children }) {
           setData((d) => ({
             ...d,
             expenses: [
-              { id: newId(), amount: wish.amount, categoryId: 'saving', merchant: '', note: `${goal.name} (вместо ${wish.name})`, goalId: goal.id, source: 'goal', date: new Date().toISOString() },
+              { id: newId(), amount: wish.amount, categoryId: 'saving', merchant: '', note: `${goal.name} (вместо ${wish.name})`, goalId: goal.id, source: 'goal', date: new Date().toISOString(), loggedAt: new Date().toISOString() },
               ...d.expenses,
             ],
           }));

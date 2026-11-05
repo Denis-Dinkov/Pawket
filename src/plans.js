@@ -1,5 +1,5 @@
 // Recurring payments and savings goals. Pure logic, no RN imports.
-import { monthKey, shiftMonth, countsInBudget } from './budget';
+import { monthKey, shiftMonth, countsInBudget, spendRoom } from './budget';
 import { categoryById } from './theme';
 
 const parseKey = (key) => {
@@ -128,7 +128,7 @@ export function monthForecast(ov, now = new Date(), pending = 0) {
     .reduce((a, e) => a + e.amount, 0);
   const perDayVariable = variable / elapsed;
   // Today is partly spent already, so it counts as half a day
-  const free = 0.8 * ov.income - ov.byBucket.needs - ov.byBucket.wants - pending;
+  const free = spendRoom(ov) - pending;
   const end = free - perDayVariable * Math.max(0, daysLeft - 0.5);
   return { end, perDayVariable, daysLeft };
 }

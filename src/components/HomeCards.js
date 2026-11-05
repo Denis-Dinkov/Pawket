@@ -21,8 +21,10 @@ export function TodayCard({ ov, now, pending = 0 }) {
       </Card>
     );
   }
-  const today = ov.list.filter((e) => countsInBudget(e) && sameDay(e.date, now));
-  const spent = today.reduce((a, e) => a + e.amount, 0);
+  // Needs and wants only, like the limit it's compared to (money put into savings isn't spending)
+  const today = ov.list.filter(
+    (e) => countsInBudget(e) && sameDay(e.date, now) && ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket)
+  );
   const daily = dailyLimit(ov, now, pending);
   const limit = daily?.limit || 0;
   const spentNW = daily?.spentToday || 0;
@@ -34,7 +36,7 @@ export function TodayCard({ ov, now, pending = 0 }) {
         <Text style={s.muted}>{plural(today.length, 'плащане', 'плащания')}</Text>
       </View>
       <View style={s.head}>
-        <Money value={spent} size={28} />
+        <Money value={daily?.spentToday ?? today.reduce((a, e) => a + e.amount, 0)} size={28} />
         {limit > 0 && (
           <Text style={[s.limit, { color: over ? colors.danger : colors.savings }]}>
             {over ? `над лимита с ${money(spentNW - limit)}` : `остават ${money(limit - spentNW)}`}

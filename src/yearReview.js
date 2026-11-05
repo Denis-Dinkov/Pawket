@@ -14,7 +14,9 @@ export function yearReview({ expenses = [], incomes = {}, incomeEntries = [], ye
     const ov = monthOverview({ expenses, incomes, incomeEntries, year, month: m, now });
     income += ov.income;
     const monthList = filterMonth(expenses, year, m);
-    const score = ov.income && monthList.length >= 3
+    // Same rule as the month-end bonus: at least 3 entries the user made
+    const made = monthList.filter((e) => countsInBudget(e) && e.source !== 'recurring').length;
+    const score = ov.income && made >= 3
       ? budgetScore({ income: ov.income, byBucket: summarize(monthList).byBucket, dayFrac: ov.progress.dayFrac })
       : null;
     months.push({ month: m, total: ov.total, score, income: monthIncome({ incomes, incomeEntries }, year, m).total });

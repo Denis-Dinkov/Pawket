@@ -20,7 +20,7 @@ import PetEventModal from './src/components/PetEventModal';
 import Toast from './src/components/Toast';
 import FlyingAmount from './src/components/FlyingAmount';
 import PawBurst from './src/components/PawBurst';
-import { motionReduced } from './src/motion';
+import { motionReduced, SPRING } from './src/motion';
 import useIncomingAdd from './src/hooks/useIncomingAdd';
 import useWidgetSync from './src/widget/useWidgetSync';
 import PetSnapshots from './src/widget/PetSnapshots';
@@ -58,8 +58,8 @@ function TabIcon({ name, active }) {
   const hop = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!active || motionReduced()) return;
-    hop.setValue(0.8);
-    Animated.spring(hop, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 14 }).start();
+    hop.setValue(0.88);
+    Animated.spring(hop, { toValue: 1, useNativeDriver: true, ...SPRING.snappy }).start();
   }, [active, hop]);
   return (
     <Animated.View style={{ transform: [{ scale: hop }] }}>

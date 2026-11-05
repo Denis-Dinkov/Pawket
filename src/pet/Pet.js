@@ -3,6 +3,7 @@ import { Animated, Easing, Image, Platform } from 'react-native';
 import Svg, { G, Path, Circle, Ellipse, Text as SvgText } from 'react-native-svg';
 import { extras } from './petShapes';
 import useReduceMotion from '../hooks/useReduceMotion';
+import { SPRING } from '../motion';
 import Accessories from './Accessories';
 import { SLOTS } from './outfit';
 
@@ -76,11 +77,11 @@ function render(nodes) {
 
 // Motion per mood: how much and how fast he breathes / bobs (livelier when happy, slow when sad or asleep)
 const MOTION = {
-  ecstatic: { bob: 5, breath: 0.03, ms: 420 },
+  ecstatic: { bob: 5, breath: 0.03, ms: 560 },
   happy: { bob: 3, breath: 0.02, ms: 900 },
   worried: { bob: 1.5, breath: 0.015, ms: 1200 },
   sad: { bob: 1, breath: 0.012, ms: 1800 },
-  crying: { bob: 1.5, breath: 0.015, ms: 260 },
+  crying: { bob: 1.5, breath: 0.015, ms: 480 },
   hungry: { bob: 2.5, breath: 0.02, ms: 700 },
   sleeping: { bob: 1, breath: 0.025, ms: 2200 },
 };
@@ -88,19 +89,21 @@ const MOTION = {
 // The puppy is smaller and grows with the stages
 const STAGE_SCALE = { kitten: 0.7, young: 0.85, adult: 1, champion: 1 };
 
+// The loop continues from wherever it is, so a new mood changes the pace without a jump back to the start
 function useLoop(value, duration, enabled) {
   useEffect(() => {
     if (!enabled) {
       value.setValue(0);
       return undefined;
     }
-    value.setValue(0);
     const ease = Easing.inOut(Easing.sin);
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(value, { toValue: 1, duration, easing: ease, useNativeDriver: native }),
         Animated.timing(value, { toValue: 0, duration, easing: ease, useNativeDriver: native }),
-      ])
+      ]),
+      // Each round already ends at 0; resetting would snap back to the value the loop started from
+      { resetBeforeIteration: false }
     );
     loop.start();
     return () => loop.stop();
@@ -157,7 +160,7 @@ function Pet({ expression = 'happy', stage = 'adult', head, neck, accessory, siz
     jump.setValue(0);
     Animated.sequence([
       Animated.timing(jump, { toValue: -size * 0.14, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: native }),
-      Animated.spring(jump, { toValue: 0, friction: 4, tension: 120, useNativeDriver: native }),
+      Animated.spring(jump, { toValue: 0, ...SPRING.playful, useNativeDriver: native }),
     ]).start();
   }, [bounceKey, jump, size]);
 

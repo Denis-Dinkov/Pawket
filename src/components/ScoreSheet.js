@@ -48,7 +48,7 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
         <Row ok={p.needs.penalty < 0.5} title="Нужди до 50%" detail={`${pct(p.needs.value)} от дохода (${money(ov.byBucket.needs)})`} badge={minus(p.needs)} />
         <Row
           ok={p.wantsPace.penalty < 0.5}
-          title="Желания според изминалите дни"
+          title="Темпо на желанията"
           detail={
             ov.progress.isCurrent
               ? `${pct(p.wantsPace.value)} от бюджета им при изминали ${pct(ov.progress.dayFrac)} от месеца`
@@ -57,7 +57,7 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
           badge={minus(p.wantsPace)}
         />
         <Row ok={p.wantsCap.penalty < 0.5} title="Желания до 30%" detail={`${pct(p.wantsCap.value)} от дохода (${money(ov.byBucket.wants)})`} badge={minus(p.wantsCap)} />
-        <Row ok={p.savings.penalty < 0.5} title="Поне 20% за спестяване" detail={`Заделени ${money(ov.byBucket.savings)} · могат да останат до ${pct(p.savings.value)} от дохода`} badge={minus(p.savings)} />
+        <Row ok={p.savings.penalty < 0.5} title="Поне 20% за спестяване" detail={`Заделени ${money(ov.byBucket.savings)} · ако не харчиш повече, можеш да спестиш ${pct(p.savings.value)} от дохода`} badge={minus(p.savings)} />
         {result.overIncome && <Row ok={false} title="Разходи над дохода" detail="Докато е така, оценката е най-много 15" badge="≤15" />}
       </View>
       <Text style={s.foot}>85+ отлично · 65+ добре · 45+ внимавай · под 45 — време за промяна</Text>

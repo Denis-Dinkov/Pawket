@@ -42,7 +42,7 @@ const PawketActivity = (props) => {
             {props.petName} · {props.moodLabel}
           </Text>
           <HStack spacing={6}>
-            <Text modifiers={[font({ size: 13 }), foregroundStyle(soft)]}>{props.over ? 'Днес над лимита' : 'Днес можеш'}</Text>
+            <Text modifiers={[font({ size: 13 }), foregroundStyle(soft)]}>{props.over ? 'Днес над лимита' : 'Днес остават'}</Text>
             <Text modifiers={rolling(24, 'heavy')}>{props.todayLeftText}</Text>
           </HStack>
           <ProgressView value={props.spentRatio} modifiers={[tint(color)]} />

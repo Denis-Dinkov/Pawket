@@ -8,7 +8,7 @@ import Pill from './ui/Pill';
 import Pet from '../pet/Pet';
 import { colors, radius, money, pct } from '../theme';
 import { budgetScoreParts } from '../budget';
-import { STAGES, EXPRESSIONS, HUNGRY_AT, DAILY_XP, monthEndBonus } from '../pet/logic';
+import { STAGES, STAGE_PERKS, EXPRESSIONS, HUNGRY_AT, DAILY_XP, monthEndBonus } from '../pet/logic';
 import { themed } from '../themed';
 
 const SCALE = [
@@ -88,7 +88,7 @@ function Mood({ status, advice }) {
         />
         <Row
           ok={p.wantsPace.penalty < 0.5}
-          title="Желанията според изминалите дни"
+          title="Темпо на желанията"
           detail={`Похарчени ${pct(p.wantsPace.value)} от бюджета им, а месецът е изминал ${pct(ov.progress.dayFrac)}`}
           badge={minus(p.wantsPace)}
         />
@@ -101,7 +101,7 @@ function Mood({ status, advice }) {
         <Row
           ok={p.savings.penalty < 0.5}
           title="Поне 20% за спестяване"
-          detail={`Могат да останат до ${pct(p.savings.value)} от дохода`}
+          detail={`Ако не харчиш повече, можеш да спестиш ${pct(p.savings.value)} от дохода`}
           badge={minus(p.savings)}
         />
         <Row ok={!hungry} title="Сит съм" detail={hungry ? 'Гладен съм — това ми взима 20 точки' : 'Не съм гладен'} badge={hungry ? '−20' : '✓'} />
@@ -177,14 +177,14 @@ function Growth({ status }) {
           const current = i === status.index;
           return (
             <View key={st.key} style={[s.stage, i > 0 && s.sep]}>
-              <Pet expression={reached ? 'happy' : 'sleeping'} stage={st.key} size={48} animate={false} style={!reached && { opacity: 0.45 }} />
+              <Pet expression="happy" stage={st.key} size={48} animate={false} style={!reached && { opacity: 0.45 }} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.rowTitle, current && { color: colors.primary }]}>
                   {st.name}
                   {current ? ' · сега' : ''}
                 </Text>
                 <Text style={s.rowDetail}>
-                  {st.xp} XP{st.key === 'adult' ? ' · нашийник със звънче' : st.key === 'champion' ? ' · корона' : ''}
+                  {st.xp} XP · {STAGE_PERKS[st.key]}
                 </Text>
               </View>
               {reached && <Ionicons name="checkmark-circle" size={22} color={colors.savings} />}

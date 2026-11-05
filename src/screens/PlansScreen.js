@@ -207,7 +207,7 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
       onClose={onClose}
       footer={
         <Touch haptic="success" disabled={!(v > 0)} style={[s.primaryBtn, s.savingsBtn, !(v > 0) && { opacity: 0.4 }]} onPress={() => onSave(v, { existing: from === 'existing' })}>
-          <Text style={s.primaryBtnText}>{v > 0 ? `Сложи ${money(v)}` : 'Въведи сума'}</Text>
+          <Text style={s.primaryBtnText}>{v > 0 ? `Задели ${money(v)}` : 'Въведи сума'}</Text>
         </Touch>
       }
     >
@@ -410,7 +410,7 @@ export default function PlansScreen({ onAdd }) {
                       accessibilityLabel={`Плати от „${g.name}“`}
                     />
                   )}
-                  {!done && <Pill small icon="add" label="Сложи пари" variant="ink" onPress={() => setDeposit(g)} />}
+                  {!done && <Pill small icon="add" label="Задели" variant="ink" onPress={() => setDeposit(g)} />}
                 </View>
               </Card>
             );
@@ -525,7 +525,7 @@ export default function PlansScreen({ onAdd }) {
         onDelete={() => {
           removeRecurring(ruleEdit.id);
           setRuleEdit(null);
-          showToast({ text: 'Плащането е премахнато. Записаните остават.', icon: 'trash-outline' });
+          showToast({ text: 'Повтарящото се плащане е премахнато. Вече записаните разходи остават.', icon: 'trash-outline' });
         }}
       />
     </View>

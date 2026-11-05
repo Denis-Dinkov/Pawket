@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated } from 'react-native';
-import { motionReduced } from '../motion';
+import { motionReduced, SPRING } from '../motion';
 import { colors } from '../theme';
 import { themed } from '../themed';
 
@@ -18,7 +18,7 @@ export default function Bar({ value, color, marker, height = 8, track = colors.f
       fill.setValue(pct);
       return;
     }
-    Animated.spring(fill, { toValue: pct, useNativeDriver: true, damping: 20, stiffness: 140, overshootClamping: true }).start();
+    Animated.spring(fill, { toValue: pct, useNativeDriver: true, ...SPRING.standard }).start();
   }, [pct, fill]);
   const translateX = fill.interpolate({ inputRange: [0, 1], outputRange: [-width, 0] });
   const round = { height, borderRadius: height / 2 };

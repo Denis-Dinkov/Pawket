@@ -1,30 +1,47 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, View, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Touch from './ui/Touch';
 import { colors, radius, shadow } from '../theme';
 import { themed } from '../themed';
+import { DURATION, EASE_IN, SPRING, motionReduced } from '../motion';
 
-const DURATION = 5000;
+const VISIBLE_MS = 5000;
 
 // Message above the tab bar: "Разходът е изтрит · Отмени". Hides itself after 5 seconds.
-export default function Toast({ toast, onDismiss, bottom = 110 }) {
+// It slides in and, when dismissed, slides back out (the last message stays on screen while it leaves)
+export default function Toast({ toast: current, onDismiss, bottom = 110 }) {
   const y = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(current);
 
   useEffect(() => {
-    if (!toast) return undefined;
-    AccessibilityInfo.announceForAccessibility?.(toast.text);
-    y.setValue(0);
-    Animated.spring(y, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 220 }).start();
-    const t = setTimeout(onDismiss, DURATION);
-    return () => clearTimeout(t);
-  }, [toast, y, onDismiss]);
+    if (current) {
+      setShown(current);
+      AccessibilityInfo.announceForAccessibility?.(current.text);
+      if (motionReduced()) y.setValue(1);
+      else {
+        y.setValue(0);
+        Animated.spring(y, { toValue: 1, useNativeDriver: true, ...SPRING.standard }).start();
+      }
+      const t = setTimeout(onDismiss, VISIBLE_MS);
+      return () => clearTimeout(t);
+    }
+    if (motionReduced()) {
+      setShown(null);
+      return undefined;
+    }
+    Animated.timing(y, { toValue: 0, duration: DURATION.exit, easing: EASE_IN, useNativeDriver: true }).start(
+      ({ finished }) => finished && setShown(null)
+    );
+    return undefined;
+  }, [current, y, onDismiss]);
 
+  const toast = current || shown;
   if (!toast) return null;
   return (
     <Animated.View
-      pointerEvents="box-none"
+      pointerEvents={current ? 'box-none' : 'none'}
       style={[s.wrap, { bottom, opacity: y, transform: [{ translateY: y.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}
     >
       <View style={s.toast} accessibilityLiveRegion="polite">

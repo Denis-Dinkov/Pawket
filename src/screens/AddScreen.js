@@ -147,7 +147,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
     const goal = open.find((g) => g.kind === 'emergency') || open[0];
     const part = Math.round(salary * 0.2);
     if (!goal) {
-      setTimeout(() => showToast({ text: `Заплатата е записана. Създай цел в „Планове“ и отделяй 20% (${money(part)}) веднага.`, icon: 'flag-outline' }), 500);
+      setTimeout(() => showToast({ text: `Заплатата е записана. Създай цел в „Планове“ и заделяй 20% (${money(part)}) веднага.`, icon: 'flag-outline' }), 500);
       return;
     }
     setTimeout(
@@ -155,7 +155,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
         showToast({
           text: `Първо плати на себе си: ${money(part)} към „${goal.name}“?`,
           icon: 'wallet-outline',
-          actionLabel: 'Отдели',
+          actionLabel: 'Задели',
           onAction: () => contributeGoal(goal, part),
         }),
       500
@@ -331,7 +331,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
           <Text style={s.incomeHint}>Плащането намалява „{fromGoal.name}“ и не се брои в разходите за месеца — парите вече са заделени.</Text>
         )}
         {offBudget && !isIncome && !fromGoal && (
-          <Text style={s.incomeHint}>Платено с пари, които вече си имал (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.</Text>
+          <Text style={s.incomeHint}>Платено с пари, които вече имаш настрана (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.</Text>
         )}
         {repeat && !isIncome && (
           <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(day.getDate())} число се записва сам. Управлява се от „Планове“.</Text>

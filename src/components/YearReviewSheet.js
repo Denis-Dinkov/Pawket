@@ -34,7 +34,7 @@ export default function YearReviewSheet({ visible, onClose, year, data, pet, sta
       <View style={s.hero}>
         <Pet expression="ecstatic" stage={stage} {...outfitOf(pet)} size={110} />
         <Text style={s.title} accessibilityRole="header">Твоята {year} с {pet?.name}</Text>
-        <Text style={s.sub}>{plural(r.count, 'запис', 'записа')} за годината</Text>
+        <Text style={s.sub}>{plural(r.count, 'плащане', 'плащания')} за годината</Text>
       </View>
 
       {r.count === 0 ? (

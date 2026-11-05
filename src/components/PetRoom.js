@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, useWindowDimensions } from 'react-native';
 import { feedback } from '../haptics';
-import { motionReduced } from '../motion';
+import { motionReduced, DURATION, EASE } from '../motion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
@@ -39,7 +39,7 @@ function Hearts({ id }) {
     if (played.current === id) return;
     played.current = id;
     t.setValue(0);
-    Animated.timing(t, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+    Animated.timing(t, { toValue: 1, duration: DURATION.burst, easing: EASE, useNativeDriver: true }).start();
   }, [id, t]);
   return [-26, 0, 24].map((x, i) => (
     <Animated.Text

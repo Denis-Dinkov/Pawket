@@ -2,8 +2,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, LayoutAnimation, Platform, UIManager } from 'react-native';
 
-export const DURATION = { press: 120, appear: 250, stagger: 40, bar: 500, number: 400, tab: 200 };
+export const DURATION = { press: 120, appear: 250, stagger: 40, exit: 200, number: 400, burst: 700 };
 export const EASE = Easing.out(Easing.cubic);
+export const EASE_IN = Easing.in(Easing.cubic);
+
+/**
+ * The three springs every animation uses, so the app moves at one rhythm:
+ * - snappy: presses and small state changes (~150 ms, no wobble)
+ * - standard: things that move into place: sheets, toasts, bars (~350 ms, no overshoot)
+ * - playful: only Charlie and his rewards (a short bounce)
+ */
+export const SPRING = {
+  snappy: { speed: 40, bounciness: 0 },
+  standard: { damping: 24, stiffness: 240, mass: 1, overshootClamping: true },
+  playful: { speed: 16, bounciness: 8 },
+};
 
 // Reduce Motion, readable outside components too (store, LayoutAnimation)
 let reduceMotion = false;
@@ -30,9 +43,9 @@ export function animateNextLayout() {
   });
 }
 
-// Text can't run on the native driver, so every visible step is a JS render (and a text re-measure).
-// Steps are capped at ~20 per second and skipped when the rounded value doesn't change.
-const ROLL_FRAME_MS = 50;
+// Text can't run on the native driver, so every visible step is a JS render of that one Text.
+// That's cheap, so it runs every frame (a lower cap looked like steps); unchanged rounded values are skipped.
+const ROLL_FRAME_MS = 0;
 
 /**
  * A number that rolls to its new value (400 ms) instead of jumping.

@@ -1,5 +1,5 @@
 // Tamagotchi logic for the dog: mood, fullness, growth. No RN imports.
-import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview } from '../budget';
+import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview, countsInBudget } from '../budget';
 import { colors } from '../theme';
 
 
@@ -9,6 +9,14 @@ export const STAGES = [
   { key: 'adult', name: 'Кавалер', xp: 800 },
   { key: 'champion', name: 'Шампион', xp: 2000 },
 ];
+
+// What each stage adds to Charlie and his room (one list for the Charlie tab and the growth explanation)
+export const STAGE_PERKS = {
+  kitten: 'легло, купичка и топка',
+  young: 'плюшено мече и парти шапка',
+  adult: 'розетка в рамката на стената',
+  champion: 'корона, купа в рамката и златна купичка',
+};
 
 export const DAILY_XP = 10;
 export const HUNGRY_AT = 30;
@@ -106,8 +114,10 @@ export function evaluateClosedMonths({ expenses, incomes, incomeEntries, pet, no
     if (!(key in evaluated)) {
       const list = filterMonth(expenses, year, month);
       const income = monthIncome({ incomes, incomeEntries }, year, month).total;
+      // Only entries the user actually made count towards the minimum: not automatic payments or money from elsewhere
+      const made = list.filter((e) => countsInBudget(e) && e.source !== 'recurring').length;
       const score =
-        income && list.length >= MIN_EXPENSES_FOR_BONUS
+        income && made >= MIN_EXPENSES_FOR_BONUS
           ? budgetScore({ income, byBucket: summarize(list).byBucket, dayFrac: 1 })
           : null;
       evaluated[key] = score;

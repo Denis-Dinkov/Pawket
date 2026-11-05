@@ -155,7 +155,7 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
   const income = incomeInfo.total;
   const progress = monthProgress(year, month, now);
   const remaining = income - sum.total;
-  const spendable = 0.8 * income - sum.byBucket.needs - sum.byBucket.wants;
+  const spendable = spendRoom({ income, byBucket: sum.byBucket });
   return {
     list,
     ...sum,
@@ -169,14 +169,24 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
 }
 
 /**
- * The app's main number: what's still free to spend on needs and wants this month — the 80% of income
- * minus what they already took and the recurring payments still due. The 20% for savings stays untouched,
- * so money put into goals doesn't lower it. Today's limit is this amount spread over the days left.
+ * What's left for needs and wants this month, before recurring payments still due: the 80% of income minus
+ * what they already took. The 20% for savings stays untouched, so putting up to 20% into goals doesn't lower it;
+ * saving more than that comes out of the same income, so it does (otherwise money already gone would show as free).
+ * Money the user already had (offBudget) isn't counted at all.
+ */
+export function spendRoom(ov) {
+  const { needs, wants, savings } = ov.byBucket;
+  return ov.income - needs - wants - Math.max(0.2 * ov.income, savings);
+}
+
+/**
+ * The app's main number: what's still free to spend on needs and wants this month (see spendRoom),
+ * minus the recurring payments still due. Today's limit is this amount spread over the days left.
  */
 export function freeToSpend(ov, pending = 0) {
   if (!ov.income) return null;
   const budget = 0.8 * ov.income;
-  const free = budget - ov.byBucket.needs - ov.byBucket.wants - pending;
+  const free = spendRoom(ov) - pending;
   return { free, budget, ratio: free / budget };
 }
 
@@ -191,7 +201,7 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
   const spentToday = today
     .filter((e) => ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
     .reduce((a, e) => a + e.amount, 0);
-  const start = 0.8 * ov.income - ov.byBucket.needs - ov.byBucket.wants + spentToday - pendingRecurring;
+  const start = spendRoom(ov) + spentToday - pendingRecurring;
   const limit = Math.max(0, start) / ov.progress.daysLeft;
   return { limit, spentToday, left: limit - spentToday, over: spentToday > limit };
 }

@@ -15,11 +15,17 @@ export const weekKey = (now = new Date()) => dayKey(weekStart(now));
 
 // Days the user did something: logged an expense or income, or tapped "No spending today".
 // Automatic recurring expenses don't count.
+/**
+ * The days something was written down. An entry counts on the day it was logged (loggedAt), not on its
+ * date: adding last week's coffee today doesn't fill last week's streak. Older entries without loggedAt
+ * fall back to their date. Automatic payments and money the user already had (offBudget) aren't activity.
+ */
+export const loggedDay = (e) => dayKey(e.loggedAt || e.date);
 export function activityDays({ expenses = [], incomeEntries = [], pet }) {
   const days = new Set(pet?.activeDays || []);
   if (pet?.lastActiveDay) days.add(pet.lastActiveDay);
-  expenses.forEach((e) => e.source !== 'recurring' && days.add(dayKey(e.date)));
-  incomeEntries.forEach((e) => days.add(dayKey(e.date)));
+  expenses.forEach((e) => e.source !== 'recurring' && !e.offBudget && days.add(loggedDay(e)));
+  incomeEntries.forEach((e) => days.add(loggedDay(e)));
   return days;
 }
 
@@ -68,8 +74,8 @@ const POOL = [
   {
     id: 'goal',
     icon: 'flag-outline',
-    title: 'Сложи пари в цел',
-    check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && !e.offBudget && new Date(e.date) >= start) ? 1 : 0, 1),
+    title: 'Задели пари в цел',
+    check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && !e.offBudget && new Date(e.loggedAt || e.date) >= start) ? 1 : 0, 1),
   },
   {
     id: 'wants3',

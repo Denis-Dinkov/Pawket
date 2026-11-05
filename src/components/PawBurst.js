@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
-import { motionReduced } from '../motion';
+import { motionReduced, DURATION, EASE } from '../motion';
 
 const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -10,7 +10,7 @@ export default function PawBurst({ id }) {
   useEffect(() => {
     if (!id || motionReduced()) return;
     t.setValue(0);
-    Animated.timing(t, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+    Animated.timing(t, { toValue: 1, duration: DURATION.burst, easing: EASE, useNativeDriver: true }).start();
   }, [id, t]);
   if (!id || motionReduced()) return null;
   return (
