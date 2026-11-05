@@ -4,12 +4,17 @@ import { Text } from './ui/AppText';
 import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
-import { colors, BUCKETS, categoryById, money, moneyShort, pct, MONTHS } from '../theme';
+import Segmented from './ui/Segmented';
+import { colors, BUCKETS, categoryById, money, moneyShort, pct } from '../theme';
 import { dayLabel, plural } from '../format';
 import { countsInBudget } from '../budget';
 import { themed } from '../themed';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+// Fixed monthly costs: left out of the day-to-day average, or one rent payment makes it meaningless
+const FIXED = new Set(['rent', 'bills', 'subscriptions']);
+const isDayToDay = (e) =>
+  countsInBudget(e) && !e.goalId && e.source !== 'recurring' && !FIXED.has(e.categoryId) && categoryById(e.categoryId)?.bucket !== 'savings';
 
 // Calculations for the month details
 export function useMonthStats(ov, prevTotal, year, month) {
@@ -20,15 +25,18 @@ export function useMonthStats(ov, prevTotal, year, month) {
     const byWeekday = Array.from({ length: 7 }, () => 0);
     const merchants = {};
     let biggest = null;
+    let dayToDay = 0;
     for (const e of ov.list) {
       if (!countsInBudget(e)) continue;
+      if (isDayToDay(e)) dayToDay += e.amount;
       const d = new Date(e.date);
       const day = byDay[d.getDate() - 1];
       day.total += e.amount;
       day.count += 1;
       byWeekday[(d.getDay() + 6) % 7] += e.amount; // Monday = 0
       if (!biggest || e.amount > biggest.amount) biggest = e;
-      const m = (e.merchant || '').trim();
+      // Shops only: rent, bills and savings aren't "where you shop"
+      const m = isDayToDay(e) ? (e.merchant || '').trim() : '';
       if (m) {
         const k = m.toLowerCase();
         (merchants[k] ||= { name: m, total: 0, count: 0, categoryId: e.categoryId });
@@ -44,81 +52,46 @@ export function useMonthStats(ov, prevTotal, year, month) {
       biggest,
       topDay: topDayIndex >= 0 && byDay[topDayIndex].total > 0 ? { date: new Date(year, month, topDayIndex + 1), ...byDay[topDayIndex] } : null,
       noSpendDays: byDay.slice(0, elapsed).filter((d) => d.count === 0).length,
-      avgPerDay: elapsed ? ov.total / elapsed : 0,
-      merchants: Object.values(merchants).sort((a, b) => b.total - a.total).slice(0, 5),
+      avgPerDay: elapsed ? dayToDay / elapsed : 0,
+      merchants: Object.values(merchants).sort((a, b) => b.total - a.total).slice(0, 3),
       vsPrev: prevTotal ? ov.total / prevTotal - 1 : null,
     };
   }, [ov, prevTotal, year, month]);
 }
 
-function Tile({ icon, color, label, value, sub }) {
+// One card for how the month is spent: a Days / Week toggle over the bars, then the two numbers that matter
+export function SpendingChart({ ov, stats, year, month }) {
+  const [mode, setMode] = useState('days');
   return (
-    <View style={s.tile}>
-      <IconBadge icon={icon} color={color} size={34} />
-      <Text style={s.tileLabel}>{label}</Text>
-      <Text style={s.tileValue} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-      {!!sub && (
-        <Text style={s.tileSub} numberOfLines={1}>
-          {sub}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-// "Month at a glance": tiles with the key numbers
-export function MonthSummary({ ov, stats, month }) {
-  const saved = ov.income - ov.total;
-  const prevName = MONTHS[(month + 11) % 12].toLowerCase();
-  const big = stats.biggest;
-  return (
-    <View style={s.tiles}>
-      <Tile icon="receipt-outline" color={colors.primary} label="Плащания" value={String(ov.list.length)} sub={`за ${plural(stats.elapsed, 'ден', 'дни')}`} />
-      <Tile icon="pulse-outline" color={colors.needs} label="Средно на ден" value={money(stats.avgPerDay)} sub="всички разходи" />
-      <Tile
-        icon="flame-outline"
-        color={colors.wants}
-        label="Най-скъп ден"
-        value={stats.topDay ? money(stats.topDay.total) : '—'}
-        sub={stats.topDay ? `${dayLabel(stats.topDay.date)} · ${plural(stats.topDay.count, 'плащане', 'плащания')}` : ''}
+    <Card style={{ gap: 12 }}>
+      <Segmented
+        options={[
+          { key: 'days', label: 'По дни' },
+          { key: 'week', label: 'По седмица' },
+        ]}
+        value={mode}
+        onChange={setMode}
       />
-      <Tile
-        icon={big ? categoryById(big.categoryId)?.icon || 'card' : 'card'}
-        color={colors.danger}
-        label="Най-голямо плащане"
-        value={big ? money(big.amount) : '—'}
-        sub={big ? big.merchant || categoryById(big.categoryId)?.name : ''}
-      />
-      <Tile
-        icon="wallet"
-        color={colors.savings}
-        label={saved >= 0 ? (ov.progress.isCurrent ? 'Остават' : 'Спестено') : 'Над дохода'}
-        value={ov.income ? money(Math.abs(saved)) : '—'}
-        sub={ov.income ? `${pct(Math.abs(saved) / ov.income)} от дохода` : 'няма доход'}
-      />
-      <Tile
-        icon={stats.vsPrev != null && stats.vsPrev > 0 ? 'trending-up' : 'trending-down'}
-        color={stats.vsPrev != null && stats.vsPrev > 0 ? colors.danger : colors.savings}
-        label={`Спрямо ${prevName}`}
-        value={stats.vsPrev == null ? '—' : `${stats.vsPrev > 0 ? '+' : '−'}${pct(Math.abs(stats.vsPrev))}`}
-        sub={ov.progress.isCurrent ? 'до момента' : 'за целия месец'}
-      />
-      <Tile icon="leaf" color={colors.savings} label="Дни без разходи" value={String(stats.noSpendDays)} sub={`от ${stats.elapsed}`} />
-      <Tile
-        icon="cash-outline"
-        color={colors.needs}
-        label="Доходи"
-        value={money(ov.income)}
-        sub={ov.incomeInfo.list.length ? `+ ${plural(ov.incomeInfo.list.length, 'запис', 'записа')}` : 'месечен доход'}
-      />
-    </View>
+      {mode === 'days' ? <DailyBars ov={ov} stats={stats} year={year} month={month} /> : <WeekdayBars stats={stats} />}
+      <View style={s.pair}>
+        <View style={s.stat} accessible accessibilityLabel={`Средно на ден ${money(stats.avgPerDay)}, без наем, сметки и спестявания`}>
+          <Text style={s.statLabel}>Средно на ден</Text>
+          <Text style={s.statValue}>{money(stats.avgPerDay)}</Text>
+          <Text style={s.statSub}>без наем, сметки и спестявания</Text>
+        </View>
+        <View style={s.stat} accessible accessibilityLabel={`Дни без разходи: ${stats.noSpendDays} от ${stats.elapsed}`}>
+          <Text style={s.statLabel}>Дни без разходи</Text>
+          <Text style={s.statValue}>
+            {stats.noSpendDays} <Text style={s.statOf}>от {stats.elapsed}</Text>
+          </Text>
+        </View>
+      </View>
+    </Card>
   );
 }
 
 // Spending per day — tap a bar for details
-export function DailyChart({ ov, stats, year, month }) {
+function DailyBars({ ov, stats, year, month }) {
   const [sel, setSel] = useState(null);
   const max = Math.max(...stats.byDay.map((d) => d.total), 1);
   // Average daily budget for needs and wants under 50/30/20
@@ -127,7 +100,7 @@ export function DailyChart({ ov, stats, year, month }) {
   const today = ov.progress.isCurrent ? ov.progress.daysInMonth - ov.progress.daysLeft : -1;
   const picked = sel != null ? stats.byDay[sel] : null;
   return (
-    <Card>
+    <View>
       <Text style={s.caption}>
         {picked
           ? `${dayLabel(new Date(year, month, sel + 1))}: ${money(picked.total)} · ${plural(picked.count, 'плащане', 'плащания')}`
@@ -155,16 +128,16 @@ export function DailyChart({ ov, stats, year, month }) {
         <Text style={s.axisText}>{ov.progress.daysInMonth}</Text>
       </View>
       {lineAt != null && <Text style={s.legend}>— — дневен бюджет по 50/30/20 ≈ {money(dailyBudget)}</Text>}
-    </Card>
+    </View>
   );
 }
 
 // Spending by day of the week
-export function WeekdayChart({ stats }) {
+function WeekdayBars({ stats }) {
   const max = Math.max(...stats.byWeekday, 1);
   const top = stats.byWeekday.indexOf(Math.max(...stats.byWeekday));
   return (
-    <Card>
+    <View>
       <View style={s.week}>
         {stats.byWeekday.map((v, i) => (
           <View key={i} style={s.weekCol}>
@@ -181,7 +154,7 @@ export function WeekdayChart({ stats }) {
       {Math.max(...stats.byWeekday) > 0 && (
         <Text style={s.legend}>Най-много харчиш в {['понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота', 'неделя'][top]}.</Text>
       )}
-    </Card>
+    </View>
   );
 }
 
@@ -222,11 +195,12 @@ export function TopMerchants({ stats, total }) {
 }
 
 const s = themed((colors) => ({
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: '48.4%', flexGrow: 1, backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 3 },
-  tileLabel: { color: colors.muted, fontSize: 12, marginTop: 6 },
-  tileValue: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  tileSub: { color: colors.muted, fontSize: 11.5 },
+  pair: { flexDirection: 'row', gap: 10 },
+  stat: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  statLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
+  statValue: { color: colors.text, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  statSub: { color: colors.muted, fontSize: 11 },
+  statOf: { color: colors.muted, fontSize: 13, fontWeight: '600' },
   caption: { color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 10 },
   chart: { height: 120, flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   barSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
