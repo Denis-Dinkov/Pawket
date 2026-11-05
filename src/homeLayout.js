@@ -9,17 +9,19 @@ export const HOME_SECTIONS = [
   { key: 'topCats', name: 'Топ категории', icon: 'podium-outline' },
 ];
 
-// v2 = the redesigned Home; older saved layouts are replaced by the default
-const VERSION = 2;
+// v2 = the redesigned Home; v3 = the slimmer Home (missions moved to Charlie's tab).
+// v2 layouts keep their order and only get missions hidden; anything older is replaced by the default.
+const VERSION = 3;
 
 export const DEFAULT_LAYOUT = {
   v: VERSION,
   order: HOME_SECTIONS.map((x) => x.key),
-  hidden: ['today', 'rule', 'topCats'],
+  hidden: ['missions', 'today', 'rule', 'topCats'],
 };
 
 // Adds new sections (after an update) and drops unknown ones
 export function normalizeLayout(layout) {
+  if (layout?.v === 2) layout = { ...layout, v: VERSION, hidden: [...new Set([...(layout.hidden || []), 'missions'])] };
   if (!layout || layout.v !== VERSION) return DEFAULT_LAYOUT;
   const known = HOME_SECTIONS.map((x) => x.key);
   const order = layout.order.filter((k) => known.includes(k));

@@ -11,17 +11,20 @@ import RoomScene from './RoomScene';
 import { colors, radius, shadow } from '../theme';
 import { EXPRESSIONS, HUNGRY_AT } from '../pet/logic';
 import { themed } from '../themed';
+import { plural } from '../format';
 
 const isNight = (now) => now.getHours() >= 20 || now.getHours() < 6;
 
 // Mood / fullness / level: each says its state in words, not just in color
-function Chip({ icon, label, value, color, onPress, a11y }) {
+function Chip({ icon, label, color, onPress, a11y, hint = 'Обяснява стойността и как да я вдигнеш' }) {
   return (
-    <Touch haptic="select" style={s.chip} onPress={onPress} accessibilityLabel={a11y} accessibilityHint="Обяснява стойността и как да я вдигнеш">
+    <Touch haptic="select" style={s.chip} onPress={onPress} accessibilityLabel={a11y} accessibilityHint={hint}>
       {icon}
-      <Text style={[s.chipText, color && { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-        {label}
-      </Text>
+      {label != null && (
+        <Text style={[s.chipText, color && { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {label}
+        </Text>
+      )}
     </Touch>
   );
 }
@@ -55,14 +58,14 @@ function Hearts({ id }) {
  * Mood / fullness / level in one row. It sits below the room (on the money card),
  * so the chips never cover the dog.
  */
-export function PetChips({ status, onStat, style }) {
+export function PetChips({ status, onStat, style, compact = false, streak, onStreak }) {
   const expr = EXPRESSIONS[status.expression];
   const hungry = status.fullness < HUNGRY_AT;
   return (
     <View style={[s.chips, style]}>
       <Chip
         icon={<Text style={s.emoji}>{expr.emoji}</Text>}
-        label={expr.label}
+        label={compact ? null : expr.label}
         onPress={() => onStat('mood')}
         a11y={`Настроение: ${expr.label}${status.score != null ? `, ${status.mood} от 100` : ''}`}
       />
@@ -73,12 +76,25 @@ export function PetChips({ status, onStat, style }) {
         onPress={() => onStat('fullness')}
         a11y={`Ситост ${status.fullness} процента${hungry ? ', гладен' : ''}`}
       />
+      {/* Compact (in the room on Home): the stage lives on Charlie's tab, the streak takes its place */}
+      {compact ? (
+        streak > 0 ? (
+          <Chip
+            icon={<Ionicons name="flame" size={13} color={colors.orange} />}
+            label={String(streak)}
+            onPress={onStreak}
+            a11y={`Серия ${plural(streak, 'ден', 'дни')}`}
+            hint="Отваря мисиите"
+          />
+        ) : null
+      ) : (
       <Chip
         icon={<Ionicons name="star" size={13} color={colors.warning} />}
         label={status.stage.name}
         onPress={() => onStat('growth')}
         a11y={`Етап ${status.stage.name}, ${Math.round(status.progress * 100)} процента до следващото`}
       />
+      )}
     </View>
   );
 }
@@ -86,9 +102,10 @@ export function PetChips({ status, onStat, style }) {
 /**
  * Charlie's room at the top of Home: the dog, a speech bubble with the most important advice
  * and a tap-to-pet dog. The room itself shows the state too: an empty bowl when hungry, a dark window at night.
- * top: the content of the top bar (month pill, settings); height: the room height without the safe area.
+ * top: the content of the top bar (month pill, settings); badges: small chips under it on the right;
+ * height: the room height without the safe area.
  */
-export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, onStat, bounceKey, top, insetTop, height = 268, now = new Date() }) {
+export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, onStat, bounceKey, top, badges, insetTop, height = 268, now = new Date() }) {
   const expr = EXPRESSIONS[status.expression];
   const hungry = status.fullness < HUNGRY_AT;
   const night = isNight(now);
@@ -105,6 +122,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
       <RoomScene width={width} height={height + insetTop} top={insetTop} night={night} hungry={hungry} petName={pet.name} />
 
       <View style={s.top}>{top}</View>
+      {badges ? <View style={[s.badges, { top: insetTop + 52 }]}>{badges}</View> : null}
 
       <Touch style={s.bubble} onPress={onBubble} accessibilityLabel={`${pet.name} казва: ${bubble}`} accessibilityHint="Отваря всички съвети">
         <Text style={s.bubbleText} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{bubble}</Text>
@@ -129,6 +147,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
 
 const s = themed((c) => ({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6, zIndex: 3 },
+  badges: { position: 'absolute', right: 16, top: 0, zIndex: 3 },
   // A bit right of center, so the speech bubble has room on the left
   pet: { position: 'absolute', bottom: 30, left: '50%', marginLeft: -52 },
   bubble: {

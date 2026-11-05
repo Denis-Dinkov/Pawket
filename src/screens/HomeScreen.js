@@ -162,6 +162,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   const goal = goals
     .map((g) => ({ g, p: goalProgress(g, expenses) }))
     .sort((a, b) => Number(a.p.done) - Number(b.p.done))[0];
+  // Home shows only what's real: a payment due within a week and an unfinished goal (empty prompts live in Plans)
+  const upcomingSoon = upcoming && upcoming.date - now <= 7 * 86400000;
+  const activeGoal = goal && !goal.p.done;
   const missions = useMemo(
     () => weekMissions({ expenses, incomeEntries, pet, income: current.income, now }),
     [expenses, incomeEntries, pet, current.income, now]
@@ -204,41 +207,27 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   const sections = {
     plans: () => (
       <View style={s.duo}>
-        <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
-          <Text style={s.miniHead}>Предстои</Text>
-          {upcoming ? (
-            <>
-              <Text style={s.miniValue} numberOfLines={1}>
-                {upcoming.rule.merchant || upcoming.rule.note || categoryById(upcoming.rule.categoryId)?.name} · {money(upcoming.rule.amount)}
-              </Text>
-              <Text style={s.miniSub}>{dayLabel(upcoming.date.toISOString(), now)}</Text>
-            </>
-          ) : (
-            <>
-              <Text style={s.miniValue}>Няма плащания</Text>
-              <Text style={s.miniSub}>Добави наем, сметки ›</Text>
-            </>
-          )}
-        </Touch>
-        <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
-          <Text style={s.miniHead}>Цел</Text>
-          {goal ? (
-            <>
-              <Text style={s.miniValue} numberOfLines={1}>
-                {goal.g.name} · {pct(goal.p.progress)}
-              </Text>
-              <Bar value={goal.p.progress} color={colors.savings} height={5} label={`${goal.g.name}: ${money(goal.p.saved)} от ${money(goal.g.target)}`} />
-              <Text style={s.miniSub}>
-                {money(goal.p.saved)} от {money(goal.g.target)}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={s.miniValue}>Спестявай за нещо</Text>
-              <Text style={s.miniSub}>Създай цел ›</Text>
-            </>
-          )}
-        </Touch>
+        {upcomingSoon && (
+          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
+            <Text style={s.miniHead}>Предстои</Text>
+            <Text style={s.miniValue} numberOfLines={1}>
+              {upcoming.rule.merchant || upcoming.rule.note || categoryById(upcoming.rule.categoryId)?.name} · {money(upcoming.rule.amount)}
+            </Text>
+            <Text style={s.miniSub}>{dayLabel(upcoming.date.toISOString(), now)}</Text>
+          </Touch>
+        )}
+        {activeGoal && (
+          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
+            <Text style={s.miniHead}>Цел</Text>
+            <Text style={s.miniValue} numberOfLines={1}>
+              {goal.g.name} · {pct(goal.p.progress)}
+            </Text>
+            <Bar value={goal.p.progress} color={colors.savings} height={5} label={`${goal.g.name}: ${money(goal.p.saved)} от ${money(goal.g.target)}`} />
+            <Text style={s.miniSub}>
+              {money(goal.p.saved)} от {money(goal.g.target)}
+            </Text>
+          </Touch>
+        )}
       </View>
     ),
     missions: () => (
@@ -372,6 +361,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           onBubble={() => setAdviceOpen(true)}
           onStat={setStatOpen}
           bounceKey={pet.lastFedAt}
+          badges={<PetChips compact status={status} onStat={setStatOpen} streak={currentStreak} onStreak={() => onTab('pet')} />}
           top={
             <>
               <MonthPill tone="room" compact year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
@@ -385,7 +375,6 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         <View style={s.sheet}>
           {/* Everything that matters, without scrolling: what's left, today's limit and the 50/30/20 split */}
           <Card elevated style={{ gap: 12 }}>
-            <PetChips status={status} onStat={setStatOpen} style={{ justifyContent: 'flex-start' }} />
             <View style={s.moneyRow}>
               <View style={{ flex: 1 }}>
                 <Text style={s.label}>
@@ -398,6 +387,18 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                       : `Остана от ${MONTHS[month].toLowerCase()}`}
                 </Text>
                 <Money whole value={Math.abs(heroValue)} size={32} color={heroValue < 0 ? colors.danger : colors.text} />
+                {ov.income > 0 && (
+                  <Touch
+                    style={s.incomeLine}
+                    hitSlop={8}
+                    onPress={() => setIncomeOpen(true)}
+                    accessibilityLabel={`Доход ${moneyShort(ov.income)}`}
+                    accessibilityHint="Показва доходите за месеца"
+                  >
+                    <Text style={s.miniSub}>от {moneyShort(ov.income)} доход</Text>
+                    <Ionicons name="chevron-forward" size={12} color={colors.muted} />
+                  </Touch>
+                )}
               </View>
               {isCurrent && daily ? (
                 // Over the limit: "Днес 43 €" and "7 € над лимита 36 €"; otherwise "Днес остават 29 € от 36 €"
@@ -431,31 +432,6 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             ) : (
               <Pill icon="settings-outline" label="Задай месечния си доход" variant="soft" onPress={onOpenSettings} />
             )}
-            {/* Income, spending and the money put aside: three equal columns, label over value */}
-            <View style={s.moneyFoot}>
-              <Touch style={s.footItem} onPress={() => setIncomeOpen(true)} accessibilityLabel={`Доход ${moneyShort(ov.income)}`} accessibilityHint="Показва доходите за месеца">
-                <View style={s.footHead}>
-                  <Ionicons name="arrow-down-circle" size={14} color={colors.savings} />
-                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Доход</Text>
-                  <Ionicons name="chevron-forward" size={12} color={colors.muted} />
-                </View>
-                <Text style={s.footStrong}>{moneyShort(ov.income)}</Text>
-              </Touch>
-              <View style={s.footItem} accessible accessibilityLabel={`Похарчено ${moneyShort(ov.byBucket.needs + ov.byBucket.wants)}`}>
-                <View style={s.footHead}>
-                  <Ionicons name="arrow-up-circle" size={14} color={colors.wants} />
-                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Похарчено</Text>
-                </View>
-                <Text style={s.footStrong}>{moneyShort(ov.byBucket.needs + ov.byBucket.wants)}</Text>
-              </View>
-              <View style={s.footItem} accessible accessibilityLabel={`Заделено ${moneyShort(ov.byBucket.savings)}`}>
-                <View style={s.footHead}>
-                  <Ionicons name="wallet" size={13} color={colors.savings} />
-                  <Text style={s.footText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Заделено</Text>
-                </View>
-                <Text style={s.footStrong}>{moneyShort(ov.byBucket.savings)}</Text>
-              </View>
-            </View>
             {/* Early warning only: the spending budget runs out before the month does at today's pace */}
             {isCurrent && forecast && free && free.free >= 0 && forecast.end < 0 && current.list.length >= 3 && (
               <View
@@ -483,7 +459,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             />
           )}
 
-          {visible.map((key, i) => (
+          {visible.filter((key) => key !== 'plans' || upcomingSoon || activeGoal).map((key, i) => (
             <Appear key={key} index={i + 1}>
               {sections[key]()}
             </Appear>
@@ -574,13 +550,9 @@ const s = themed((c) => ({
   legendDot: { width: 9, height: 9, borderRadius: 3 },
   legendName: { color: c.text, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   legendValue: { color: c.muted, fontSize: 12 },
-  moneyFoot: { flexDirection: 'row', borderTopWidth: 1, borderColor: c.faint, paddingTop: 10, gap: 8 },
+  incomeLine: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginTop: 2 },
   forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   forecastText: { flex: 1, color: c.text, fontSize: 13, lineHeight: 18 },
-  footItem: { flex: 1, gap: 2, minHeight: 44, justifyContent: 'center' },
-  footHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0, paddingRight: 2 },
-  footText: { color: c.muted, fontSize: 13, flexShrink: 1 },
-  footStrong: { color: c.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   duo: { flexDirection: 'row', gap: 10 },
   mini: { flex: 1, backgroundColor: c.card, borderRadius: 20, padding: 12, gap: 4 },
   miniHead: { color: c.muted, fontSize: 11.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
