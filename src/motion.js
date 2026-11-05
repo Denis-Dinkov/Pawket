@@ -79,6 +79,8 @@ export function useRollingNumber(value, step = 0.01) {
       set(value);
       return undefined;
     }
+    // Already showing it (e.g. a hidden tab coming back re-runs its effects): nothing to roll
+    if (value === shownRef.current) return undefined;
     const from = shownRef.current;
     const round = (v) => Math.round(v / step) * step;
     const start = Date.now();

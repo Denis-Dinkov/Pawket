@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { startTransition, useMemo, useState } from 'react';
 import { View, ScrollView, Keyboard, Platform, Switch } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -117,29 +117,36 @@ export default function AddScreen({ onDone, prefill = {} }) {
     const d = keep ? new Date(editingAny.date) : new Date();
     if (!keep) d.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     const common = { amount: Math.round(value * 100) / 100, note: note.trim(), date: d.toISOString() };
-    if (editing) {
-      updateExpense(editing.id, { ...common, categoryId, merchant, offBudget: (offBudget && !editing.fromGoalId) || undefined });
-    } else if (editingIncome) {
-      updateIncome(editingIncome.id, { ...common, kind });
-    } else if (isIncome) {
-      addIncome({ ...common, kind });
-      if (kind === 'salary') payYourselfFirst(common.amount);
-    } else {
-      addExpense(
-        {
-          ...common,
-          categoryId,
-          merchant: merchant.trim(),
-          source: fromGoal ? 'fund' : prefill.source || 'manual',
-          ...(fromGoal && { fromGoalId: fromGoal.id }),
-          ...(offBudget && !fromGoal && { offBudget: true }),
-        },
-        { repeat: repeat && !fromGoal && !offBudget }
-      );
-      if (prefill.wishId) resolveWish(prefill.wishId, 'bought');
-    }
+    // The new data re-renders every screen (all the budget and pet math): ~45 ms of JS. Done in the same
+    // step as closing the sheet, it held back the first frame of the close. So the sheet is closed first
+    // (onDone below) and the data is written two frames later, as a transition, while iOS runs the close
+    // animation on its own. The flying amount waits 350 ms anyway, so nothing visible is delayed.
+    const write = () => {
+      if (editing) {
+        updateExpense(editing.id, { ...common, categoryId, merchant, offBudget: (offBudget && !editing.fromGoalId) || undefined });
+      } else if (editingIncome) {
+        updateIncome(editingIncome.id, { ...common, kind });
+      } else if (isIncome) {
+        addIncome({ ...common, kind });
+        if (kind === 'salary') payYourselfFirst(common.amount);
+      } else {
+        addExpense(
+          {
+            ...common,
+            categoryId,
+            merchant: merchant.trim(),
+            source: fromGoal ? 'fund' : prefill.source || 'manual',
+            ...(fromGoal && { fromGoalId: fromGoal.id }),
+            ...(offBudget && !fromGoal && { offBudget: true }),
+          },
+          { repeat: repeat && !fromGoal && !offBudget }
+        );
+        if (prefill.wishId) resolveWish(prefill.wishId, 'bought');
+      }
+    };
     successFeedback();
     onDone({ ...common, type: mode });
+    requestAnimationFrame(() => requestAnimationFrame(() => startTransition(write)));
   };
 
   // Pay yourself first: right after a salary, offer to put 20% into a goal (the emergency fund first)

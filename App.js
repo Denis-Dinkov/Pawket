@@ -1,4 +1,4 @@
-import React, { Activity, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Activity, memo, startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { View, Modal, ActivityIndicator, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,13 @@ import { t, getLang } from './src/i18n';
 
 // Widget and Dynamic Island updates wait until the flying amount after saving (~1.3 s) is done
 const SYNC_DELAY = 1500;
+
+// Memoized: switching tabs re-renders Main, and without memo every opened screen re-rendered with it
+// (all their budget and pet calculations), which stalled the switch for 3-6 frames
+const SCREENS = { home: memo(HomeScreen), stats: memo(StatsScreen), plans: memo(PlansScreen), pet: memo(PetScreen) };
+const TAB_KEYS = Object.keys(SCREENS);
+// The other tabs are built in the background this long after start, so a first visit only reveals them
+const PREWARM_DELAY = 1200;
 
 const TABS = [
   { key: 'home', icon: 'home', get label() { return t('Начало'); } },
@@ -111,6 +118,13 @@ function Main() {
     setTabState(key);
     setVisited((v) => (v.includes(key) ? v : [...v, key]));
   }, []);
+  // Builds the tabs not opened yet while hidden, at low priority, once the start has settled:
+  // building a whole screen at the moment of the tap was what made a first visit stutter
+  useEffect(() => {
+    if (!ready || !pet) return undefined;
+    const timer = setTimeout(() => startTransition(() => setVisited(TAB_KEYS)), PREWARM_DELAY);
+    return () => clearTimeout(timer);
+  }, [ready, !!pet]); // eslint-disable-line react-hooks/exhaustive-deps
   // null = closed; otherwise the prefill for "New expense" ({ edit } edits an expense)
   const [adding, setAdding] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -172,8 +186,6 @@ function Main() {
   }
 
   if (!pet) return <OnboardingScreen />;
-
-  const SCREENS = { home: HomeScreen, stats: StatsScreen, plans: PlansScreen, pet: PetScreen };
 
   return (
     <View style={s.root}>
