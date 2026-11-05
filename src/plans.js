@@ -133,27 +133,40 @@ export function monthForecast(ov, now = new Date(), pending = 0) {
   return { end, perDayVariable, daysLeft };
 }
 
-// Average monthly "needs" over the last full months (falls back to this month): the base for the emergency fund
+// A month the user only caught part of: they started logging after its first week
+const PARTIAL_START_DAY = 7;
+
+/**
+ * Average monthly "needs" over the last full months: the base for the emergency fund.
+ * The month the user started in is skipped when they began after its first week (half its costs
+ * were never logged, so it would pull the average down), unless there's nothing else to go on.
+ * Falls back to this month when there are no earlier months at all.
+ */
 export function averageNeeds(expenses = [], now = new Date(), months = 3) {
-  const totals = [];
-  for (let i = 1; i <= months; i++) {
-    const { year, month } = shiftMonth(now.getFullYear(), now.getMonth(), -i);
-    const sum = expenses
+  const needsIn = (year, month) =>
+    expenses
       .filter((e) => {
         const d = new Date(e.date);
         return d.getFullYear() === year && d.getMonth() === month && countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs';
       })
       .reduce((a, e) => a + e.amount, 0);
-    if (sum > 0) totals.push(sum);
+  let first = null;
+  for (const e of expenses) {
+    const d = new Date(e.date);
+    if (!first || d < first) first = d;
   }
-  if (!totals.length) {
-    return expenses
-      .filter((e) => {
-        const d = new Date(e.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs';
-      })
-      .reduce((a, e) => a + e.amount, 0);
+  const partial = (year, month) =>
+    first && first.getFullYear() === year && first.getMonth() === month && first.getDate() > PARTIAL_START_DAY;
+
+  const full = [];
+  const partials = [];
+  for (let i = 1; i <= months; i++) {
+    const { year, month } = shiftMonth(now.getFullYear(), now.getMonth(), -i);
+    const sum = needsIn(year, month);
+    if (sum > 0) (partial(year, month) ? partials : full).push(sum);
   }
+  const totals = full.length ? full : partials;
+  if (!totals.length) return needsIn(now.getFullYear(), now.getMonth());
   return totals.reduce((a, x) => a + x, 0) / totals.length;
 }
 
