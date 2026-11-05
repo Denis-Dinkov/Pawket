@@ -159,7 +159,7 @@ function Pet({ expression = 'happy', stage = 'adult', head, neck, accessory, siz
     lastBounce.current = bounceKey;
     jump.setValue(0);
     Animated.sequence([
-      Animated.timing(jump, { toValue: -size * 0.14, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: native }),
+      Animated.timing(jump, { toValue: -size * 0.14, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: native }),
       Animated.spring(jump, { toValue: 0, ...SPRING.playful, useNativeDriver: native }),
     ]).start();
   }, [bounceKey, jump, size]);

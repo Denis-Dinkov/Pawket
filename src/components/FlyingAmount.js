@@ -19,7 +19,7 @@ export default function FlyingAmount({ item, onDone }) {
     }
     t.setValue(0);
     // Waits for the page sheet to slide away
-    Animated.timing(t, { toValue: 1, duration: 800, delay: 300, easing: EASE, useNativeDriver: true }).start(() => onDone());
+    Animated.timing(t, { toValue: 1, duration: 1000, delay: 350, easing: EASE, useNativeDriver: true }).start(() => onDone());
   }, [item, t, onDone]);
   if (!item) return null;
   return (

@@ -1,21 +1,33 @@
-// Shared motion: short, calm timings for a money app; everything is skipped with Reduce Motion.
+// Shared motion, tuned to feel like iOS itself; everything is skipped with Reduce Motion.
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, LayoutAnimation, Platform, UIManager } from 'react-native';
 
-export const DURATION = { press: 120, appear: 250, stagger: 40, exit: 200, number: 400, burst: 700 };
+// iOS-like durations: fades and slides around a third of a second, closing a bit quicker than opening
+export const DURATION = { appear: 350, stagger: 50, exit: 300, number: 600, burst: 1000 };
 export const EASE = Easing.out(Easing.cubic);
-export const EASE_IN = Easing.in(Easing.cubic);
+// Closing: iOS eases in and out rather than accelerating away
+export const EASE_IN = Easing.inOut(Easing.cubic);
+
+/**
+ * A spring described the way iOS / SwiftUI does: response (seconds per oscillation) and damping ratio
+ * (1 = settles without overshoot, below 1 = bounces), converted to Animated's stiffness and damping.
+ */
+const iosSpring = (response, dampingRatio) => ({
+  stiffness: (2 * Math.PI / response) ** 2,
+  damping: (4 * Math.PI * dampingRatio) / response,
+  mass: 1,
+});
 
 /**
  * The three springs every animation uses, so the app moves at one rhythm:
- * - snappy: presses and small state changes (~150 ms, no wobble)
- * - standard: things that move into place: sheets, toasts, bars (~350 ms, no overshoot)
- * - playful: only Charlie and his rewards (a short bounce)
+ * - snappy: presses, tab icons (response 0.35 s, no bounce)
+ * - standard: sheets, toasts, bars: the system default (response 0.5 s, no bounce)
+ * - playful: only Charlie and his rewards (SwiftUI's "bouncy": response 0.5 s, a little bounce)
  */
 export const SPRING = {
-  snappy: { speed: 40, bounciness: 0 },
-  standard: { damping: 24, stiffness: 240, mass: 1, overshootClamping: true },
-  playful: { speed: 16, bounciness: 8 },
+  snappy: iosSpring(0.35, 1),
+  standard: iosSpring(0.5, 1),
+  playful: iosSpring(0.5, 0.7),
 };
 
 // Reduce Motion, readable outside components too (store, LayoutAnimation)
@@ -36,7 +48,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 export function animateNextLayout() {
   if (reduceMotion) return;
   LayoutAnimation.configureNext({
-    duration: 220,
+    duration: 350,
     create: { type: 'easeOut', property: 'opacity' },
     update: { type: 'spring', springDamping: 0.85 },
     delete: { type: 'easeOut', property: 'opacity' },
