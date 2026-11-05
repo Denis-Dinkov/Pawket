@@ -9,6 +9,7 @@ import { colors, money, MONTHS, BUCKETS, radius } from '../theme';
 import { yearReview } from '../yearReview';
 import { plural } from '../format';
 import { themed } from '../themed';
+import { outfitOf } from '../pet/outfit';
 
 function Fact({ icon, color, label, value, sub }) {
   return (
@@ -31,7 +32,7 @@ export default function YearReviewSheet({ visible, onClose, year, data, pet, sta
   return (
     <Sheet visible={visible} onClose={onClose} maxHeight={0.94}>
       <View style={s.hero}>
-        <Pet expression="ecstatic" stage={stage} accessory={pet?.accessory} size={110} />
+        <Pet expression="ecstatic" stage={stage} {...outfitOf(pet)} size={110} />
         <Text style={s.title} accessibilityRole="header">Твоята {year} с {pet?.name}</Text>
         <Text style={s.sub}>{plural(r.count, 'запис', 'записа')} за годината</Text>
       </View>

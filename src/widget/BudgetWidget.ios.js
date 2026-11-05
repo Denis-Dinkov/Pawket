@@ -1,7 +1,7 @@
 import { HStack, VStack, Text, Image, Spacer, ProgressView, Link, Gauge } from '@expo/ui/swift-ui';
 import {
   font, foregroundStyle, frame, containerBackground, widgetURL, tint, lineLimit, minimumScaleFactor, opacity, gaugeStyle,
-  resizable, aspectRatio,
+  resizable, aspectRatio, monospacedDigit,
 } from '@expo/ui/swift-ui/modifiers';
 import { createWidget } from 'expo-widgets';
 
@@ -9,9 +9,6 @@ import { createWidget } from 'expo-widgets';
 // it can't use anything outside itself except the @expo/ui components (see the expo-widgets docs).
 const BudgetWidget = (props, environment) => {
   'widget';
-  const bg = { type: 'linearGradient', colors: ['#9C4D1C', '#B45E25'], startPoint: { x: 0, y: 0 }, endPoint: { x: 1, y: 1 } };
-  const white = '#FFFFFF';
-  const soft = '#FFF1E4';
   const family = environment.widgetFamily;
 
   // Lock screen: the system tints everything monochrome, so only text, emoji and Gauge
@@ -44,67 +41,99 @@ const BudgetWidget = (props, environment) => {
         <Text modifiers={[font({ size: 20, weight: 'heavy', design: 'rounded' }), lineLimit(1), minimumScaleFactor(0.6)]}>
           {props.remainingText}
         </Text>
-        <Text modifiers={[font({ size: 12 }), lineLimit(1), opacity(0.8)]}>{props.perDayText || props.remainingLabel}</Text>
+        <Text modifiers={[font({ size: 12 }), lineLimit(1), opacity(0.8)]}>{props.todayText || props.remainingLabel}</Text>
       </VStack>
     );
   }
-  const pet = props.petImage ? (
-    // resizable() is required, otherwise SwiftUI draws the image at its original size
-    <Image uiImage={props.petImage} modifiers={[resizable(), aspectRatio({ contentMode: 'fit' }), frame({ width: 58, height: 58 })]} />
-  ) : (
-    <Text modifiers={[font({ size: 38 })]}>{props.emoji}</Text>
-  );
+  // Home screen: Charlie's room colours (light or dark), so the brown dog stands out against them
+  const dark = environment.colorScheme === 'dark';
+  const room = {
+    type: 'linearGradient',
+    colors: dark ? ['#2A1D15', '#3A2719'] : ['#FFEBD6', '#FFD4AC'],
+    startPoint: { x: 0, y: 0 },
+    endPoint: { x: 0, y: 1 },
+  };
+  const ink = dark ? '#F4ECE4' : '#1E1510';
+  const muted = dark ? '#C9B4A2' : '#6E4E38';
+  const accent = dark ? '#F0A066' : '#A3531F';
+  const good = dark ? '#3FD9A2' : '#0A7550';
+  const bad = dark ? '#FF7A7E' : '#C8323A';
 
-  const money = (
+  const pet = (size) =>
+    props.petImage ? (
+      // resizable() is required, otherwise SwiftUI draws the image at its original size
+      <Image uiImage={props.petImage} modifiers={[resizable(), aspectRatio({ contentMode: 'fit' }), frame({ width: size, height: size })]} />
+    ) : (
+      <Text modifiers={[font({ size: size * 0.6 })]}>{props.emoji}</Text>
+    );
+
+  const money = (size) => (
     <VStack alignment="leading" spacing={0}>
-      <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(soft)]}>{props.remainingLabel}</Text>
-      <Text modifiers={[font({ size: 26, weight: 'heavy', design: 'rounded' }), foregroundStyle(white), lineLimit(1), minimumScaleFactor(0.6)]}>
+      <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(muted), lineLimit(1)]}>{props.remainingLabel}</Text>
+      <Text
+        modifiers={[
+          font({ size, weight: 'heavy', design: 'rounded' }),
+          foregroundStyle(props.over ? bad : ink),
+          monospacedDigit(),
+          lineLimit(1),
+          minimumScaleFactor(0.6),
+        ]}
+      >
         {props.remainingText}
       </Text>
     </VStack>
   );
+  const today = (
+    <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(props.todayOver ? bad : good), lineLimit(1), minimumScaleFactor(0.8)]}>
+      {props.todayText}
+    </Text>
+  );
 
   if (family === 'systemMedium') {
-    const bar = (label, value, color) => (
+    const bar = (label, pct, value, color) => (
       <VStack alignment="leading" spacing={2}>
-        <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(soft)]}>{label}</Text>
+        <HStack>
+          <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(muted)]}>{label}</Text>
+          <Spacer />
+          <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(muted), monospacedDigit()]}>{pct}</Text>
+        </HStack>
         <ProgressView value={value} modifiers={[tint(color)]} />
       </VStack>
     );
     return (
-      <HStack spacing={12} modifiers={[containerBackground(bg, 'widget'), widgetURL('pawket://home')]}>
-        <VStack alignment="leading" spacing={6}>
-          {pet}
-          <Text modifiers={[font({ size: 12, weight: 'bold' }), foregroundStyle(white)]}>{props.petName}</Text>
-          <Text modifiers={[font({ size: 11 }), foregroundStyle(soft)]}>{props.moodLabel}</Text>
+      <HStack spacing={14} modifiers={[containerBackground(room, 'widget'), widgetURL('pawket://home')]}>
+        <VStack alignment="center" spacing={2} modifiers={[frame({ width: 88 })]}>
+          {pet(80)}
+          <Text modifiers={[font({ size: 13, weight: 'bold' }), foregroundStyle(ink), lineLimit(1)]}>{props.petName}</Text>
+          <Text modifiers={[font({ size: 11 }), foregroundStyle(muted), lineLimit(1), minimumScaleFactor(0.8)]}>{props.moodLabel}</Text>
         </VStack>
-        <VStack alignment="leading" spacing={6}>
-          <HStack>
-            {money}
+        <VStack alignment="leading" spacing={4}>
+          <HStack alignment="top">
+            {money(24)}
             <Spacer />
             <Link destination="pawket://add?source=widget">
-              <Image systemName="plus.circle.fill" size={26} color={white} />
+              <Image systemName="plus.circle.fill" size={28} color={accent} />
             </Link>
           </HStack>
-          <Text modifiers={[font({ size: 11 }), foregroundStyle(soft), lineLimit(1)]}>{props.perDayText}</Text>
-          {bar(props.needsLabel, props.needs, '#3D7BFF')}
-          {bar(props.wantsLabel, props.wants, '#D6479A')}
-          {bar(props.savingsLabel, props.savings, '#1FBF87')}
+          {today}
+          {bar(props.needsLabel, props.needsPct, props.needs, dark ? '#7EA6FF' : '#1F5AD8')}
+          {bar(props.wantsLabel, props.wantsPct, props.wants, dark ? '#F07BC0' : '#B8297F')}
+          {bar(props.savingsLabel, props.savingsPct, props.savings, good)}
         </VStack>
       </HStack>
     );
   }
 
   return (
-    <VStack alignment="leading" spacing={4} modifiers={[containerBackground(bg, 'widget'), widgetURL('pawket://home')]}>
-      <HStack>
-        {pet}
+    <VStack alignment="leading" spacing={1} modifiers={[containerBackground(room, 'widget'), widgetURL('pawket://home')]}>
+      <HStack alignment="top">
+        {pet(62)}
         <Spacer />
-        <Text modifiers={[font({ size: 11, weight: 'bold' }), foregroundStyle(white), opacity(0.9)]}>{props.moodLabel}</Text>
+        <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(muted), lineLimit(1)]}>{props.moodLabel}</Text>
       </HStack>
       <Spacer />
-      {money}
-      <Text modifiers={[font({ size: 10 }), foregroundStyle(soft), lineLimit(1)]}>{props.perDayText}</Text>
+      {money(26)}
+      {today}
     </VStack>
   );
 };

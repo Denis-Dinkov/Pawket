@@ -28,7 +28,7 @@ export async function syncLiveActivity({ enabled, data, now = new Date() }) {
       return;
     }
     const base = activityProps(data, now);
-    const props = { ...base, petImage: getPetImagePath(base.stageKey, base.expression) };
+    const props = { ...base, petImage: getPetImagePath(base.lookKey, base.expression, true) };
     // A new day (or a fresh launch): replace yesterday's activity
     if (startedFor !== dayOf(now) || !running.length) {
       await Promise.all(running.map((a) => a.end('immediate')));

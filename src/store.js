@@ -6,6 +6,7 @@ import { setCustomCategories, CUSTOM_SHADES, money } from './theme';
 import { evaluateClosedMonths, feedPet, stageFor } from './pet/logic';
 import { dueRecurring, goalProgress, resumedLastKey, WISH_HOURS } from './plans';
 import { weekMissions, weekKey, activityDays, streak, MISSION_XP } from './pet/missions';
+import { outfitOf, toggleItem } from './pet/outfit';
 import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 
@@ -398,7 +399,9 @@ export function StoreProvider({ children }) {
         setData((d) => ({ ...d, wishes: d.wishes.filter((w) => w.id !== id) }));
       },
 
-      setAccessory: (accessory) => setData((d) => ({ ...d, pet: d.pet && { ...d.pet, accessory } })),
+      // Puts a reward on (or takes it off); one item on the head and one around the neck
+      wearItem: (id) =>
+        setData((d) => (d.pet ? { ...d, pet: { ...d.pet, outfit: toggleItem(outfitOf(d.pet), id), accessory: undefined } } : d)),
 
       setSettings: (patch) => setData((d) => ({ ...d, settings: { ...d.settings, ...patch } })),
 

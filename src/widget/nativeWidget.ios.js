@@ -13,23 +13,21 @@ try {
 export const widgetsAvailable = !!BudgetWidget;
 export const getWidgetsDirectory = () => widgetsDirectory;
 
-let petImages = null; // { stageKey, dir } after PetSnapshots
+let petImages = null; // { key, dir } after PetSnapshots (key = stage + outfit, see lookKey)
 export const setPetImages = (value) => {
   petImages = value;
 };
 
-// The dog's picture for a stage and mood, once PetSnapshots has written it to the shared folder
-export const getPetImagePath = (stageKey, expression) =>
-  petImages && petImages.stageKey === stageKey ? `${petImages.dir}/pet-${stageKey}-${expression}.png` : '';
+// The dog's picture for a look and mood, once PetSnapshots has written it to the shared folder.
+// small: the lighter version for the Dynamic Island.
+export const getPetImagePath = (key, expression, small = false) =>
+  petImages && petImages.key === key ? `${petImages.dir}/pet-${key}-${expression}${small ? '-sm' : ''}.png` : '';
 
 export function pushToNativeWidget(data) {
   if (!BudgetWidget) return;
   const entries = buildWidgetTimeline(data).map(({ date, props }) => ({
     date,
-    props: {
-      ...props,
-      petImage: petImages && petImages.stageKey === props.stageKey ? `${petImages.dir}/pet-${props.stageKey}-${props.expression}.png` : '',
-    },
+    props: { ...props, petImage: getPetImagePath(props.lookKey, props.expression) },
   }));
   try {
     BudgetWidget.updateTimeline(entries);

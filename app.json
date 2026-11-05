@@ -38,7 +38,7 @@
             {
               "name": "BudgetWidget",
               "displayName": "Бюджет и куче",
-              "description": "Колко остава от бюджета и как се чувства кучето",
+              "description": "Колко можеш да харчиш до края на месеца и как е Чарли",
               "ios": {
                 "supportedFamilies": [
                   "systemSmall",
@@ -59,7 +59,7 @@
             {
               "name": "Budget",
               "label": "Бюджет и куче",
-              "description": "Колко остава от бюджета и как се чувства кучето",
+              "description": "Колко можеш да харчиш до края на месеца и как е Чарли",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,

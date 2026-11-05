@@ -4,6 +4,7 @@ import { petStatus, EXPRESSIONS } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { dailyLimit, freeToSpend } from '../budget';
 import { pendingSpend } from '../plans';
+import { outfitOf, lookKey } from '../pet/outfit';
 // Labels come in as props — the iOS widget function can't see anything outside itself
 const labels = () => ({ needsLabel: 'Нужди', wantsLabel: 'Желания', savingsLabel: 'Спестявания' });
 
@@ -26,7 +27,7 @@ export function shortAmount(n) {
 // Serializable props: strings and numbers only, already formatted
 export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], recurring = [], pet }, now = new Date()) {
   if (!pet) {
-    return { ...labels(), ready: 0, petName: 'Pawket', expression: 'sleeping', emoji: WIDGET_EMOJI.sleeping, moodLabel: 'Отвори приложението', remainingLabel: 'Свободни', remainingText: '—', remainingShort: '—', leftRatio: 0, perDayText: '', tip: '', mood: 0, fullness: 0, needs: 0, wants: 0, savings: 0, stageKey: 'kitten' };
+    return { ...labels(), ready: 0, petName: 'Pawket', expression: 'sleeping', emoji: WIDGET_EMOJI.sleeping, moodLabel: 'Отвори приложението', remainingLabel: 'Свободни', remainingText: '—', remainingShort: '—', leftRatio: 0, perDayText: '', todayText: '', over: 0, todayOver: 0, tip: '', mood: 0, fullness: 0, needs: 0, wants: 0, savings: 0, needsPct: '', wantsPct: '', savingsPct: '', stageKey: 'kitten', lookKey: '' };
   }
   const st = petStatus({ expenses, incomes, incomeEntries, pet, now });
   const ov = st.overview;
@@ -36,11 +37,15 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
   const free = freeToSpend(ov, pending);
   const tip = getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet.lastFedAt })[0];
   const I = ov.income || 0;
+  const share = (k, target) => (I ? `${Math.round((ov.byBucket[k] / I) * 100)}% / ${target}%` : '');
+  const left = daily ? Math.round(daily.left) : 0;
   return {
     ...labels(),
     ready: 1,
     petName: pet.name,
     stageKey: st.stage.key,
+    // The picture to show: stage + outfit (PetSnapshots saves one set per look)
+    lookKey: lookKey(st.stage.key, outfitOf(pet)),
     stageName: st.stage.name,
     expression: st.expression,
     emoji: WIDGET_EMOJI[st.expression],
@@ -53,6 +58,13 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     remainingShort: free ? shortAmount(free.free) : '—',
     leftRatio: free ? clamp01(free.ratio) : 0,
     perDayText: daily ? `≈ ${money(daily.limit)}/ден` : '',
+    over: free && free.free < 0 ? 1 : 0,
+    // The same words as Home: what's left for today, or how much over the limit
+    todayText: daily ? (left < 0 ? `Днес ${moneyShort(-left)} над лимита` : `Днес остават ${moneyShort(left)}`) : 'Задай доход в приложението',
+    todayOver: daily && left < 0 ? 1 : 0,
+    needsPct: share('needs', 50),
+    wantsPct: share('wants', 30),
+    savingsPct: share('savings', 20),
     needs: I ? clamp01(ov.byBucket.needs / (0.5 * I)) : 0,
     wants: I ? clamp01(ov.byBucket.wants / (0.3 * I)) : 0,
     savings: I ? clamp01(ov.byBucket.savings / (0.2 * I)) : 0,
@@ -82,6 +94,7 @@ export function activityProps({ expenses = [], incomes = {}, incomeEntries = [],
   return {
     petName: pet.name,
     stageKey: st.stage.key,
+    lookKey: lookKey(st.stage.key, outfitOf(pet)),
     expression: st.expression,
     emoji: WIDGET_EMOJI[st.expression],
     moodLabel: EXPRESSIONS[st.expression].label.toLowerCase(),

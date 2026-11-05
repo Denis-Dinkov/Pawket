@@ -13,6 +13,9 @@ import { getAdvice } from '../pet/advice';
 import { petLine } from '../pet/lines';
 import { dailyLimit } from '../budget';
 import { pendingSpend } from '../plans';
+import Pet from '../pet/Pet';
+import { ItemPreview } from '../pet/Accessories';
+import { outfitOf } from '../pet/outfit';
 import { weekMissions, streak, activityDays, rewardsState, missionsTotal, weekStart, MISSION_XP } from '../pet/missions';
 import { goalProgress } from '../plans';
 import { plural } from '../format';
@@ -61,10 +64,19 @@ function StreakCount({ value, children }) {
   return <Animated.View style={{ transform: [{ scale: v }] }}>{children}</Animated.View>;
 }
 
+// What each stage adds, shown on the growth path
+const STAGE_PERKS = {
+  kitten: 'Начало: легло, купичка и топка',
+  young: 'плюшено мече и парти шапка',
+  adult: 'розетка в рамката на стената',
+  champion: 'корона, купа в рамката и златна купичка',
+};
+
 // Charlie's own tab: his room, the streak, this week's missions, rewards and the year in review
 export default function PetScreen() {
   const data = useStore();
-  const { pet, expenses, incomes, incomeEntries, recurring, goals, setAccessory, checkInNoSpend } = data;
+  const { pet, expenses, incomes, incomeEntries, recurring, goals, wearItem, checkInNoSpend } = data;
+  const outfit = outfitOf(pet);
   const insets = useSafeAreaInsets();
   const now = useNow();
   const [statOpen, setStatOpen] = useState(null);
@@ -174,40 +186,62 @@ export default function PetScreen() {
           <Text style={s.muted}>Отключват се с навици, не с пари. Докосни отключена награда, за да я сложиш.</Text>
           <View style={s.rewards}>
             {rewards.map((r) => {
-              const on = pet.accessory === r.id;
+              const on = outfit[r.slot] === r.id;
               return (
                 <Touch
                   key={r.id}
                   haptic={r.unlocked ? 'success' : false}
                   disabled={!r.unlocked}
                   style={[s.reward, on && s.rewardOn, !r.unlocked && { opacity: 0.55 }]}
-                  onPress={() => setAccessory(on ? null : r.id)}
-                  accessibilityLabel={`${r.name}, ${r.unlocked ? (on ? 'сложена' : 'отключена') : `заключена: ${r.need}`}`}
+                  onPress={() => wearItem(r.id)}
+                  accessibilityLabel={`${r.name}, ${r.slot === 'head' ? 'на главата' : 'на врата'}, ${r.unlocked ? (on ? 'сложена' : 'отключена') : `заключена: ${r.need}`}`}
                   accessibilityState={{ selected: on, disabled: !r.unlocked }}
                 >
-                  <Ionicons name={r.unlocked ? r.icon : 'lock-closed'} size={24} color={on ? colors.primary : r.unlocked ? colors.text : colors.muted} />
+                  {r.unlocked ? <ItemPreview id={r.id} size={44} /> : (
+                    <View style={s.lock}>
+                      <Ionicons name="lock-closed" size={20} color={colors.muted} />
+                    </View>
+                  )}
                   <Text style={s.rewardName} numberOfLines={2}>{r.name}</Text>
-                  <Text style={s.rewardNeed} numberOfLines={2}>{r.unlocked ? (on ? 'Сложена' : 'Сложи') : r.need}</Text>
+                  <Text style={[s.rewardNeed, on && { color: colors.primary, fontWeight: '700' }]} numberOfLines={2}>
+                    {r.unlocked ? (on ? 'Сложена' : r.slot === 'head' ? 'За главата' : 'За врата') : r.need}
+                  </Text>
                 </Touch>
               );
             })}
           </View>
+          <Text style={s.muted}>Може по едно нещо на главата и едно на врата.</Text>
 
+          {/* Growth: four little Charlies, what each stage adds, and how far the next one is */}
           <Text style={s.section} accessibilityRole="header">Растеж</Text>
-          <Card style={{ gap: 10 }}>
-            {STAGES.map((st) => {
-              const reached = (pet.xp || 0) >= st.xp;
-              return (
-                <View key={st.key} style={s.head}>
-                  <Ionicons name={reached ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={reached ? colors.savings : colors.muted} />
-                  <Text style={[s.mission, !reached && { color: colors.muted }]}>{st.name}</Text>
-                  <Text style={s.xp}>{st.xp} XP</Text>
-                </View>
-              );
-            })}
+          <Card style={{ gap: 14 }}>
+            <View style={s.path}>
+              {STAGES.map((st, i) => {
+                const reached = (pet.xp || 0) >= st.xp;
+                const isCurrent = status.stage.key === st.key;
+                return (
+                  <View
+                    key={st.key}
+                    style={[s.step, isCurrent && s.stepOn]}
+                    accessible
+                    accessibilityLabel={`${st.name}, ${st.xp} XP${reached ? (isCurrent ? ', сегашният етап' : ', достигнат') : ', предстои'}. ${STAGE_PERKS[st.key]}`}
+                  >
+                    <View style={[s.stepPet, !reached && { opacity: 0.5 }]}>
+                      <Pet expression="happy" stage={st.key} size={58} animate={false} />
+                    </View>
+                    <Text style={[s.stepName, !reached && { color: colors.muted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                      {st.name}
+                    </Text>
+                    <Text style={s.stepXp}>{i === 0 ? 'старт' : `${st.xp} XP`}</Text>
+                  </View>
+                );
+              })}
+            </View>
             <Bar value={status.progress} color={colors.needs} height={6} label={`${pet.xp || 0} XP`} />
             <Text style={s.muted}>
-              {pet.xp || 0} XP{status.next ? ` · още ${status.next.xp - (pet.xp || 0)} до „${status.next.name}“` : ' · най-високият етап'}
+              {status.next
+                ? `${pet.xp || 0} XP · още ${status.next.xp - (pet.xp || 0)} до „${status.next.name}“. Ще получи: ${STAGE_PERKS[status.next.key]}.`
+                : `${pet.xp || 0} XP · най-високият етап. ${pet.name} носи корона.`}
             </Text>
           </Card>
 
@@ -272,11 +306,18 @@ const s = themed((c) => ({
   xp: { color: c.muted, fontSize: 12.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
   rewards: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reward: {
-    width: '30%', flexGrow: 1, minHeight: 104, backgroundColor: c.card, borderRadius: radius.badge, padding: 10,
+    width: '30.8%', minHeight: 112, backgroundColor: c.card, borderRadius: radius.badge, padding: 10,
     alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 2, borderColor: 'transparent',
   },
   rewardOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
   rewardName: { color: c.text, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   rewardNeed: { color: c.muted, fontSize: 11.5, textAlign: 'center' },
+  lock: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.faint, alignItems: 'center', justifyContent: 'center' },
+  path: { flexDirection: 'row', gap: 6 },
+  step: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.badge, borderWidth: 2, borderColor: 'transparent', gap: 2 },
+  stepOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
+  stepPet: { width: 58, height: 58, marginTop: 10 },
+  stepName: { color: c.text, fontSize: 12, fontWeight: '700' },
+  stepXp: { color: c.muted, fontSize: 11, fontVariant: ['tabular-nums'] },
   reviewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
 }));

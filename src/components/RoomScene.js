@@ -7,9 +7,15 @@ import { colors, currentColorScheme } from '../theme';
  * Charlie's room, drawn behind him: striped wallpaper, a window with curtains (sun or moon),
  * a framed picture, a lamp, a plant, a wooden floor with a rug, his bed, his bowl and toys.
  * Static and memoized — it only redraws when the size, day/night or the bowl changes.
+ * stage adds things as he grows (see STAGE_INDEX).
  * The dog sits a bit right of center (see PetRoom), so the bed is centered under him.
  */
-function RoomScene({ width: w, height: h, top, night, hungry, petName }) {
+// The room grows with him: a teddy from "Младо куче", a rosette from "Кавалер", a trophy and a gold bowl for "Шампион"
+const STAGE_INDEX = { kitten: 0, young: 1, adult: 2, champion: 3 };
+
+function RoomScene({ width: w, height: h, top, night, hungry, petName, stage = 'kitten' }) {
+  const level = STAGE_INDEX[stage] ?? 0;
+  const gold = level >= 3;
   const dark = currentColorScheme() === 'dark';
   const ink = dark ? '#000000' : '#5A3018';
   const floorY = h - 92; // where the floor starts
@@ -53,15 +59,34 @@ function RoomScene({ width: w, height: h, top, night, hungry, petName }) {
         <Rect key={i} x={i * 26} y={0} width={12} height={floorY} fill={wallLine} />
       ))}
 
-      {/* Framed picture of a bone above the dog */}
+      {/* Framed picture above the dog: a bone, then a rosette ("Кавалер"), then a trophy in a gold frame ("Шампион") */}
       <G transform={`translate(${dogX - 27} ${top + 56}) scale(0.88)`}>
-        <Rect x={0} y={0} width={46} height={36} rx={3} fill={dark ? '#6B4A30' : '#B97A45'} />
+        <Rect x={0} y={0} width={46} height={36} rx={3} fill={gold ? '#D9A22E' : dark ? '#6B4A30' : '#B97A45'} />
         <Rect x={4} y={4} width={38} height={28} rx={2} fill={dark ? '#2F3B33' : '#F7EBD8'} />
-        <Path d="M14 18 L32 18" stroke={dark ? '#D8C3A0' : '#E2BE94'} strokeWidth={5} strokeLinecap="round" />
-        <Circle cx={13} cy={15.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
-        <Circle cx={13} cy={20.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
-        <Circle cx={33} cy={15.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
-        <Circle cx={33} cy={20.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
+        {level >= 3 ? (
+          <>
+            <Path d="M16 9 L30 9 L29 17 Q23 22 17 17 Z" fill="#F2C14E" />
+            <Path d="M16 11 Q11 11 12 15 Q13 17 17 16" stroke="#F2C14E" strokeWidth={1.6} fill="none" />
+            <Path d="M30 11 Q35 11 34 15 Q33 17 29 16" stroke="#F2C14E" strokeWidth={1.6} fill="none" />
+            <Rect x={21.5} y={19} width={3} height={5} fill="#D9A22E" />
+            <Rect x={17} y={24} width={12} height={3} rx={1} fill="#D9A22E" />
+          </>
+        ) : level >= 2 ? (
+          <>
+            <Path d="M19 20 L15 30 L19 28 L21 31 L23 21 Z" fill="#3D7BFF" />
+            <Path d="M27 20 L31 30 L27 28 L25 31 L23 21 Z" fill="#3D7BFF" />
+            <Circle cx={23} cy={15} r={8} fill="#D8343C" />
+            <Circle cx={23} cy={15} r={4.5} fill="#F2C14E" />
+          </>
+        ) : (
+          <>
+            <Path d="M14 18 L32 18" stroke={dark ? '#D8C3A0' : '#E2BE94'} strokeWidth={5} strokeLinecap="round" />
+            <Circle cx={13} cy={15.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
+            <Circle cx={13} cy={20.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
+            <Circle cx={33} cy={15.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
+            <Circle cx={33} cy={20.5} r={3} fill={dark ? '#D8C3A0' : '#E2BE94'} />
+          </>
+        )}
         <Line x1={23} y1={-8} x2={8} y2={0} stroke={ink} strokeWidth={1} opacity={0.4} />
         <Line x1={23} y1={-8} x2={38} y2={0} stroke={ink} strokeWidth={1} opacity={0.4} />
         <Circle cx={23} cy={-8} r={1.8} fill={ink} opacity={0.5} />
@@ -144,6 +169,22 @@ function RoomScene({ width: w, height: h, top, night, hungry, petName }) {
         <Circle cx={12} cy={3.5} r={4} fill={dark ? '#D8C3A0' : '#F3E3C8'} />
       </G>
 
+      {/* From "Младо куче": a teddy bear next to his bed */}
+      {level >= 1 && (
+        <G transform={`translate(${dogX - 84} ${h - 74})`}>
+          <Circle cx={-8} cy={-14} r={4.5} fill={dark ? '#8A5A3A' : '#C98A55'} />
+          <Circle cx={8} cy={-14} r={4.5} fill={dark ? '#8A5A3A' : '#C98A55'} />
+          <Ellipse cx={0} cy={6} rx={11} ry={12} fill={dark ? '#8A5A3A' : '#C98A55'} />
+          <Circle cx={0} cy={-7} r={9} fill={dark ? '#9A6A48' : '#D99A62'} />
+          <Ellipse cx={0} cy={-4} rx={4} ry={3} fill={dark ? '#C9A27A' : '#F3D6A8'} />
+          <Circle cx={-3} cy={-9} r={1.3} fill="#2A1A10" />
+          <Circle cx={3} cy={-9} r={1.3} fill="#2A1A10" />
+          <Circle cx={0} cy={-5} r={1.2} fill="#2A1A10" />
+          <Ellipse cx={0} cy={8} rx={6} ry={6} fill={dark ? '#A47652' : '#E6B07C'} />
+          <Path d="M-6 -1 L6 -1 L3 2 L-3 2 Z" fill="#D8343C" />
+        </G>
+      )}
+
       {/* Bowl with his name; kibble only when he isn't hungry */}
       <G transform={`translate(52 ${h - 58})`}>
         <Ellipse cx={0} cy={16} rx={30} ry={5} fill="#000000" opacity={0.12} />
@@ -151,7 +192,7 @@ function RoomScene({ width: w, height: h, top, night, hungry, petName }) {
           [[-10, -2], [-3, -4], [5, -3], [12, -1], [-6, 1], [2, 0], [9, 2]].map(([x, y], i) => (
             <Circle key={i} cx={x} cy={y} r={3.4} fill={i % 2 ? '#9A5A2E' : '#B57240'} />
           ))}
-        <Path d="M-26 0 L26 0 Q24 16 0 16 Q-24 16 -26 0 Z" fill={colors.bowl} />
+        <Path d="M-26 0 L26 0 Q24 16 0 16 Q-24 16 -26 0 Z" fill={gold ? '#D9A22E' : colors.bowl} />
         <Ellipse cx={0} cy={0} rx={26} ry={4.5} fill={hungry ? (dark ? '#2A1A10' : '#8A4520') : 'none'} stroke={dark ? '#9A6A4A' : '#D98B57'} strokeWidth={2} />
         <SvgText x={0} y={11.5} fontSize={7.5} fontWeight="700" fill="#FFFFFF" opacity={0.9} textAnchor="middle">
           {(petName || '').toUpperCase().slice(0, 8)}

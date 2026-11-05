@@ -5,6 +5,7 @@ import Pet from '../pet/Pet';
 import Pill from './ui/Pill';
 import { colors, MONTHS, shadow } from '../theme';
 import { expressionFor } from '../pet/logic';
+import { outfitOf } from '../pet/outfit';
 import { successFeedback } from '../haptics';
 import { themed } from '../themed';
 
@@ -21,7 +22,7 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.backdrop}>
         <View style={s.card}>
-          <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} size={140} />
+          <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} {...outfitOf(pet)} size={140} />
           {levelUp && (
             <>
               <Text style={s.h1}>{pet.name} порасна! 🎉</Text>

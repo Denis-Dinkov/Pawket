@@ -12,6 +12,7 @@ import { colors, radius, shadow } from '../theme';
 import { EXPRESSIONS, HUNGRY_AT } from '../pet/logic';
 import { themed } from '../themed';
 import { plural } from '../format';
+import { outfitOf } from '../pet/outfit';
 
 const isNight = (now) => now.getHours() >= 20 || now.getHours() < 6;
 
@@ -63,12 +64,15 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
   const hungry = status.fullness < HUNGRY_AT;
   return (
     <View style={[s.chips, style]}>
+      {/* Compact (in the room on Home): no mood chip — his face shows it, and a hat needs the space */}
+      {!compact && (
       <Chip
         icon={<Text style={s.emoji}>{expr.emoji}</Text>}
-        label={compact ? null : expr.label}
+        label={expr.label}
         onPress={() => onStat('mood')}
         a11y={`Настроение: ${expr.label}${status.score != null ? `, ${status.mood} от 100` : ''}`}
       />
+      )}
       <Chip
         icon={<Text style={s.emoji}>🦴</Text>}
         label={`${status.fullness}%`}
@@ -119,7 +123,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
   return (
     <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={{ height: height + insetTop, paddingTop: insetTop }}>
       {/* The room shows the state too: a dark sky at night, an empty bowl when he's hungry */}
-      <RoomScene width={width} height={height + insetTop} top={insetTop} night={night} hungry={hungry} petName={pet.name} />
+      <RoomScene width={width} height={height + insetTop} top={insetTop} night={night} hungry={hungry} petName={pet.name} stage={status.stage.key} />
 
       <View style={s.top}>{top}</View>
       {badges ? <View style={[s.badges, { top: insetTop + 52 }]}>{badges}</View> : null}
@@ -137,7 +141,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
       </Touch>
 
       <Touch haptic={false} pressScale={1} onPress={pet_} style={s.pet} accessibilityLabel={`${pet.name}, ${status.stage.name.toLowerCase()}, ${expr.label.toLowerCase()}`} accessibilityHint="Погали го">
-        <Pet expression={status.expression} stage={status.stage.key} accessory={pet.accessory} size={150} bounceKey={`${bounceKey}-${pats}`} />
+        <Pet expression={status.expression} stage={status.stage.key} {...outfitOf(pet)} size={150} bounceKey={`${bounceKey}-${pats}`} />
       </Touch>
       {pats > 0 && !motionReduced() && <Hearts id={pats} />}
 

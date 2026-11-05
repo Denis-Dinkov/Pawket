@@ -38,6 +38,7 @@ import LayoutSheet from '../components/LayoutSheet';
 import { TodayCard, TopCategoriesCard } from '../components/HomeCards';
 import { normalizeLayout } from '../homeLayout';
 import { themed } from '../themed';
+import { outfitOf } from '../pet/outfit';
 
 const RECENT = 3;
 const ROOM = 268;
@@ -96,7 +97,7 @@ const DockHeader = memo(
         <Touch haptic={false} onPress={onPress} accessibilityLabel="Нагоре">
           <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={[s.dock, { paddingTop: topInset + 6 }]}>
             <View style={s.dockPet}>
-              <Pet expression={expression} stage={stageKey} accessory={pet.accessory} size={52} animate={false} />
+              <Pet expression={expression} stage={stageKey} {...outfitOf(pet)} size={52} animate={false} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.dockName} numberOfLines={1}>

@@ -24,6 +24,7 @@ import { motionReduced } from './src/motion';
 import useIncomingAdd from './src/hooks/useIncomingAdd';
 import useWidgetSync from './src/widget/useWidgetSync';
 import PetSnapshots from './src/widget/PetSnapshots';
+import { outfitOf } from './src/pet/outfit';
 import Touch from './src/components/ui/Touch';
 import { syncReminders, listenToReminders, ACTION_NO_SPEND } from './src/reminders';
 import { syncLiveActivity } from './src/widget/liveActivity';
@@ -122,6 +123,13 @@ function Main() {
   // The Apple Pay automation, the widget "+" and the quick action all open "New expense"
   useIncomingAdd(setAdding);
   const refreshWidget = useWidgetSync({ ready, expenses, incomes, incomeEntries, recurring, categories, pet });
+  // New dog pictures (stage or outfit changed): refresh the widget and the Dynamic Island with them
+  const [snapshotTick, setSnapshotTick] = useState(0);
+  const onSnapshots = useCallback(() => {
+    refreshWidget();
+    setSnapshotTick((n) => n + 1);
+  }, [refreshWidget]);
+  const outfit = outfitOf(pet);
 
   // The evening reminder: rescheduled after every entry, skipping today once something is recorded
   const activeToday = !!pet && (pet.lastActiveDay === dayKey(new Date()) || expenses.some((e) => e.source !== 'recurring' && sameDay(e.date, new Date())));
@@ -137,7 +145,7 @@ function Main() {
       SYNC_DELAY
     );
     return () => clearTimeout(t);
-  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity]);
+  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity, snapshotTick]);
 
   const onReminder = useCallback(
     (action) => (action === ACTION_NO_SPEND ? checkInNoSpend() : setAdding({ source: 'manual' })),
@@ -208,7 +216,7 @@ function Main() {
       </Modal>
 
       <PetEventModal event={pendingEvent} pet={pet} stage={stageFor(pet.xp).stage} onClose={dismissEvent} />
-      <PetSnapshots stageKey={stageFor(pet.xp).stage.key} onDone={refreshWidget} />
+      <PetSnapshots stageKey={stageFor(pet.xp).stage.key} head={outfit.head} neck={outfit.neck} onDone={onSnapshots} />
     </View>
   );
 }
