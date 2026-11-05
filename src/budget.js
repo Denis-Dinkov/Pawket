@@ -1,5 +1,6 @@
 // Pure budget logic (no RN) — used by the screens, the dog and the widgets.
 import { categoryById } from './theme';
+import { t } from './i18n';
 
 export const monthKey = (year, month) => `${year}-${String(month + 1).padStart(2, '0')}`;
 
@@ -19,8 +20,8 @@ export function getIncome(incomes, year, month) {
 }
 
 /**
- * Total income for the month: the monthly income setting or the recorded salary (whichever is larger),
- * plus all extra income (bonus, freelance, gift...).
+ * Total income for the month: the recorded salary when there is one (it replaces the monthly income setting,
+ * as the app says, even when it's lower), otherwise the setting; plus all extra income (bonus, freelance, gift...).
  */
 export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
   const base = getIncome(incomes, year, month);
@@ -28,14 +29,44 @@ export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
   const sum = (arr) => arr.reduce((a, e) => a + e.amount, 0);
   const salary = sum(list.filter((e) => e.kind === 'salary'));
   const extra = sum(list.filter((e) => e.kind !== 'salary'));
-  return { base, salary, extra, total: Math.max(base, salary) + extra, list };
+  return { base, salary, extra, total: (salary > 0 ? salary : base) + extra, list };
 }
 
+/**
+ * Whether an expense counts in the month's budget. Two kinds don't:
+ * - a payment out of a goal or sinking fund (fromGoalId): its money was already counted as savings
+ *   when it was put aside, so counting it again would double it;
+ * - an entry marked "outside the budget" (offBudget): paid from money the user already had elsewhere
+ *   (another account, old savings), e.g. existing savings moved into a goal. It's kept for the record
+ *   and still moves a goal's progress, but this month's numbers ignore it.
+ */
+export const countsInBudget = (e) => !e.fromGoalId && !e.offBudget;
+
+// Entries grouped by month, built once per array. The store replaces the array on every change,
+// so a cached index is never stale, and the many per-render month lookups don't re-scan and re-parse every date.
+const monthIndex = new WeakMap();
+function indexByMonth(list) {
+  let index = monthIndex.get(list);
+  if (!index) {
+    index = new Map();
+    for (const e of list) {
+      const d = new Date(e.date);
+      const key = monthKey(d.getFullYear(), d.getMonth());
+      const bucket = index.get(key);
+      if (bucket) bucket.push(e);
+      else index.set(key, [e]);
+    }
+    monthIndex.set(list, index);
+  }
+  return index;
+}
+
+const EMPTY_LIST = Object.freeze([]);
+
+// The entries of one month, in the array's order. The result is shared: callers must not mutate it.
 export function filterMonth(expenses, year, month) {
-  return expenses.filter((e) => {
-    const d = new Date(e.date);
-    return d.getFullYear() === year && d.getMonth() === month;
-  });
+  if (!expenses?.length) return EMPTY_LIST;
+  return indexByMonth(expenses).get(monthKey(year, month)) || EMPTY_LIST;
 }
 
 export function summarize(list) {
@@ -43,6 +74,7 @@ export function summarize(list) {
   const byBucket = { needs: 0, wants: 0, savings: 0 };
   let total = 0;
   for (const e of list) {
+    if (!countsInBudget(e)) continue;
     const cat = categoryById(e.categoryId);
     total += e.amount;
     byCategory[e.categoryId] = (byCategory[e.categoryId] || 0) + e.amount;
@@ -82,17 +114,17 @@ export function budgetScore(args) {
 
 // Short verdict for the score (same scale as in the explanation)
 export function scoreVerdict(score) {
-  if (score >= 85) return "отлично";
-  if (score >= 65) return "добре";
-  if (score >= 45) return "внимавай";
-  return "време за промяна";
+  if (score >= 85) return t('отлично');
+  if (score >= 65) return t('добре');
+  if (score >= 45) return t('внимавай');
+  return t('време за промяна');
 }
 
 // The same score broken into parts — for the "Why is the dog like this" explanation
 export function budgetScoreParts({ income, byBucket, dayFrac = 1 }) {
   if (!income) return null;
   const I = income;
-  const { needs, wants, savings } = byBucket;
+  const { needs, wants } = byBucket;
   const wantsCap = 0.3 * I;
   const wantsAllowed = wantsCap * Math.max(dayFrac, 0.15);
   const room = I - needs - wants;
@@ -109,7 +141,9 @@ export function budgetScoreParts({ income, byBucket, dayFrac = 1 }) {
     { key: 'savings', penalty: Math.min(40, (Math.max(0, 0.2 * I - room) / I) * 150), value: Math.max(0, room) / I, target: 0.2 },
   ];
   let s = 100 - parts.reduce((a, p) => a + p.penalty, 0);
-  const overIncome = needs + wants + savings > I;
+  // Only spending over income caps the score. Savings above the leftover come from money saved earlier
+  // (e.g. moving existing savings into a goal), which isn't overspending.
+  const overIncome = needs + wants > I;
   if (overIncome) s = Math.min(s, 15);
   return { score: Math.max(0, Math.round(s)), parts, overIncome };
 }
@@ -122,7 +156,7 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
   const income = incomeInfo.total;
   const progress = monthProgress(year, month, now);
   const remaining = income - sum.total;
-  const spendable = 0.8 * income - sum.byBucket.needs - sum.byBucket.wants;
+  const spendable = spendRoom({ income, byBucket: sum.byBucket });
   return {
     list,
     ...sum,
@@ -133,4 +167,42 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
     perDay: progress.daysLeft > 0 ? Math.max(0, spendable) / progress.daysLeft : 0,
     score: budgetScore({ income, byBucket: sum.byBucket, dayFrac: progress.dayFrac }),
   };
+}
+
+/**
+ * What's left of this month's income before recurring payments still due: the whole income minus what was
+ * spent and what was put into savings this month. Nothing is held back in advance; the 20% for savings is a
+ * target (the score and the tips follow it), not a deduction. Money the user already had (offBudget) isn't
+ * counted at all.
+ */
+export function spendRoom(ov) {
+  const { needs, wants, savings } = ov.byBucket;
+  return ov.income - needs - wants - savings;
+}
+
+/**
+ * The app's main number: what's still free this month (see spendRoom), minus the recurring payments still due.
+ * Today's limit is this amount spread over the days left.
+ */
+export function freeToSpend(ov, pending = 0) {
+  if (!ov.income) return null;
+  const budget = ov.income;
+  const free = spendRoom(ov) - pending;
+  return { free, budget, ratio: free / budget };
+}
+
+/**
+ * Today's limit: what's left of the income after this month's spending, savings and the recurring
+ * payments still due, spread over the remaining days. It's computed as of the start of the day,
+ * so it doesn't move with every expense; `left` is what remains of it today.
+ */
+export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
+  if (!ov.progress.isCurrent || !ov.income || !ov.progress.daysLeft) return null;
+  const today = ov.list.filter((e) => countsInBudget(e) && new Date(e.date).toDateString() === now.toDateString());
+  const spentToday = today
+    .filter((e) => ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
+    .reduce((a, e) => a + e.amount, 0);
+  const start = spendRoom(ov) + spentToday - pendingRecurring;
+  const limit = Math.max(0, start) / ov.progress.daysLeft;
+  return { limit, spentToday, left: limit - spentToday, over: spentToday > limit };
 }

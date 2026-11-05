@@ -3,20 +3,23 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import { colors, radius, MONTHS, moneyShort } from '../theme';
-import { monthKey } from '../budget';
+import { monthKey, countsInBudget } from '../budget';
 import Touch from './ui/Touch';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Month picker: years with expenses, months with their totals
 export default function MonthPickerSheet({ visible, onClose, expenses, year, month, onSelect }) {
   const now = new Date();
   const totals = useMemo(() => {
-    const t = {};
+    const totals = {};
     for (const e of expenses) {
+      if (!countsInBudget(e)) continue;
       const d = new Date(e.date);
       const k = monthKey(d.getFullYear(), d.getMonth());
-      t[k] = (t[k] || 0) + e.amount;
+      totals[k] = (totals[k] || 0) + e.amount;
     }
-    return t;
+    return totals;
   }, [expenses]);
 
   const years = useMemo(() => {
@@ -27,7 +30,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
 
   return (
     <Sheet visible={visible} onClose={onClose}>
-      <Text style={s.title}>Избери месец</Text>
+      <Text style={s.title}>{t('Избери месец')}</Text>
       {years.map((y) => (
         <View key={y} style={{ marginTop: 14 }}>
           <Text style={s.year}>{y}</Text>
@@ -47,8 +50,8 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
                   }}
                   style={[s.cell, active && s.active, future && { opacity: 0.35 }]}
                 >
-                  <Text style={[s.month, active && { color: '#fff' }]}>{name.slice(0, 3)}</Text>
-                  <Text style={[s.total, active && { color: 'rgba(255,255,255,0.8)' }]}>{total ? moneyShort(total) : '—'}</Text>
+                  <Text style={[s.month, active && { color: colors.onAccent }]}>{name.slice(0, 3)}</Text>
+                  <Text style={[s.total, active && { color: colors.onAccent, opacity: 0.8 }]}>{total ? moneyShort(total) : '—'}</Text>
                 </Touch>
               );
             })}
@@ -59,7 +62,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center' },
   year: { color: colors.muted, fontSize: 13, fontWeight: '700', marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -67,4 +70,4 @@ const s = StyleSheet.create({
   active: { backgroundColor: colors.primary },
   month: { color: colors.text, fontSize: 14, fontWeight: '700' },
   total: { color: colors.muted, fontSize: 11, marginTop: 3 },
-});
+}));

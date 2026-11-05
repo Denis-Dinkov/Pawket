@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { colors, radius } from '../../theme';
 import Touch from './Touch';
+import { themed } from '../../themed';
 
 // Pill-style segmented control
 export default function Segmented({ options, value, onChange, style }) {
@@ -20,13 +21,13 @@ export default function Segmented({ options, value, onChange, style }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   wrap: { flexDirection: 'row', backgroundColor: colors.faint, borderRadius: radius.pill, padding: 4 },
   item: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, alignItems: 'center' },
   active: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.raised,
     shadowColor: '#4A2A14', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   text: { fontSize: 13, fontWeight: '600', color: colors.muted },
   activeText: { color: colors.text },
-});
+}));

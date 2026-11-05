@@ -10,15 +10,17 @@ import { confirmDelete } from './ExpenseDetailSheet';
 import { colors, radius, MONTHS, money, incomeKindById } from '../theme';
 import { sortByDateDesc } from '../budget';
 import { dayLabel } from '../format';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Income for the month: the monthly income setting + recorded income entries
-export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onDelete }) {
+export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onEdit, onDelete }) {
   if (!info) return null;
   const replaced = info.salary > info.base;
   return (
     <Sheet visible={visible} onClose={onClose}>
       <Text style={s.title}>
-        Доходи · {MONTHS[month]} {year}
+        {t('Доходи · {0} {1}', { 0: MONTHS[month], 1: year })}
       </Text>
       <Money value={info.total} size={36} color={colors.savings} prefix="+" style={{ textAlign: 'center', marginTop: 6 }} />
 
@@ -26,8 +28,8 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
         <View style={s.row}>
           <IconBadge icon="calendar-outline" color={colors.needs} size={42} />
           <View style={{ flex: 1 }}>
-            <Text style={s.name}>Месечен доход</Text>
-            <Text style={s.sub}>{replaced ? 'заменен от записаната заплата' : 'от настройките'}</Text>
+            <Text style={s.name}>{t('Месечен доход')}</Text>
+            <Text style={s.sub}>{replaced ? t('заменен от записаната заплата') : t('от настройките')}</Text>
           </View>
           <Text style={[s.amount, replaced && s.struck]}>+{money(info.base)}</Text>
         </View>
@@ -37,8 +39,9 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
             <Touch
               key={e.id}
               style={[s.row, s.sep]}
-              onLongPress={() => confirmDelete(e, () => onDelete(e.id), 'дохода')}
-              onPress={() => confirmDelete(e, () => onDelete(e.id), 'дохода')}
+              onLongPress={() => confirmDelete(e, () => onDelete(e.id))}
+              onPress={() => onEdit(e)}
+              accessibilityHint={t('Отваря дохода за промяна. Задръж, за да го изтриеш.')}
             >
               <IconBadge icon={k.icon} color={colors.savings} size={42} />
               <View style={{ flex: 1 }}>
@@ -52,17 +55,17 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
           );
         })}
       </View>
-      {info.list.length > 0 && <Text style={s.hint}>Натисни доход, за да го изтриеш.</Text>}
+      {info.list.length > 0 && <Text style={s.hint}>{t('Натисни доход, за да го промениш. Задръж, за да го изтриеш.')}</Text>}
 
       <Touch style={s.add} onPress={onAdd}>
-        <Ionicons name="add" size={20} color="#fff" />
-        <Text style={s.addText}>Добави доход</Text>
+        <Ionicons name="add" size={20} color={colors.onAccent} />
+        <Text style={s.addText}>{t('Добави доход')}</Text>
       </Touch>
     </Sheet>
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4, marginTop: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
@@ -76,5 +79,5 @@ const s = StyleSheet.create({
     flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.savings, borderRadius: radius.pill, paddingVertical: 15, marginTop: 18,
   },
-  addText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
+  addText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+}));

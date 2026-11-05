@@ -20,10 +20,14 @@ function fontFor(style) {
   return { fontFamily: FONT_FAMILIES[key], fontWeight: 'normal' };
 }
 
+// Text follows the system text size (Dynamic Type) up to 200%. Big display numbers and the tab bar
+// pass a lower maxFontSizeMultiplier, because they are already large or have fixed room.
+export const MAX_SCALE = 2;
+
 export const Text = forwardRef(function Text({ style, ...rest }, ref) {
-  return <RNText ref={ref} maxFontSizeMultiplier={1.3} style={[style, fontFor(style)]} {...rest} />;
+  return <RNText ref={ref} maxFontSizeMultiplier={MAX_SCALE} style={[style, fontFor(style)]} {...rest} />;
 });
 
 export const TextInput = forwardRef(function TextInput({ style, ...rest }, ref) {
-  return <RNTextInput ref={ref} maxFontSizeMultiplier={1.3} style={[style, fontFor(style)]} {...rest} />;
+  return <RNTextInput ref={ref} maxFontSizeMultiplier={MAX_SCALE} style={[style, fontFor(style)]} {...rest} />;
 });

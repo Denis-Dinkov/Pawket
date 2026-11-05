@@ -4,8 +4,10 @@ import { Text } from './ui/AppText';
 import ExpenseRow from './ExpenseRow';
 import Pill from './ui/Pill';
 import { colors, BUCKETS, getCategories, categoryById, money } from '../theme';
-import { sortByDateDesc } from '../budget';
+import { sortByDateDesc, countsInBudget } from '../budget';
 import { dayLabel, plural } from '../format';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
 const matches = (filter, e) => {
   if (filter === 'all') return true;
@@ -29,13 +31,13 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
       if (!map.has(key)) map.set(key, { title: dayLabel(e.date), total: 0, items: [] });
       const g = map.get(key);
       g.items.push(e);
-      g.total += e.amount;
+      if (countsInBudget(e)) g.total += e.amount;
     }
     return [...map.values()];
   }, [expenses, filter]);
 
   const chips = [
-    { key: 'all', label: 'Всички' },
+    { key: 'all', label: t('Всички') },
     ...Object.entries(BUCKETS).map(([k, b]) => ({ key: `bucket:${k}`, label: b.label })),
     ...usedCats.map((c) => ({ key: `cat:${c.id}`, label: c.name })),
   ];
@@ -57,13 +59,13 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
         </ScrollView>
       )}
 
-      {groups.length === 0 && <Text style={s.empty}>Няма разходи за този избор.</Text>}
+      {groups.length === 0 && <Text style={s.empty}>{t('Няма разходи за този избор.')}</Text>}
 
       {groups.map((g) => (
         <View key={g.title} style={s.group}>
           <View style={s.groupHead}>
             <Text style={s.groupTitle}>
-              {g.title} <Text style={s.groupCount}>· {plural(g.items.length, 'плащане', 'плащания')}</Text>
+              {g.title} <Text style={s.groupCount}>· {plural(g.items.length, t('плащане'), t('плащания'))}</Text>
             </Text>
             <Text style={s.groupTotal}>−{money(g.total)}</Text>
           </View>
@@ -80,7 +82,7 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   chipsWrap: { marginHorizontal: -20, marginBottom: 4 },
   chips: { gap: 8, paddingHorizontal: 20, paddingVertical: 4 },
   empty: { color: colors.muted, textAlign: 'center', marginVertical: 28 },
@@ -91,4 +93,4 @@ const s = StyleSheet.create({
   groupTotal: { color: colors.muted, fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
-});
+}));

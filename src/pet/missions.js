@@ -1,0 +1,147 @@
+// Weekly missions, the daily streak and Charlie's rewards. Pure logic, no RN imports.
+import { categoryById } from '../theme';
+import { dayKey } from './logic';
+import { countsInBudget } from '../budget';
+import { t } from '../i18n';
+
+export const MISSION_XP = 25;
+
+// Monday 00:00 of the week that contains `now`
+export function weekStart(now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+export const weekKey = (now = new Date()) => dayKey(weekStart(now));
+
+// Days the user did something: logged an expense or income, or tapped "No spending today".
+// Automatic recurring expenses don't count.
+/**
+ * The days something was written down. An entry counts on the day it was logged (loggedAt), not on its
+ * date: adding last week's coffee today doesn't fill last week's streak. Older entries without loggedAt
+ * fall back to their date. Automatic payments and money the user already had (offBudget) aren't activity.
+ */
+export const loggedDay = (e) => dayKey(e.loggedAt || e.date);
+export function activityDays({ expenses = [], incomeEntries = [], pet }) {
+  const days = new Set(pet?.activeDays || []);
+  if (pet?.lastActiveDay) days.add(pet.lastActiveDay);
+  expenses.forEach((e) => e.source !== 'recurring' && !e.offBudget && days.add(loggedDay(e)));
+  incomeEntries.forEach((e) => days.add(loggedDay(e)));
+  return days;
+}
+
+// Consecutive active days up to today. Today not logged yet doesn't break it: the streak stays alive until midnight.
+export function streak(days, now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days.has(dayKey(d))) {
+    n += 1;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
+
+// The days of this week up to today
+function weekDays(now) {
+  const start = weekStart(now);
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    if (d > now) break;
+    out.push(d);
+  }
+  return out;
+}
+
+const POOL = [
+  {
+    id: 'log5',
+    icon: 'create-outline',
+    get title() { return t('Записвай 5 дни тази седмица'); },
+    check: ({ week, days }) => count(week.filter((d) => days.has(dayKey(d))).length, 5),
+  },
+  {
+    id: 'noDining2',
+    icon: 'restaurant-outline',
+    get title() { return t('2 дни без заведения'); },
+    check: ({ week, days, expenses }) =>
+      count(
+        week.filter((d) => days.has(dayKey(d)) && !expenses.some((e) => e.categoryId === 'dining' && countsInBudget(e) && dayKey(e.date) === dayKey(d))).length,
+        2
+      ),
+  },
+  {
+    id: 'goal',
+    icon: 'flag-outline',
+    get title() { return t('Задели пари в цел'); },
+    check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && !e.offBudget && new Date(e.loggedAt || e.date) >= start) ? 1 : 0, 1),
+  },
+  {
+    id: 'wants3',
+    icon: 'sparkles-outline',
+    get title() { return t('3 дни с желания под дневния лимит'); },
+    check: ({ week, days, expenses, wantsPerDay }) =>
+      count(
+        wantsPerDay > 0
+          ? week.filter((d) => {
+              if (!days.has(dayKey(d))) return false;
+              const wants = expenses
+                .filter((e) => countsInBudget(e) && dayKey(e.date) === dayKey(d) && categoryById(e.categoryId)?.bucket === 'wants')
+                .reduce((a, e) => a + e.amount, 0);
+              return wants <= wantsPerDay;
+            }).length
+          : 0,
+        3
+      ),
+  },
+  {
+    id: 'streak7',
+    icon: 'flame-outline',
+    get title() { return t('Стигни серия от 7 дни'); },
+    check: ({ currentStreak }) => count(Math.min(currentStreak, 7), 7),
+  },
+];
+
+const count = (n, of) => ({ n, of, done: n >= of });
+
+/**
+ * This week's three missions with their progress.
+ * income: the current month's income (for the wants limit).
+ */
+export function weekMissions({ expenses = [], incomeEntries = [], pet, income = 0, now = new Date() }) {
+  const start = weekStart(now);
+  const index = Math.floor(start.getTime() / (7 * 86400000));
+  const picked = [0, 1, 2].map((i) => POOL[(index + i * 2) % POOL.length]);
+  const days = activityDays({ expenses, incomeEntries, pet });
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const ctx = {
+    start,
+    week: weekDays(now),
+    days,
+    expenses,
+    wantsPerDay: (0.3 * income) / daysInMonth,
+    currentStreak: streak(days, now),
+  };
+  const claimed = pet?.missionsDone?.[dayKey(start)] || [];
+  return picked.map((m) => ({ id: m.id, icon: m.icon, title: m.title, ...m.check(ctx), claimed: claimed.includes(m.id) }));
+}
+
+export const missionsTotal = (pet) => Object.values(pet?.missionsDone || {}).reduce((a, list) => a + list.length, 0);
+
+// Accessories: unlocked by habits, never bought with money
+export const REWARDS = [
+  { id: 'collar', slot: 'neck', get name() { return t('Червен нашийник'); }, icon: 'medal-outline', get need() { return t('Серия от 3 дни'); }, test: (p) => p.bestStreak >= 3 },
+  { id: 'bow', slot: 'neck', get name() { return t('Папийонка'); }, icon: 'ribbon-outline', get need() { return t('3 изпълнени мисии'); }, test: (p) => p.missions >= 3 },
+  { id: 'hat', slot: 'head', get name() { return t('Парти шапка'); }, icon: 'balloon-outline', get need() { return t('Етап „Младо куче“'); }, test: (p) => p.xp >= 250 },
+  { id: 'bandana', slot: 'neck', get name() { return t('Синьо шалче'); }, icon: 'triangle-outline', get need() { return t('Серия от 7 дни'); }, test: (p) => p.bestStreak >= 7 },
+  { id: 'glasses', slot: 'head', get name() { return t('Слънчеви очила'); }, icon: 'glasses-outline', get need() { return t('Постигната цел'); }, test: (p) => p.goalsDone >= 1 },
+  { id: 'goldCollar', slot: 'neck', get name() { return t('Златен нашийник'); }, icon: 'diamond-outline', get need() { return t('Серия от 30 дни'); }, test: (p) => p.bestStreak >= 30 },
+  { id: 'medal', slot: 'neck', get name() { return t('Медал'); }, icon: 'trophy-outline', get need() { return t('3 постигнати цели'); }, test: (p) => p.goalsDone >= 3 },
+];
+
+export function rewardsState({ pet, goalsDone = 0 }) {
+  const progress = { bestStreak: pet?.bestStreak || 0, missions: missionsTotal(pet), xp: pet?.xp || 0, goalsDone };
+  return REWARDS.map((r) => ({ ...r, unlocked: r.test(progress) }));
+}

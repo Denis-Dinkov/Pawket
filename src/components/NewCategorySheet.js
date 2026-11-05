@@ -6,6 +6,8 @@ import IconBadge from './ui/IconBadge';
 import Segmented from './ui/Segmented';
 import Touch from './ui/Touch';
 import { colors, radius, BUCKETS, CATEGORY_ICONS, tint } from '../theme';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
 const BUCKET_OPTIONS = Object.entries(BUCKETS).map(([key, b]) => ({ key, label: b.label }));
 
@@ -34,32 +36,32 @@ export default function NewCategorySheet({ visible, initialBucket = 'wants', onC
       onClose={onClose}
       footer={
         <Touch haptic="success" disabled={!valid} onPress={create} style={[s.save, !valid && { opacity: 0.3 }]}>
-          <Text style={s.saveText}>Създай категория</Text>
+          <Text style={s.saveText}>{t('Създай категория')}</Text>
         </Touch>
       }
     >
-      <Text style={s.title}>Нова категория</Text>
+      <Text style={s.title}>{t('Нова категория')}</Text>
 
       <View style={s.preview}>
         <IconBadge icon={icon} color={color} size={56} solid />
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="Име, напр. Кафе"
+          placeholder={t('Име, напр. Кафе')}
           placeholderTextColor={colors.muted}
           style={s.name}
           maxLength={24}
           autoFocus
           returnKeyType="done"
           onSubmitEditing={create}
-          accessibilityLabel="Име на категорията"
+          accessibilityLabel={t('Име на категорията')}
         />
       </View>
 
-      <Text style={s.label}>Към коя част от 50/30/20?</Text>
+      <Text style={s.label}>{t('Към коя част от 50/30/20?')}</Text>
       <Segmented options={BUCKET_OPTIONS} value={bucket} onChange={setBucket} />
 
-      <Text style={s.label}>Икона</Text>
+      <Text style={s.label}>{t('Икона')}</Text>
       <View style={s.grid}>
         {CATEGORY_ICONS.map((ic) => (
           <Touch
@@ -76,7 +78,7 @@ export default function NewCategorySheet({ visible, initialBucket = 'wants', onC
   );
 }
 
-const s = StyleSheet.create({
+const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   preview: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: radius.card, padding: 14, marginTop: 16 },
   name: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '700', color: colors.text, paddingVertical: 6 },
@@ -84,5 +86,5 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   icon: { width: '11.4%', minWidth: 40, aspectRatio: 1, borderRadius: 14, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   save: { backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
+  saveText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
+}));

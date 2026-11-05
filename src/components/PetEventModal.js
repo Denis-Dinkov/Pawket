@@ -5,7 +5,10 @@ import Pet from '../pet/Pet';
 import Pill from './ui/Pill';
 import { colors, MONTHS, shadow } from '../theme';
 import { expressionFor } from '../pet/logic';
+import { outfitOf } from '../pet/outfit';
 import { successFeedback } from '../haptics';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Monthly report (+XP) and a celebration on reaching a new growth stage
 export default function PetEventModal({ event, pet, stage, onClose }) {
@@ -20,16 +23,16 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.backdrop}>
         <View style={s.card}>
-          <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} size={140} />
+          <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} {...outfitOf(pet)} size={140} />
           {levelUp && (
             <>
-              <Text style={s.h1}>{pet.name} порасна! 🎉</Text>
-              <Text style={s.text}>Вече е „{levelUp.name}“. Благодарение на добрите ти навици.</Text>
+              <Text style={s.h1}>{t('{0} порасна! 🎉', { 0: pet.name })}</Text>
+              <Text style={s.text}>{t('Вече е „{0}“. Благодарение на добрите ти навици.', { 0: levelUp.name })}</Text>
             </>
           )}
           {reports.length > 0 && (
             <View style={{ alignSelf: 'stretch', marginTop: 14, gap: 8 }}>
-              <Text style={s.h2}>Месечен отчет</Text>
+              <Text style={s.h2}>{t('Месечен отчет')}</Text>
               {reports.map((r) => (
                 <View key={r.key} style={s.row}>
                   <Text style={s.month}>
@@ -41,15 +44,15 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
               ))}
             </View>
           )}
-          <Pill label="Супер!" variant="ink" onPress={onClose} style={s.btn} />
+          <Pill label={t('Супер!')} variant="ink" onPress={onClose} style={s.btn} />
         </View>
       </View>
     </Modal>
   );
 }
 
-const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(17,16,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+const s = themed((colors) => ({
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 32, padding: 24, alignItems: 'center', ...shadow },
   h1: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 6 },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
@@ -59,4 +62,4 @@ const s = StyleSheet.create({
   score: { color: colors.text, fontSize: 14, fontWeight: '700', marginRight: 12 },
   xp: { fontSize: 14, fontWeight: '800' },
   btn: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 20, paddingVertical: 14 },
-});
+}));

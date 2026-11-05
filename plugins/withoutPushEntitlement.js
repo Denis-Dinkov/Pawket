@@ -1,4 +1,4 @@
-// expo-widgets always adds aps-environment, but the app doesn't use push notifications.
+// expo-widgets and expo-notifications add aps-environment, but the app only uses local notifications.
 // A free Apple ID can't sign an app with the push entitlement, so we remove it.
 const { withEntitlementsPlist } = require('expo/config-plugins');
 

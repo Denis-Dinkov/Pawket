@@ -1,13 +1,23 @@
 // Tamagotchi logic for the dog: mood, fullness, growth. No RN imports.
-import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview } from '../budget';
+import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview, countsInBudget } from '../budget';
+import { colors } from '../theme';
+import { t } from '../i18n';
 
 
 export const STAGES = [
-  { key: 'kitten', name: 'Кутре', xp: 0 },
-  { key: 'young', name: 'Кученце', xp: 250 },
-  { key: 'adult', name: 'Кавалер', xp: 800 },
-  { key: 'champion', name: 'Шампион', xp: 2000 },
+  { key: 'kitten', get name() { return t('Кутре'); }, xp: 0 },
+  { key: 'young', get name() { return t('Младо куче'); }, xp: 250 },
+  { key: 'adult', get name() { return t('Кавалер'); }, xp: 800 },
+  { key: 'champion', get name() { return t('Шампион'); }, xp: 2000 },
 ];
+
+// What each stage adds to Charlie and his room (one list for the Charlie tab and the growth explanation)
+export const STAGE_PERKS = {
+  get kitten() { return t('легло, купичка и топка'); },
+  get young() { return t('плюшено мече и парти шапка'); },
+  get adult() { return t('розетка в рамката на стената'); },
+  get champion() { return t('корона, купа в рамката и златна купичка'); },
+};
 
 export const DAILY_XP = 10;
 export const HUNGRY_AT = 30;
@@ -15,13 +25,14 @@ const STARVE_HOURS = 72;
 const MIN_EXPENSES_FOR_BONUS = 3;
 
 export const EXPRESSIONS = {
-  ecstatic: { label: 'Във възторг', color: '#1FBF87' },
-  happy: { label: 'Щастлив', color: '#1FBF87' },
-  worried: { label: 'Притеснен', color: '#F5A524' },
-  sad: { label: 'Тъжен', color: '#EF6C3A' },
-  crying: { label: 'Плаче', color: '#E5484D' },
-  hungry: { label: 'Гладен', color: '#F5A524' },
-  sleeping: { label: 'Спи', color: '#958779' },
+  // color is a getter so it follows the live palette (light / dark); every one is readable as text
+  ecstatic: { get label() { return t('Във възторг'); }, emoji: '🤩', get color() { return colors.savings; } },
+  happy: { get label() { return t('Щастлив'); }, emoji: '😊', get color() { return colors.savings; } },
+  worried: { get label() { return t('Притеснен'); }, emoji: '😟', get color() { return colors.warning; } },
+  sad: { get label() { return t('Тъжен'); }, emoji: '😢', get color() { return colors.orange; } },
+  crying: { get label() { return t('Плаче'); }, emoji: '😭', get color() { return colors.danger; } },
+  hungry: { get label() { return t('Гладен'); }, emoji: '🦴', get color() { return colors.warning; } },
+  sleeping: { get label() { return t('Спи'); }, emoji: '💤', get color() { return colors.muted; } },
 };
 
 export const dayKey = (d) => {
@@ -82,7 +93,9 @@ export function feedPet(pet, now = new Date()) {
   if (!pet) return pet;
   const today = dayKey(now);
   const gain = pet.lastActiveDay === today ? 0 : DAILY_XP;
-  return { ...pet, lastFedAt: now.toISOString(), lastActiveDay: today, xp: (pet.xp || 0) + gain };
+  // The active days feed the streak; the last ~4 months are enough
+  const activeDays = (pet.activeDays || []).includes(today) ? pet.activeDays || [] : [...(pet.activeDays || []), today].slice(-120);
+  return { ...pet, lastFedAt: now.toISOString(), lastActiveDay: today, activeDays, xp: (pet.xp || 0) + gain };
 }
 
 /**
@@ -102,8 +115,10 @@ export function evaluateClosedMonths({ expenses, incomes, incomeEntries, pet, no
     if (!(key in evaluated)) {
       const list = filterMonth(expenses, year, month);
       const income = monthIncome({ incomes, incomeEntries }, year, month).total;
+      // Only entries the user actually made count towards the minimum: not automatic payments or money from elsewhere
+      const made = list.filter((e) => countsInBudget(e) && e.source !== 'recurring').length;
       const score =
-        income && list.length >= MIN_EXPENSES_FOR_BONUS
+        income && made >= MIN_EXPENSES_FOR_BONUS
           ? budgetScore({ income, byBucket: summarize(list).byBucket, dayFrac: 1 })
           : null;
       evaluated[key] = score;

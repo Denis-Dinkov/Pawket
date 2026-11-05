@@ -1,112 +1,104 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Money from './ui/Money';
 import Touch from './ui/Touch';
+import Pill from './ui/Pill';
 import ProgressRing from './ui/ProgressRing';
-import { BUCKETS, MONTHS, money, pct } from '../theme';
+import { colors, BUCKETS, MONTHS, pct, monthLower } from '../theme';
 import { scoreVerdict } from '../budget';
+import { themed } from '../themed';
+import { t } from '../i18n';
 
-const WHITE_SOFT = 'rgba(255,255,255,0.82)';
 
-// Top of Statistics: how much was spent, out of what income, and the 50/30/20 score with an explanation
-export default function StatsHero({ ov, month, onOpenScore }) {
+// Top of Reports: the month's total, the change from last month, the score and the 50/30/20 shares.
+// "What's left" lives on Home only, so the two screens never show two different "left" numbers.
+export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettings }) {
   const { income, total, byBucket, list, progress } = ov;
   const hasData = list.length > 0;
-  const left = income - total;
-  const monthName = MONTHS[month].toLowerCase();
-
-  let scoreTitle;
-  let scoreText;
-  if (!income) {
-    scoreTitle = 'Няма оценка';
-    scoreText = 'Задай месечен доход от ⚙︎ в Начало, за да се смята 50/30/20.';
-  } else if (!hasData) {
-    scoreTitle = 'Оценка 50/30/20: още няма';
-    scoreText = 'Ще се появи след първия разход за месеца.';
-  } else {
-    scoreTitle = `Оценка 50/30/20 · ${scoreVerdict(ov.score)}`;
-    scoreText = `${ov.score} от 100 точки за спазване на 50% нужди, 30% желания и 20% спестявания. Натисни за разбивка.`;
-  }
+  const scored = hasData && income > 0;
+  const monthName = monthLower(month);
+  const prevName = monthLower((month + 11) % 12);
 
   return (
     <View>
-      <Text style={s.label}>
-        Похарчено през {monthName}
-        {progress.isCurrent ? ' досега' : ''}
-      </Text>
-      <Money value={total} size={40} color="#fff" />
-      <Text style={s.sub}>
-        {income
-          ? `от ${money(income)} доход · ${left >= 0 ? `остават ${money(left)}` : `над дохода с ${money(-left)}`}`
-          : 'Задай месечен доход, за да видиш остатъка.'}
-      </Text>
-      {income > 0 && (
-        <View style={s.track} accessibilityLabel={`Похарчени ${pct(total / income)} от дохода`}>
-          <View style={[s.fill, { width: `${Math.min(100, (total / income) * 100)}%` }, left < 0 && s.fillOver]} />
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.label}>
+            {/* The total includes the money put into savings, so it isn't called just "spent" then */}
+            {t('{0} през {1} {2}', { 0: byBucket.savings > 0 ? t('Похарчено и заделено') : t('Похарчено'), 1: monthName, 2: progress.isCurrent ? t(' досега') : '' })}
+          </Text>
+          <Money value={total} size={40} color={colors.text} />
+          {vsPrev != null && Math.abs(vsPrev) >= 0.01 && (
+            <View style={s.delta}>
+              <Ionicons name={vsPrev > 0 ? 'trending-up' : 'trending-down'} size={14} color={vsPrev > 0 ? colors.danger : colors.savings} />
+              <Text style={[s.deltaText, { color: vsPrev > 0 ? colors.danger : colors.savings }]}>
+                {t('{0} {1} спрямо {2} {3}', { 0: vsPrev > 0 ? '+' : '−', 1: pct(Math.abs(vsPrev)), 2: prevName, 3: progress.isCurrent ? t(' до момента') : '' })}
+              </Text>
+            </View>
+          )}
         </View>
-      )}
+        <Touch
+          style={s.score}
+          onPress={scored ? onOpenScore : undefined}
+          disabled={!scored}
+          accessibilityRole="button"
+          accessibilityLabel={scored ? t('Оценка {0} от 100, {1}', { 0: ov.score, 1: scoreVerdict(ov.score) }) : t('Оценка: още няма')}
+          accessibilityHint={scored ? t('Показва разбивката на оценката') : undefined}
+        >
+          <ProgressRing value={scored ? ov.score / 100 : 0} size={58} stroke={6} color={colors.primary} track={colors.faint}>
+            <Text style={s.ringValue}>{scored ? ov.score : '—'}</Text>
+          </ProgressRing>
+          <View style={s.scoreLabel}>
+            <Text style={s.scoreText}>{t('Оценка')}</Text>
+            {scored && <Ionicons name="chevron-forward" size={12} color={colors.muted} />}
+          </View>
+        </Touch>
+      </View>
 
-      {/* The three parts of the rule: what % of income went to each */}
-      {income > 0 && <Text style={s.bucketsCaption}>Дял от дохода по части</Text>}
-      {income > 0 && (
+      {income > 0 ? (
+        // The three parts of the rule: the share of income in each, against its target
         <View style={s.buckets}>
           {Object.entries(BUCKETS).map(([key, b]) => {
             const share = byBucket[key] / income;
             const over = key !== 'savings' && share > b.target;
             return (
-              <View key={key} style={s.bucket}>
-                <View style={[s.dot, { backgroundColor: b.color }]} />
-                <View style={{ flexShrink: 1 }}>
-                  <Text style={s.bucketName}>{b.label}</Text>
-                  <Text style={[s.bucketPct, over && s.bucketOver]}>{pct(share)}</Text>
-                  <Text style={s.bucketTarget}>{key === 'savings' ? 'заделени · цел ' : 'цел до '}{pct(b.target)}</Text>
+              <View key={key} style={s.bucket} accessible accessibilityLabel={t('{0}: {1} от дохода, цел {2}', { 0: b.label, 1: pct(share), 2: pct(b.target) })}>
+                <View style={s.bucketHead}>
+                  <View style={[s.dot, { backgroundColor: b.color }]} />
+                  <Text style={s.bucketName} numberOfLines={1}>{b.label}</Text>
                 </View>
+                <Text style={[s.bucketPct, over && s.bucketOver]}>
+                  {pct(share)}
+                  <Text style={s.bucketTarget}> / {pct(b.target)}</Text>
+                </Text>
               </View>
             );
           })}
         </View>
+      ) : (
+        <Pill icon="settings-outline" label={t('Задай месечния си доход')} variant="white" onPress={onOpenSettings} style={{ alignSelf: 'flex-start', marginTop: 14 }} />
       )}
-
-      <Touch
-        style={s.score}
-        onPress={hasData && income ? onOpenScore : undefined}
-        accessibilityRole="button"
-        accessibilityLabel={`${scoreTitle}. ${scoreText}`}
-      >
-        <ProgressRing value={hasData && income ? ov.score / 100 : 0} size={54} stroke={6} color="#fff" track="rgba(255,255,255,0.25)">
-          <Text style={s.ringValue}>{hasData && income ? ov.score : '—'}</Text>
-        </ProgressRing>
-        <View style={{ flex: 1 }}>
-          <Text style={s.scoreTitle}>{scoreTitle}</Text>
-          <Text style={s.scoreText}>{scoreText}</Text>
-        </View>
-        {hasData && income > 0 && <Ionicons name="chevron-forward" size={18} color="#fff" />}
-      </Touch>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  label: { color: WHITE_SOFT, fontSize: 14, fontWeight: '600', marginTop: 18 },
-  sub: { color: WHITE_SOFT, fontSize: 13.5, marginTop: 2 },
-  track: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)', marginTop: 12, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  fillOver: { backgroundColor: '#FFD1DA' },
-  bucketsCaption: { color: WHITE_SOFT, fontSize: 12, fontWeight: '600', marginTop: 16 },
-  buckets: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  bucket: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, flexShrink: 1 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  bucketName: { color: WHITE_SOFT, fontSize: 12, fontWeight: '600' },
-  bucketPct: { color: '#fff', fontSize: 17, fontWeight: '800', marginTop: 1 },
-  bucketOver: { color: '#FFD1DA' },
-  bucketTarget: { color: WHITE_SOFT, fontSize: 11.5 },
-  score: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 12,
-    borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  ringValue: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  scoreTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  scoreText: { color: WHITE_SOFT, fontSize: 12, lineHeight: 16, marginTop: 2 },
-});
+const s = themed((c) => ({
+  top: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
+  label: { color: c.muted, fontSize: 14, fontWeight: '600' },
+  delta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  deltaText: { fontSize: 13, fontWeight: '700' },
+  scoreLabel: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
+  buckets: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  bucket: { flex: 1, backgroundColor: c.card, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
+  bucketHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  bucketName: { color: c.muted, fontSize: 12, fontWeight: '600' },
+  bucketPct: { color: c.text, fontSize: 17, fontWeight: '800' },
+  bucketOver: { color: c.danger },
+  bucketTarget: { color: c.muted, fontSize: 12, fontWeight: '600' },
+  score: { alignItems: 'center', backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 10 },
+  ringValue: { color: c.text, fontSize: 16, fontWeight: '800' },
+  scoreText: { color: c.muted, fontSize: 12, fontWeight: '600' },
+}));

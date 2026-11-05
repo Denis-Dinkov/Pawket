@@ -1,9 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { colors } from '../../theme';
 
 // Circular progress 0..1 with content in the center
-export default function ProgressRing({ value, size = 64, stroke = 7, color, track = 'rgba(0,0,0,0.08)', children }) {
+export default function ProgressRing({ value, size = 64, stroke = 7, color, track = colors.faint, children }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, value || 0));

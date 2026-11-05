@@ -1,125 +1,210 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, Easing, Platform } from 'react-native';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
+import { Animated, Easing, Image, Platform } from 'react-native';
 import Svg, { G, Path, Circle, Ellipse, Text as SvgText } from 'react-native-svg';
-import { petShapes } from './petShapes';
+import { extras } from './petShapes';
+import useReduceMotion from '../hooks/useReduceMotion';
+import { SPRING } from '../motion';
+import Accessories from './Accessories';
+import { SLOTS } from './outfit';
+
+// Charlie is a painted picture (cut out of the original illustration, bottom faded out).
+// Each mood has its own face; the moods with open eyes also have a closed-eyes version for blinking.
+// The younger stages are the same pictures made younger (bigger head and eyes, shorter muzzle),
+// generated from the adult ones, so every mood and blink matches.
+const FACES = {
+  kitten: {
+    happy: require('../../assets/pet/charlie-happy-kitten.webp'),
+    ecstatic: require('../../assets/pet/charlie-ecstatic-kitten.webp'),
+    worried: require('../../assets/pet/charlie-worried-kitten.webp'),
+    sad: require('../../assets/pet/charlie-sad-kitten.webp'),
+    crying: require('../../assets/pet/charlie-crying-kitten.webp'),
+    hungry: require('../../assets/pet/charlie-hungry-kitten.webp'),
+    sleeping: require('../../assets/pet/charlie-sleeping-kitten.webp'),
+  },
+  young: {
+    happy: require('../../assets/pet/charlie-happy-young.webp'),
+    ecstatic: require('../../assets/pet/charlie-ecstatic-young.webp'),
+    worried: require('../../assets/pet/charlie-worried-young.webp'),
+    sad: require('../../assets/pet/charlie-sad-young.webp'),
+    crying: require('../../assets/pet/charlie-crying-young.webp'),
+    hungry: require('../../assets/pet/charlie-hungry-young.webp'),
+    sleeping: require('../../assets/pet/charlie-sleeping-young.webp'),
+  },
+  adult: {
+    happy: require('../../assets/pet/charlie-happy.webp'),
+    ecstatic: require('../../assets/pet/charlie-ecstatic.webp'),
+    worried: require('../../assets/pet/charlie-worried.webp'),
+    sad: require('../../assets/pet/charlie-sad.webp'),
+    crying: require('../../assets/pet/charlie-crying.webp'),
+    hungry: require('../../assets/pet/charlie-hungry.webp'),
+    sleeping: require('../../assets/pet/charlie-sleeping.webp'),
+  },
+};
+const BLINKS = {
+  kitten: {
+    happy: require('../../assets/pet/charlie-happy-blink-kitten.webp'),
+    worried: require('../../assets/pet/charlie-worried-blink-kitten.webp'),
+    sad: require('../../assets/pet/charlie-sad-blink-kitten.webp'),
+    hungry: require('../../assets/pet/charlie-hungry-blink-kitten.webp'),
+  },
+  young: {
+    happy: require('../../assets/pet/charlie-happy-blink-young.webp'),
+    worried: require('../../assets/pet/charlie-worried-blink-young.webp'),
+    sad: require('../../assets/pet/charlie-sad-blink-young.webp'),
+    hungry: require('../../assets/pet/charlie-hungry-blink-young.webp'),
+  },
+  adult: {
+    happy: require('../../assets/pet/charlie-happy-blink.webp'),
+    worried: require('../../assets/pet/charlie-worried-blink.webp'),
+    sad: require('../../assets/pet/charlie-sad-blink.webp'),
+    hungry: require('../../assets/pet/charlie-hungry-blink.webp'),
+  },
+};
+// The champion is the grown-up dog (with a crown)
+const faceSet = (stage) => (stage === 'kitten' || stage === 'young' ? stage : 'adult');
 
 const TAGS = { path: Path, circle: Circle, ellipse: Ellipse };
 const native = Platform.OS !== 'web';
 
 function render(nodes) {
-  return nodes.map(({ t, children, text, ...props }, i) => {
-    if (t === 'g') return <G key={i} {...props}>{render(children)}</G>;
-    if (t === 'text') return <SvgText key={i} {...props}>{text}</SvgText>;
-    const Tag = TAGS[t];
+  return nodes.map(({ t: tag, children, text, ...props }, i) => {
+    if (tag === 'g') return <G key={i} {...props}>{render(children)}</G>;
+    if (tag === 'text') return <SvgText key={i} {...props}>{text}</SvgText>;
+    const Tag = TAGS[tag];
     return <Tag key={i} {...props} />;
   });
 }
 
-// Motion per mood: bobbing, tail wagging (the dog wags wider and faster when happy), blinking
+// Motion per mood: how much and how fast he breathes / bobs (livelier when happy, slow when sad or asleep)
 const MOTION = {
-  ecstatic: { bob: 6, bobMs: 420, wag: 22, wagMs: 160, blinks: false },
-  happy: { bob: 4, bobMs: 900, wag: 16, wagMs: 320, blinks: true },
-  worried: { bob: 2, bobMs: 1200, wag: 5, wagMs: 900, blinks: true },
-  sad: { bob: 1.5, bobMs: 1800, wag: 2, wagMs: 1600, blinks: true },
-  crying: { bob: 1.5, bobMs: 260, wag: 0, wagMs: 1000, blinks: false },
-  hungry: { bob: 3, bobMs: 700, wag: 8, wagMs: 500, blinks: true },
-  sleeping: { bob: 2.5, bobMs: 2200, wag: 0, wagMs: 1000, blinks: false },
+  ecstatic: { bob: 5, breath: 0.03, ms: 560 },
+  happy: { bob: 3, breath: 0.02, ms: 900 },
+  worried: { bob: 1.5, breath: 0.015, ms: 1200 },
+  sad: { bob: 1, breath: 0.012, ms: 1800 },
+  crying: { bob: 1.5, breath: 0.015, ms: 480 },
+  hungry: { bob: 2.5, breath: 0.02, ms: 700 },
+  sleeping: { bob: 1, breath: 0.025, ms: 2200 },
 };
 
-function useLoop(value, duration, enabled, from = 0, to = 1) {
+// The puppy is smaller and grows with the stages
+const STAGE_SCALE = { kitten: 0.7, young: 0.85, adult: 1, champion: 1 };
+
+// The loop continues from wherever it is, so a new mood changes the pace without a jump back to the start
+function useLoop(value, duration, enabled) {
   useEffect(() => {
     if (!enabled) {
-      value.setValue((from + to) / 2);
+      value.setValue(0);
       return undefined;
     }
-    value.setValue(from);
     const ease = Easing.inOut(Easing.sin);
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(value, { toValue: to, duration, easing: ease, useNativeDriver: native }),
-        Animated.timing(value, { toValue: from, duration, easing: ease, useNativeDriver: native }),
-      ])
+        Animated.timing(value, { toValue: 1, duration, easing: ease, useNativeDriver: native }),
+        Animated.timing(value, { toValue: 0, duration, easing: ease, useNativeDriver: native }),
+      ]),
+      // Each round already ends at 0; resetting would snap back to the value the loop started from
+      { resetBeforeIteration: false }
     );
     loop.start();
     return () => loop.stop();
-  }, [value, duration, enabled, from, to]);
+  }, [value, duration, enabled]);
 }
 
 /**
  * Animated dog. bounceKey — change the value to make it jump (e.g. after feeding).
+ * head / neck: the outfit (see outfit.js); accessory: a single item from older saves.
+ * A "Шампион" wears a crown when nothing else is on his head.
  */
-export default function Pet({ expression = 'happy', stage = 'adult', size = 160, animate = true, bounceKey = 0, style }) {
+function Pet({ expression = 'happy', stage = 'adult', head, neck, accessory, size = 160, grow = true, animate: animateProp = true, bounceKey = 0, style, accessibilityLabel }) {
+  const headItem = head !== undefined ? head : SLOTS[accessory] === 'head' ? accessory : null;
+  const neckItem = neck !== undefined ? neck : SLOTS[accessory] === 'neck' ? accessory : null;
+  const animate = animateProp && !useReduceMotion();
   const motion = MOTION[expression] || MOTION.happy;
-  const [blink, setBlink] = useState(false);
   const bob = useRef(new Animated.Value(0)).current;
-  const wag = useRef(new Animated.Value(0)).current;
+  const set = faceSet(stage);
+  const face = FACES[set][expression] || FACES[set].happy;
+  const blinkFace = animate ? BLINKS[set][expression] : null;
+  // Blinking shows the closed-eyes picture on top for a moment (native opacity, no React render)
+  const blink = useRef(new Animated.Value(0)).current;
   const jump = useRef(new Animated.Value(0)).current;
-  const first = useRef(true);
+  // The last bounceKey seen: effects re-run when a hidden tab comes back, and that mustn't count as a new jump
+  const lastBounce = useRef(bounceKey);
 
-  useLoop(bob, motion.bobMs, animate);
-  useLoop(wag, motion.wagMs, animate && motion.wag > 0, -1, 1);
+  useLoop(bob, motion.ms, animate);
 
   useEffect(() => {
-    if (!animate || !motion.blinks) return undefined;
+    if (!blinkFace) return undefined;
     let timer;
     let alive = true;
     const next = () => {
       timer = setTimeout(() => {
         if (!alive) return;
-        setBlink(true);
+        blink.setValue(1);
         timer = setTimeout(() => {
-          setBlink(false);
+          blink.setValue(0);
           next();
-        }, 140);
-      }, 2200 + Math.random() * 3000);
+        }, 150);
+      }, 2400 + Math.random() * 3000);
     };
     next();
     return () => {
       alive = false;
       clearTimeout(timer);
+      blink.setValue(0);
     };
-  }, [animate, motion.blinks]);
+  }, [blinkFace, blink]);
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (lastBounce.current === bounceKey) return;
+    lastBounce.current = bounceKey;
     jump.setValue(0);
     Animated.sequence([
-      Animated.timing(jump, { toValue: -size * 0.14, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: native }),
-      Animated.spring(jump, { toValue: 0, friction: 4, tension: 120, useNativeDriver: native }),
+      Animated.timing(jump, { toValue: -size * 0.14, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: native }),
+      Animated.spring(jump, { toValue: 0, ...SPRING.playful, useNativeDriver: native }),
     ]).start();
   }, [bounceKey, jump, size]);
 
-  const { main, tail, pivot, tailScale, tailAngle } = petShapes({ expression, stage, blink });
+  // Sparkles, "Zzz", the bone thought, the sweat drop: built once per mood
+  const extrasSvg = useMemo(() => {
+    const nodes = extras(expression);
+    return nodes.length ? (
+      <Svg width={size} height={size} viewBox="0 0 200 200" style={{ position: 'absolute' }} pointerEvents="none">
+        {render(nodes)}
+      </Svg>
+    ) : null;
+  }, [expression, size]);
+
   const unit = size / 200;
-  const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -motion.bob * unit * 1.25] });
-  const rotate = wag.interpolate({
-    inputRange: [-1, 1],
-    outputRange: [`${tailAngle - motion.wag}deg`, `${tailAngle + motion.wag}deg`],
-  });
+  // grow={false}: full size whatever the stage (the widget pictures, where space is tight)
+  const k = grow ? STAGE_SCALE[stage] ?? 1 : 1;
+  const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -motion.bob * unit] });
+  // Breathing: a slight stretch from the bottom, so he looks alive without moving around
+  const breathe = bob.interpolate({ inputRange: [0, 1], outputRange: [k, k * (1 + motion.breath)] });
 
   return (
-    <Animated.View style={[{ width: size, height: size, transform: [{ translateY: Animated.add(bobY, jump) }] }, style]}>
-      {/* The tail is a separate layer, centered on its base, so it rotates around it */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          width: size,
-          height: size,
-          left: pivot.x * unit - size / 2,
-          top: pivot.y * unit - size / 2,
-          transform: [{ rotate }],
-        }}
-      >
-        <Svg width={size} height={size} viewBox="-100 -100 200 200">
-          <G transform={`scale(${tailScale})`}>{render(tail)}</G>
-        </Svg>
+    <Animated.View
+      style={[{ width: size, height: size, transform: [{ translateY: Animated.add(bobY, jump) }] }, style]}
+      accessible={!!accessibilityLabel}
+      accessibilityRole={accessibilityLabel ? 'image' : undefined}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View style={{ width: size, height: size, transformOrigin: 'bottom', transform: [{ scaleX: k }, { scaleY: breathe }] }}>
+        <Image source={face} style={{ width: size, height: size }} resizeMode="contain" fadeDuration={0} />
+        {blinkFace && (
+          <Animated.Image
+            source={blinkFace}
+            style={{ position: 'absolute', width: size, height: size, opacity: blink }}
+            resizeMode="contain"
+            fadeDuration={0}
+          />
+        )}
+        {/* Inside the scaled view, so the outfit breathes and grows with him */}
+        <Accessories size={size} head={headItem} neck={neckItem} stage={stage} expression={expression} />
       </Animated.View>
-      <Svg width={size} height={size} viewBox="0 0 200 200" style={{ position: 'absolute' }}>
-        {render(main)}
-      </Svg>
+      {extrasSvg}
     </Animated.View>
   );
 }
+
+// Parents re-render often (store changes, timers); the dog only redraws when its own props change
+export default memo(Pet);

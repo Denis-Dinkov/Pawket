@@ -1,65 +1,167 @@
-import React, { useState } from 'react';
-import { View, Modal, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { Activity, useCallback, useEffect, useRef, useState } from 'react';
+import { View, Modal, ActivityIndicator, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold } from '@expo-google-fonts/onest';
-import { StoreProvider, useStore } from './src/store';
-import { colors, shadow } from './src/theme';
-import { stageFor } from './src/pet/logic';
+import { StoreProvider, useStore, useToast } from './src/store';
+import { colors, shadow, applyScheme, money } from './src/theme';
+import { stageFor, dayKey } from './src/pet/logic';
+import { sameDay } from './src/format';
 import HomeScreen from './src/screens/HomeScreen';
 import StatsScreen from './src/screens/StatsScreen';
+import PlansScreen from './src/screens/PlansScreen';
+import PetScreen from './src/screens/PetScreen';
 import AddScreen from './src/screens/AddScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import PetEventModal from './src/components/PetEventModal';
+import Toast from './src/components/Toast';
+import FlyingAmount from './src/components/FlyingAmount';
+import PawBurst from './src/components/PawBurst';
+import { motionReduced, SPRING } from './src/motion';
 import useIncomingAdd from './src/hooks/useIncomingAdd';
 import useWidgetSync from './src/widget/useWidgetSync';
 import PetSnapshots from './src/widget/PetSnapshots';
+import { outfitOf } from './src/pet/outfit';
 import Touch from './src/components/ui/Touch';
+import { syncReminders, listenToReminders, ACTION_NO_SPEND } from './src/reminders';
+import { syncLiveActivity } from './src/widget/liveActivity';
+import { themed } from './src/themed';
+import { t, getLang } from './src/i18n';
 
-function TabBar({ tab, onTab, onAdd }) {
-  const insets = useSafeAreaInsets();
-  const item = (key, icon, label) => {
-    const active = tab === key;
-    return (
-      <Touch haptic="select" style={s.tab} onPress={() => onTab(key)} accessibilityRole="tab" accessibilityState={{ selected: active }}>
-        <Ionicons name={active ? icon : `${icon}-outline`} size={22} color={active ? colors.primary : colors.muted} />
-        <Text style={[s.tabText, active && s.tabActive]}>{label}</Text>
-      </Touch>
-    );
-  };
+// Widget and Dynamic Island updates wait until the flying amount after saving (~1.3 s) is done
+const SYNC_DELAY = 1500;
+
+const TABS = [
+  { key: 'home', icon: 'home', get label() { return t('Начало'); } },
+  { key: 'stats', icon: 'stats-chart', get label() { return t('Отчети'); } },
+  null, // the "+" button sits in the middle
+  { key: 'plans', icon: 'flag', get label() { return t('Планове'); } },
+  { key: 'pet', icon: 'paw', get label() { return t('Чарли'); } },
+];
+
+// Only this re-renders when a toast comes and goes, not the whole screen behind it
+function ToastLayer() {
+  const { toast, dismissToast } = useToast();
   return (
-    <View style={[s.tabBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {item('home', 'home', 'Начало')}
-      <Touch haptic="medium" onPress={onAdd} style={s.fabWrap} accessibilityLabel="Нов разход или доход">
-        <LinearGradient colors={[colors.heroFrom, colors.heroTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.fab}>
-          <Ionicons name="add" size={32} color="#fff" />
-        </LinearGradient>
-      </Touch>
-      {item('stats', 'stats-chart', 'Статистика')}
+    <>
+      {/* Goals and missions done: paws burst out */}
+      <PawBurst id={toast?.celebrate ? toast.id : null} />
+      <Toast toast={toast} onDismiss={dismissToast} />
+    </>
+  );
+}
+
+// The tab icon gives a small hop when its tab becomes active
+function TabIcon({ name, active }) {
+  const hop = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!active || motionReduced()) return;
+    hop.setValue(0.88);
+    Animated.spring(hop, { toValue: 1, useNativeDriver: true, ...SPRING.snappy }).start();
+  }, [active, hop]);
+  return (
+    <Animated.View style={{ transform: [{ scale: hop }] }}>
+      <Ionicons name={active ? name : `${name}-outline`} size={23} color={active ? colors.primary : colors.muted} />
+    </Animated.View>
+  );
+}
+
+function TabBar({ tab, onTab, onAdd, petName }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[s.tabBar, { paddingBottom: Math.max(insets.bottom, 10) }]} accessibilityRole="tablist">
+      {TABS.map((item) =>
+        !item ? (
+          <Touch key="add" haptic="medium" onPress={onAdd} style={s.fab} accessibilityLabel={t('Нов разход или доход')}>
+            <Ionicons name="add" size={30} color={colors.onAccent} />
+          </Touch>
+        ) : (
+          <Touch
+            key={item.key}
+            haptic="select"
+            style={s.tab}
+            onPress={() => onTab(item.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === item.key }}
+          >
+            <TabIcon name={item.icon} active={tab === item.key} />
+            <Text style={[s.tabText, tab === item.key && s.tabActive]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+              {item.key === 'pet' ? petName : item.label}
+            </Text>
+          </Touch>
+        )
+      )}
     </View>
   );
 }
 
 function Main() {
-  const { ready, pet, expenses, incomes, incomeEntries, categories, pendingEvent, dismissEvent } = useStore();
+  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, pendingEvent, dismissEvent, checkInNoSpend } =
+    useStore();
   // The font ships in the bundle; if loading fails, the app falls back to the system font
   const [fontsLoaded, fontError] = useFonts({ Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold });
   const now = new Date();
-  const [tab, setTab] = useState('home');
-  // null = closed; otherwise the prefill for "New expense"
+  const [tab, setTabState] = useState('home');
+  // Tabs opened once stay mounted (hidden), so switching back is instant and keeps the scroll position
+  const [visited, setVisited] = useState(['home']);
+  const setTab = useCallback((key) => {
+    setTabState(key);
+    setVisited((v) => (v.includes(key) ? v : [...v, key]));
+  }, []);
+  // null = closed; otherwise the prefill for "New expense" ({ edit } edits an expense)
   const [adding, setAdding] = useState(null);
-  const [settings, setSettings] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // What to open after Settings has closed (see onDismiss below)
+  const afterSettings = useRef(null);
+  // The amount that flies up after saving
+  const [flying, setFlying] = useState(null);
+  const clearFlying = useCallback(() => setFlying(null), []);
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() });
-  const onMonthChange = (year, month) => setPeriod({ year, month });
+  const onMonthChange = useCallback((year, month) => setPeriod({ year, month }), []);
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   // The Apple Pay automation, the widget "+" and the quick action all open "New expense"
   useIncomingAdd(setAdding);
-  const refreshWidget = useWidgetSync({ ready, expenses, incomes, incomeEntries, categories, pet });
+  const refreshWidget = useWidgetSync({ ready, expenses, incomes, incomeEntries, recurring, categories, pet });
+  // New dog pictures (stage or outfit changed): refresh the widget and the Dynamic Island with them
+  const [snapshotTick, setSnapshotTick] = useState(0);
+  const onSnapshots = useCallback(() => {
+    refreshWidget();
+    setSnapshotTick((n) => n + 1);
+  }, [refreshWidget]);
+  const outfit = outfitOf(pet);
+
+  // The evening reminder: rescheduled after every entry, skipping today once something is recorded
+  const activeToday = !!pet && (pet.lastActiveDay === dayKey(new Date()) || expenses.some((e) => e.source !== 'recurring' && sameDay(e.date, new Date())));
+  useEffect(() => {
+    if (!ready || !pet) return;
+    syncReminders({ ...settings.reminder, petName: pet.name, activeToday });
+  }, [ready, pet?.name, pet?.lastFedAt, activeToday, settings.reminder]);
+  // Coming back to the app counts too: iOS ends a Live Activity after 8 hours and it goes stale at
+  // midnight, so returning (even with nothing changed) starts a fresh one when needed
+  const [activeTick, setActiveTick] = useState(0);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setActiveTick((n) => n + 1));
+    return () => sub.remove();
+  }, []);
+  // Dynamic Island: refreshed (with a short delay) after every change and when the app comes back
+  useEffect(() => {
+    if (!ready || !pet) return undefined;
+    const timer = setTimeout(
+      () => syncLiveActivity({ enabled: settings.liveActivity !== false, data: { expenses, incomes, incomeEntries, recurring, pet } }),
+      SYNC_DELAY
+    );
+    return () => clearTimeout(timer);
+  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity, snapshotTick, activeTick]);
+
+  const onReminder = useCallback(
+    (action) => (action === ACTION_NO_SPEND ? checkInNoSpend() : setAdding({ source: 'manual' })),
+    [checkInNoSpend]
+  );
+  useEffect(() => (ready && pet ? listenToReminders(onReminder) : undefined), [ready, !!pet]);
 
   if (!ready || (!fontsLoaded && !fontError)) {
     return (
@@ -71,12 +173,30 @@ function Main() {
 
   if (!pet) return <OnboardingScreen />;
 
-  const Screen = tab === 'home' ? HomeScreen : StatsScreen;
+  const SCREENS = { home: HomeScreen, stats: StatsScreen, plans: PlansScreen, pet: PetScreen };
 
   return (
     <View style={s.root}>
-      <Screen {...period} onMonthChange={onMonthChange} onOpenSettings={() => setSettings(true)} onAdd={setAdding} />
-      <TabBar tab={tab} onTab={setTab} onAdd={() => setAdding({})} />
+      {/* Hidden tabs keep their state but run no effects (timers, animations) and render at low priority */}
+      {visited.map((key) => {
+        const Screen = SCREENS[key];
+        return (
+          <Activity key={key} mode={key === tab ? 'visible' : 'hidden'}>
+            <View style={StyleSheet.absoluteFill}>
+              <Screen
+                {...period}
+                onMonthChange={onMonthChange}
+                onOpenSettings={openSettings}
+                onAdd={setAdding}
+                onTab={setTab}
+              />
+            </View>
+          </Activity>
+        );
+      })}
+      <TabBar tab={tab} onTab={setTab} onAdd={() => setAdding({})} petName={pet.name} />
+      <FlyingAmount item={flying} onDone={clearFlying} />
+      <ToastLayer />
 
       <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)}>
         <AddScreen
@@ -87,53 +207,89 @@ function Main() {
             if (expense) {
               const d = new Date(expense.date);
               setPeriod({ year: d.getFullYear(), month: d.getMonth() });
+              const income = expense.type === 'income';
+              setFlying({ id: Date.now(), income, text: `${income ? '+' : '−'}${money(expense.amount)}` });
             }
           }}
         />
       </Modal>
 
-      <Modal visible={settings} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSettings(false)}>
+      <Modal
+        visible={settingsOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSettingsOpen(false)}
+        // "Try it" opens Add only once Settings has really gone (iOS can't present two at once)
+        onDismiss={() => {
+          const next = afterSettings.current;
+          afterSettings.current = null;
+          if (next) setAdding(next);
+        }}
+      >
         <SettingsScreen
-          onClose={() => setSettings(false)}
+          onClose={() => setSettingsOpen(false)}
           onTryApplePay={(prefill) => {
-            setSettings(false);
-            // iOS won't present a new modal while the previous one is still closing
-            setTimeout(() => setAdding(prefill), 600);
+            afterSettings.current = prefill;
+            setSettingsOpen(false);
           }}
         />
       </Modal>
 
       <PetEventModal event={pendingEvent} pet={pet} stage={stageFor(pet.xp).stage} onClose={dismissEvent} />
-      <PetSnapshots stageKey={stageFor(pet.xp).stage.key} onDone={refreshWidget} />
+      <PetSnapshots stageKey={stageFor(pet.xp).stage.key} head={outfit.head} neck={outfit.neck} onDone={onSnapshots} />
     </View>
   );
+}
+
+/**
+ * Light / dark: follows the system unless Settings pick one. The palette is swapped before the
+ * children render, and Main is remounted so every screen picks up the new colors.
+ */
+function Themed() {
+  const { settings } = useStore();
+  const system = useColorScheme();
+  const pref = settings?.theme || 'system';
+  const scheme = pref === 'system' ? (system === 'dark' ? 'dark' : 'light') : pref;
+  applyScheme(scheme);
+  // The language is set by the store (before any text is made); a change remounts Main like the palette
+  const lang = getLang();
+
+  // Native parts (alerts, keyboard, page sheets) follow the same choice
+  useEffect(() => {
+    try {
+      Appearance.setColorScheme?.(pref === 'system' ? 'unspecified' : pref);
+    } catch {
+      // older platforms: native parts follow the system
+    }
+  }, [pref]);
+
+  return <Main key={`${scheme}-${lang}`} />;
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <StoreProvider>
-        <StatusBar style="light" />
-        <Main />
+        <Themed />
       </StoreProvider>
     </SafeAreaProvider>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const s = themed((c) => ({
+  root: { flex: 1, backgroundColor: c.bg },
   tabBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 10,
+    backgroundColor: c.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8,
     ...shadow, shadowOffset: { width: 0, height: -6 },
   },
-  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
-  tabText: { color: colors.muted, fontSize: 11.5, fontWeight: '600' },
-  tabActive: { color: colors.primary, fontWeight: '700' },
-  fabWrap: {
-    marginTop: -34, borderRadius: 32,
-    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8,
+  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4, minHeight: 48, justifyContent: 'center' },
+  tabText: { color: c.muted, fontSize: 11, fontWeight: '600' },
+  tabActive: { color: c.primary, fontWeight: '700' },
+  fab: {
+    width: 58, height: 58, borderRadius: 20, marginTop: -26, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.primary, borderWidth: 4, borderColor: c.card,
+    shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },
-  fab: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#fff' },
-});
+}));

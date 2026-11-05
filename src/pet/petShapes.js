@@ -170,7 +170,7 @@ function ear(side, tilt) {
   };
 }
 
-function head(face, stage, blink) {
+function head(face, stage, blink, accessory) {
   const tilt = EAR_TILT[face.ears];
   const eyeKind = blink && ['open', 'big', 'worried', 'sad'].includes(face.eyes) ? 'closed' : face.eyes;
   return [
@@ -195,7 +195,9 @@ function head(face, stage, blink) {
     ...MOUTHS[face.mouth],
     ear('left', tilt),
     ear('right', tilt),
-    ...(stage === 'champion'
+    ...headAccessory(accessory),
+    // The party hat sits where the crown would
+    ...(stage === 'champion' && accessory !== 'hat'
       ? [
           fill('M76 46 L80 22 L92 36 L100 16 L108 36 L120 22 L124 46 Z', P.gold, { stroke: P.ink, strokeWidth: 2.2, strokeLinejoin: 'round' }),
           { t: 'circle', cx: 80, cy: 22, r: 3.5, fill: P.gold, stroke: P.ink, strokeWidth: 1.5 },
@@ -244,7 +246,8 @@ function body() {
 }
 
 // Things around the dog: sparkles, "Zzz", a thought about a bone, a sweat drop
-function extras(expression) {
+// (also drawn around the painted Charlie in Pet.js)
+export function extras(expression) {
   switch (expression) {
     case 'ecstatic':
       return [star(22, 34, 9), star(190, 70, 6), star(193, 128, 5), star(176, 22, 5)];
@@ -272,6 +275,53 @@ function extras(expression) {
   }
 }
 
+// Rewards: drawn on the head (glasses, hat) or around the neck (collar, bandana, bow)
+function headAccessory(accessory) {
+  switch (accessory) {
+    case 'glasses':
+      return [
+        { t: 'ellipse', cx: 82, cy: 79, rx: 12, ry: 9, fill: '#1E1A22', stroke: P.ink, strokeWidth: 2 },
+        { t: 'ellipse', cx: 118, cy: 79, rx: 12, ry: 9, fill: '#1E1A22', stroke: P.ink, strokeWidth: 2 },
+        line('M94 78 Q100 74 106 78', P.ink, 2.4),
+        { t: 'ellipse', cx: 78, cy: 76, rx: 4, ry: 2, fill: '#FFFFFF', opacity: 0.5 },
+        { t: 'ellipse', cx: 114, cy: 76, rx: 4, ry: 2, fill: '#FFFFFF', opacity: 0.5 },
+      ];
+    case 'hat':
+      return [
+        fill('M86 48 L104 6 L118 46 Z', '#7EA6FF', { stroke: P.ink, strokeWidth: 2.2, strokeLinejoin: 'round' }),
+        line('M93 32 L111 30', '#FFFFFF', 3),
+        line('M89 41 L115 39', P.gold, 3),
+        { t: 'circle', cx: 104, cy: 6, r: 5, fill: P.collar, stroke: P.ink, strokeWidth: 1.6 },
+      ];
+    default:
+      return [];
+  }
+}
+
+function neckAccessory(accessory) {
+  switch (accessory) {
+    case 'collar':
+      return [
+        line('M94 124 Q114 133 136 123', P.ink, 9),
+        line('M94 124 Q114 133 136 123', P.collar, 6),
+        { t: 'circle', cx: 115, cy: 135, r: 5, fill: P.gold, stroke: P.ink, strokeWidth: 1.6 },
+      ];
+    case 'bandana':
+      return [
+        fill('M92 121 Q114 130 138 121 L118 152 Q115 156 112 152 Z', '#3D7BFF', { stroke: P.ink, strokeWidth: 2.2, strokeLinejoin: 'round' }),
+        dot(108, 132, 1.8, '#FFFFFF'), dot(120, 134, 1.8, '#FFFFFF'), dot(114, 142, 1.8, '#FFFFFF'),
+      ];
+    case 'bow':
+      return [
+        fill('M114 130 L100 122 L100 140 Z', '#D6479A', { stroke: P.ink, strokeWidth: 2, strokeLinejoin: 'round' }),
+        fill('M114 130 L128 122 L128 140 Z', '#D6479A', { stroke: P.ink, strokeWidth: 2, strokeLinejoin: 'round' }),
+        { t: 'circle', cx: 114, cy: 131, r: 4, fill: '#B8297F', stroke: P.ink, strokeWidth: 1.6 },
+      ];
+    default:
+      return [];
+  }
+}
+
 const scaleAround = (cx, cy, k) => `translate(${cx} ${cy}) scale(${k}) translate(${-cx} ${-cy})`;
 
 // Big fluffy tail rising to the left of the body; its base is at (0,0)
@@ -284,15 +334,15 @@ const TAIL_RIM = 'M-57 -36 L-53 -33 L-54 -24 L-48 -21 L-46 -12 L-40 -11 L-37 -3 
  * Returns { main, tail, pivot, tailScale, tailAngle }.
  * The tail is separate, with its base at (0,0), so it can rotate (wag) around it.
  */
-export function petShapes({ expression = 'happy', stage = 'adult', blink = false }) {
+export function petShapes({ expression = 'happy', stage = 'adult', blink = false, accessory = null }) {
   const face = FACES[expression] || FACES.happy;
   const g = STAGE_GEOM[stage] || STAGE_GEOM.adult;
   const main = [
-    { t: 'g', transform: scaleAround(GROUND.x, GROUND.y, g.body), children: body() },
+    { t: 'g', transform: scaleAround(GROUND.x, GROUND.y, g.body), children: [...body(), ...neckAccessory(accessory)] },
     {
       t: 'g',
       transform: `translate(${HEAD_DX * g.body} ${g.headY - 86}) ${scaleAround(100, 86, g.head)}`,
-      children: head(face, stage, blink),
+      children: head(face, stage, blink, accessory),
     },
     ...extras(expression),
   ];
@@ -316,14 +366,14 @@ const attrName = (k) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 
 export function toSvg(nodes) {
   return nodes
-    .map(({ t, children, text, ...props }) => {
+    .map(({ t: tag, children, text, ...props }) => {
       const attrs = Object.entries(props)
         .filter(([, v]) => v != null)
         .map(([k, v]) => `${attrName(k)}="${v}"`)
         .join(' ');
-      if (t === 'g') return `<g ${attrs}>${toSvg(children)}</g>`;
-      if (t === 'text') return `<text ${attrs}>${text}</text>`;
-      return `<${t} ${attrs}/>`;
+      if (tag === 'g') return `<g ${attrs}>${toSvg(children)}</g>`;
+      if (tag === 'text') return `<text ${attrs}>${text}</text>`;
+      return `<${tag} ${attrs}/>`;
     })
     .join('');
 }
