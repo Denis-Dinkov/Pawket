@@ -17,6 +17,7 @@ import { tapFeedback } from '../haptics';
 import useNow from '../hooks/useNow';
 import Money from '../components/ui/Money';
 import Pill from '../components/ui/Pill';
+import { afterSheetsClose } from '../components/ui/Sheet';
 import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
 import Segmented from '../components/ui/Segmented';
@@ -196,10 +197,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
       ? t('За {0} няма доход — не мога да го оценя.', { 0: monthLower(month) })
       : t('{0} завърши с {1}/100 {2}', { 0: MONTHS[month], 1: ov.score, 2: MONTH_EMOJI[expressionFor(ov.score)] });
 
-  const openAdd = (prefill) => setTimeout(() => onAdd(prefill), 450);
+  // Opens Add once the sheet it comes from has really gone (iOS can't present two at once)
+  const openAdd = (prefill) => afterSheetsClose(() => onAdd(prefill));
   const edit = (e) => {
     setSelected(null);
-    // iOS won't present a new modal while this sheet is still closing
     openAdd({ edit: e });
   };
 
@@ -401,7 +402,12 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     accessibilityLabel={t('Доход {0}', { 0: moneyShort(ov.income) })}
                     accessibilityHint={t('Показва доходите за месеца')}
                   >
-                    <Text style={s.miniSub}>{t('от {0} доход', { 0: moneyShort(ov.income) })}</Text>
+                    {/* With payments still due, say so: otherwise the number looks smaller than income − spent */}
+                    <Text style={s.miniSub} numberOfLines={2}>
+                      {free && pending > 0
+                        ? t('от {0} доход, {1} предстоящи', { 0: moneyShort(ov.income), 1: moneyShort(pending) })
+                        : t('от {0} доход', { 0: moneyShort(ov.income) })}
+                    </Text>
                     <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                   </Touch>
                 )}

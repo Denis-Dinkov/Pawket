@@ -102,8 +102,9 @@ export function goalProgress(goal, expenses = []) {
 export function monthlyNeeded(goal, saved, now = new Date()) {
   if (!goal.deadline) return null;
   const end = new Date(goal.deadline);
-  const months = (end.getFullYear() - now.getFullYear()) * 12 + end.getMonth() - now.getMonth() + 1;
-  if (months <= 0) return null;
+  // Deadlines are the 1st of a month ("до март" = by 1 March), so the months left are this one up to the one before
+  const months = Math.max(1, (end.getFullYear() - now.getFullYear()) * 12 + end.getMonth() - now.getMonth());
+  if (end <= now) return null;
   return Math.max(0, goal.target - saved) / months;
 }
 

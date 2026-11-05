@@ -4,7 +4,7 @@ import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, normalizeMerchant } from '../store';
-import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep } from '../theme';
+import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep, euroFirst } from '../theme';
 import { getIncome } from '../budget';
 import { goalProgress, goalSaved } from '../plans';
 import { successFeedback, feedback } from '../haptics';
@@ -237,10 +237,12 @@ export default function AddScreen({ onDone, prefill = {} }) {
           accessibilityLiveRegion="polite"
         >
           {isIncome && <Text style={[s.amount, { color: colors.savings }]}>+</Text>}
+          {/* The euro sign goes before the amount in English (€12.50), after it in Bulgarian */}
+          {euroFirst() && <Text style={s.currency} maxFontSizeMultiplier={1.2}>€</Text>}
           <Text style={[s.amount, { color: amount ? accent : colors.placeholder }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.2}>
             {(amount || '0').replace(',', decimalSep())}
           </Text>
-          <Text style={s.currency} maxFontSizeMultiplier={1.2}>€</Text>
+          {!euroFirst() && <Text style={s.currency} maxFontSizeMultiplier={1.2}>€</Text>}
           {!padOpen && <Ionicons name="pencil" size={16} color={colors.muted} style={{ marginLeft: 4 }} />}
         </Touch>
         {!isIncome && rememberedOk && !picked && merchant.trim() !== '' && (

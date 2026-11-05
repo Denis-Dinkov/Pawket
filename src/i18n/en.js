@@ -1,6 +1,7 @@
 // English for every t() key. The key is the Bulgarian text; {0}, {1}… are filled in by t().
 // Keys are listed in the order they appear in the code. A missing key falls back to Bulgarian.
 export default {
+  "от {0} доход, {1} предстоящи": "of {0} income, {1} coming up",
   "Начало": "Home",
   "Отчети": "Reports",
   "Планове": "Plans",
@@ -264,7 +265,7 @@ export default {
   "Абонаментите: {0} на месец": "Subscriptions: {0} a month",
   "Това прави около {0} на година. {1}": "That's about {0} a year. {1}",
   "Дневният ти лимит е {0}": "Your daily limit is {0}",
-  "За да спазиш 50/30/20, до края на месеца ({0} дни) можеш да харчиш средно до {1} на ден, без спестяванията{2}.": "To stick to 50/30/20, until the end of the month ({0} days) you can spend up to {1} a day on average, not counting savings{2}.",
+  "До края на месеца ({0} дни) можеш да харчиш средно до {1} на ден{2}. За 50/30/20 задели и 20% за спестяване.": "Until the end of the month ({0} days) you can spend up to {1} a day on average{2}. For 50/30/20, set 20% aside for savings too.",
   " и след предстоящите плащания ({0})": " and after the upcoming payments ({0})",
   "Спазваш 50/30/20 отлично 🤩": "You're following 50/30/20 perfectly 🤩",
   "Нужди {0}, желания {1}, спестявания до {2}. Продължавай така и ще порасна!": "Needs {0}, wants {1}, savings up to {2}. Keep it up and I'll grow!",

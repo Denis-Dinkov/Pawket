@@ -20,8 +20,8 @@ export function getIncome(incomes, year, month) {
 }
 
 /**
- * Total income for the month: the monthly income setting or the recorded salary (whichever is larger),
- * plus all extra income (bonus, freelance, gift...).
+ * Total income for the month: the recorded salary when there is one (it replaces the monthly income setting,
+ * as the app says, even when it's lower), otherwise the setting; plus all extra income (bonus, freelance, gift...).
  */
 export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
   const base = getIncome(incomes, year, month);
@@ -29,7 +29,7 @@ export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
   const sum = (arr) => arr.reduce((a, e) => a + e.amount, 0);
   const salary = sum(list.filter((e) => e.kind === 'salary'));
   const extra = sum(list.filter((e) => e.kind !== 'salary'));
-  return { base, salary, extra, total: Math.max(base, salary) + extra, list };
+  return { base, salary, extra, total: (salary > 0 ? salary : base) + extra, list };
 }
 
 /**
@@ -170,29 +170,29 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
 }
 
 /**
- * What's left for needs and wants this month, before recurring payments still due: the 80% of income minus
- * what they already took. The 20% for savings stays untouched, so putting up to 20% into goals doesn't lower it;
- * saving more than that comes out of the same income, so it does (otherwise money already gone would show as free).
- * Money the user already had (offBudget) isn't counted at all.
+ * What's left of this month's income before recurring payments still due: the whole income minus what was
+ * spent and what was put into savings this month. Nothing is held back in advance; the 20% for savings is a
+ * target (the score and the tips follow it), not a deduction. Money the user already had (offBudget) isn't
+ * counted at all.
  */
 export function spendRoom(ov) {
   const { needs, wants, savings } = ov.byBucket;
-  return ov.income - needs - wants - Math.max(0.2 * ov.income, savings);
+  return ov.income - needs - wants - savings;
 }
 
 /**
- * The app's main number: what's still free to spend on needs and wants this month (see spendRoom),
- * minus the recurring payments still due. Today's limit is this amount spread over the days left.
+ * The app's main number: what's still free this month (see spendRoom), minus the recurring payments still due.
+ * Today's limit is this amount spread over the days left.
  */
 export function freeToSpend(ov, pending = 0) {
   if (!ov.income) return null;
-  const budget = 0.8 * ov.income;
+  const budget = ov.income;
   const free = spendRoom(ov) - pending;
   return { free, budget, ratio: free / budget };
 }
 
 /**
- * Today's limit for needs and wants: what's left of the 80% after this month's spending and the recurring
+ * Today's limit: what's left of the income after this month's spending, savings and the recurring
  * payments still due, spread over the remaining days. It's computed as of the start of the day,
  * so it doesn't move with every expense; `left` is what remains of it today.
  */

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, money, pct, radius, categoryById, BUCKETS, MONTHS, currentColorScheme, monthLower, decimalSep } from '../theme';
+import { colors, money, pct, radius, categoryById, BUCKETS, MONTHS, currentColorScheme, monthLower, decimalSep, euroFirst } from '../theme';
 import { cleanAmountInput, dayLabel, dayOrdinal, amountText } from '../format';
 import { goalProgress, monthlyNeeded, upcomingPayments, GOAL_ICONS, averageNeeds, wishHoursLeft, FUND_PRESETS } from '../plans';
 import Appear from '../components/ui/Appear';
@@ -24,7 +24,7 @@ const toText = amountText;
 
 function AmountField({ value, onChange, label, autoFocus }) {
   return (
-    <View style={s.amountRow}>
+    <View style={[s.amountRow, euroFirst() && { flexDirection: 'row-reverse' }]}>
       <TextInput
         value={value}
         onChangeText={(text) => onChange(cleanAmountInput(text))}
@@ -49,7 +49,7 @@ const KINDS = [
   { key: 'emergency', get label() { return t('Авариен фонд'); } },
 ];
 
-function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset }) {
+function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset, saved = 0 }) {
   const [kind, setKind] = useState(goal?.kind || preset?.kind || 'goal');
   const [name, setName] = useState(goal?.name || preset?.name || '');
   const [icon, setIcon] = useState(goal?.icon || preset?.icon || GOAL_ICONS[0]);
@@ -143,7 +143,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
       </View>
       {deadline && (
         <Text style={s.hint}>
-          {t('До {0} {1} {2}', { 0: monthLower(deadline.getMonth()), 1: deadline.getFullYear(), 2: parseMoney(target) > 0 ? t(' · ≈ {0} на месец', { 0: money(Math.ceil(parseMoney(target) / months)) }) : '' })}
+          {t('До {0} {1} {2}', { 0: monthLower(deadline.getMonth()), 1: deadline.getFullYear(), 2: parseMoney(target) > 0 ? t(' · ≈ {0} на месец', { 0: money(Math.ceil(monthlyNeeded({ target: parseMoney(target), deadline: deadline.toISOString() }, saved) || 0)) }) : '' })}
         </Text>
       )}
       <Text style={s.label}>{t('Икона')}</Text>
@@ -478,6 +478,7 @@ export default function PlansScreen({ onAdd }) {
         goal={goalEdit && goalEdit !== 'new' && !goalEdit.preset ? goalEdit : null}
         preset={goalEdit?.preset ? { ...goalEdit.preset, name: t('Авариен фонд'), icon: 'umbrella', target: Math.ceil((needs * 3) / 10) * 10 } : null}
         needs={needs}
+        saved={goalEdit && goalEdit !== 'new' && !goalEdit.preset ? goalProgress(goalEdit, expenses).saved : 0}
         visible={!!goalEdit}
         onClose={() => setGoalEdit(null)}
         onSave={(g) => {

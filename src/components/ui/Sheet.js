@@ -9,6 +9,22 @@ import { t } from '../../i18n';
 
 const OFFSCREEN = 500;
 
+// iOS won't present a new modal (e.g. "Edit" opening the Add page) while another one is still leaving,
+// and a fixed delay is either too short (a stutter) or too long (a pause). So the sheets count themselves,
+// and afterSheetsClose(fn) runs fn the moment the last one is really gone.
+let openSheets = 0;
+let waiting = [];
+const flush = () => {
+  if (openSheets > 0) return;
+  const run = waiting;
+  waiting = [];
+  run.forEach((fn) => fn());
+};
+export function afterSheetsClose(fn) {
+  waiting.push(fn);
+  if (openSheets === 0) requestAnimationFrame(flush);
+}
+
 /**
  * Bottom sheet with a translucent backdrop; footer stays pinned at the bottom (and above the keyboard).
  * It slides up on open and back down on close: the Modal stays mounted until the exit has played,
@@ -23,6 +39,15 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   const y = useRef(new Animated.Value(OFFSCREEN)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
+  // Counted as open from the moment it shows until iOS has removed its window
+  const counted = useRef(false);
+  const release = useRef(() => {
+    if (!counted.current) return;
+    counted.current = false;
+    openSheets -= 1;
+    flush();
+  }).current;
+  useEffect(() => release, [release]);
   // What was on screen while open, shown during the exit
   const last = useRef({ children, footer });
   if (visible) last.current = { children, footer };
@@ -30,6 +55,10 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      if (!counted.current) {
+        counted.current = true;
+        openSheets += 1;
+      }
       if (motionReduced()) {
         y.setValue(0);
         backdrop.setValue(1);
@@ -53,11 +82,20 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!mounted && !visible) return null;
+  // After the exit the Modal stays rendered but hidden, so iOS reports when its window is gone (onDismiss).
+  // A timer backs that up in case the event never comes.
+  useEffect(() => {
+    if (mounted || visible || !counted.current) return undefined;
+    const timer = setTimeout(release, 400);
+    return () => clearTimeout(timer);
+  }, [mounted, visible, release]);
+
+  const shown = mounted || visible;
   const content = visible ? { children, footer } : last.current;
   const Body = scroll ? ScrollView : View;
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={shown} transparent animationType="none" onRequestClose={onClose} onDismiss={release} statusBarTranslucent>
+      {shown && (
       <View style={s.root} pointerEvents={visible ? 'auto' : 'none'}>
         <Animated.View style={[StyleSheet.absoluteFill, s.backdrop, { opacity: backdrop }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('Затвори')} />
@@ -84,6 +122,7 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
           {content.footer && <View style={s.footer}>{content.footer}</View>}
         </Animated.View>
       </View>
+      )}
     </Modal>
   );
 }

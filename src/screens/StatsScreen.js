@@ -17,6 +17,7 @@ import MonthPill from '../components/MonthPill';
 import MonthPickerSheet from '../components/MonthPickerSheet';
 import ExpenseList from '../components/ExpenseList';
 import { ExpenseDetail, confirmDelete } from '../components/ExpenseDetailSheet';
+import { afterSheetsClose } from '../components/ui/Sheet';
 import AdviceSheet, { AdviceCard } from '../components/AdviceSheet';
 import { useMonthStats, SpendingChart, TopMerchants } from '../components/MonthDetails';
 import StatsHero from '../components/StatsHero';
@@ -185,8 +186,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
             onEdit={(e) => {
               setCategory(null);
               setSelected(null);
-              // iOS won't present a new modal while this sheet is still closing
-              setTimeout(() => onAdd?.({ edit: e }), 450);
+              // Opens Add once this sheet has really gone (iOS can't present two at once)
+              afterSheetsClose(() => onAdd?.({ edit: e }));
             }}
             onDelete={() => {
               removeExpense(selected.id);

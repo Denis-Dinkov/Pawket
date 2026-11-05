@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, defaultPetName } from '../store';
-import { colors, money, radius } from '../theme';
+import { colors, money, radius, euroFirst } from '../theme';
 import { getIncome } from '../budget';
 import { cleanAmountInput, amountText } from '../format';
 import Pet from '../pet/Pet';
@@ -41,7 +41,7 @@ export default function OnboardingScreen() {
 
           <View style={s.card}>
             <Text style={s.label}>{t('Месечен доход')}</Text>
-            <View style={s.row}>
+            <View style={[s.row, euroFirst() && { flexDirection: 'row-reverse', justifyContent: 'flex-end' }]}>
               <TextInput
                 value={incomeText}
                 onChangeText={(text) => setIncomeText(cleanAmountInput(text))}

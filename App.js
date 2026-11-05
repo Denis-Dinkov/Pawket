@@ -114,6 +114,8 @@ function Main() {
   // null = closed; otherwise the prefill for "New expense" ({ edit } edits an expense)
   const [adding, setAdding] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // What to open after Settings has closed (see onDismiss below)
+  const afterSettings = useRef(null);
   // The amount that flies up after saving
   const [flying, setFlying] = useState(null);
   const clearFlying = useCallback(() => setFlying(null), []);
@@ -212,13 +214,23 @@ function Main() {
         />
       </Modal>
 
-      <Modal visible={settingsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSettingsOpen(false)}>
+      <Modal
+        visible={settingsOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSettingsOpen(false)}
+        // "Try it" opens Add only once Settings has really gone (iOS can't present two at once)
+        onDismiss={() => {
+          const next = afterSettings.current;
+          afterSettings.current = null;
+          if (next) setAdding(next);
+        }}
+      >
         <SettingsScreen
           onClose={() => setSettingsOpen(false)}
           onTryApplePay={(prefill) => {
+            afterSettings.current = prefill;
             setSettingsOpen(false);
-            // iOS won't present a new modal while the previous one is still closing
-            setTimeout(() => setAdding(prefill), 600);
           }}
         />
       </Modal>

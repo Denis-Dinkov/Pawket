@@ -3,7 +3,7 @@ import { View, ScrollView, Alert, Platform, Switch, Linking } from 'react-native
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
-import { colors, MONTHS, BUCKETS, money, radius, monthLower } from '../theme';
+import { colors, MONTHS, BUCKETS, money, radius, monthLower, euroFirst } from '../theme';
 import { getIncome } from '../budget';
 import { cleanAmountInput, amountText } from '../format';
 import { stageFor } from '../pet/logic';
@@ -118,7 +118,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
 
       <Card style={{ marginTop: 20 }}>
         <Text style={s.label}>{t('Месечен доход')}</Text>
-        <View style={s.incomeRow}>
+        <View style={[s.incomeRow, euroFirst() && { flexDirection: 'row-reverse', justifyContent: 'flex-end' }]}>
           <TextInput
             value={incomeText}
             onChangeText={(text) => setIncomeText(cleanAmountInput(text))}

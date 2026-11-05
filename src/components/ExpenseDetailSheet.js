@@ -49,7 +49,7 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
       <View style={s.head}>
         <IconBadge icon={cat?.icon || 'help'} color={bucket?.color || colors.muted} size={64} />
         <Text style={s.cat}>{cat?.name}</Text>
-        <Money value={-expense.amount} size={38} />
+        <Money value={expense.goalId ? expense.amount : -expense.amount} size={38} color={expense.goalId ? colors.savings : colors.text} />
         <Pill small variant="soft" label={bucket?.label} style={{ alignSelf: 'center', marginTop: 8 }} />
       </View>
       <View style={s.card}>

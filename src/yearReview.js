@@ -42,7 +42,7 @@ export function yearReview({ expenses = [], incomes = {}, incomeEntries = [], ye
 
   return {
     year,
-    count: list.length,
+    count: list.filter(countsInBudget).length,
     total: sum.total,
     income,
     saved: sum.byBucket.savings,

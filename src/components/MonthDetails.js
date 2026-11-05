@@ -28,7 +28,9 @@ export function useMonthStats(ov, prevTotal, year, month) {
     let biggest = null;
     let dayToDay = 0;
     for (const e of ov.list) {
-      if (!countsInBudget(e)) continue;
+      // Spending only: money put into savings isn't spending, so it doesn't make a day "with spending"
+      // or a tall bar over the daily budget
+      if (!countsInBudget(e) || categoryById(e.categoryId)?.bucket === 'savings') continue;
       if (isDayToDay(e)) dayToDay += e.amount;
       const d = new Date(e.date);
       const day = byDay[d.getDate() - 1];

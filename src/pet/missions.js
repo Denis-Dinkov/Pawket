@@ -68,7 +68,7 @@ const POOL = [
     get title() { return t('2 дни без заведения'); },
     check: ({ week, days, expenses }) =>
       count(
-        week.filter((d) => days.has(dayKey(d)) && !expenses.some((e) => e.categoryId === 'dining' && dayKey(e.date) === dayKey(d))).length,
+        week.filter((d) => days.has(dayKey(d)) && !expenses.some((e) => e.categoryId === 'dining' && countsInBudget(e) && dayKey(e.date) === dayKey(d))).length,
         2
       ),
   },
