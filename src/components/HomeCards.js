@@ -9,6 +9,7 @@ import { colors, BUCKETS, categoryById, getCategories, money, pct } from '../the
 import { sameDay, plural } from '../format';
 import { dailyLimit, countsInBudget } from '../budget';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 
 // "Today": how much was spent today against the 50/30/20 daily limit
@@ -16,8 +17,8 @@ export function TodayCard({ ov, now, pending = 0 }) {
   if (!ov.progress.isCurrent) {
     return (
       <Card>
-        <Text style={s.h2}>Днес</Text>
-        <Text style={s.muted}>Показва се само за текущия месец.</Text>
+        <Text style={s.h2}>{t('Днес')}</Text>
+        <Text style={s.muted}>{t('Показва се само за текущия месец.')}</Text>
       </Card>
     );
   }
@@ -32,24 +33,24 @@ export function TodayCard({ ov, now, pending = 0 }) {
   return (
     <Card style={{ gap: 10 }}>
       <View style={s.head}>
-        <Text style={s.h2}>Днес</Text>
-        <Text style={s.muted}>{plural(today.length, 'плащане', 'плащания')}</Text>
+        <Text style={s.h2}>{t('Днес')}</Text>
+        <Text style={s.muted}>{plural(today.length, t('плащане'), t('плащания'))}</Text>
       </View>
       <View style={s.head}>
         <Money value={daily?.spentToday ?? today.reduce((a, e) => a + e.amount, 0)} size={28} />
         {limit > 0 && (
           <Text style={[s.limit, { color: over ? colors.danger : colors.savings }]}>
-            {over ? `над лимита с ${money(spentNW - limit)}` : `остават ${money(limit - spentNW)}`}
+            {over ? t('над лимита с {0}', { 0: money(spentNW - limit) }) : t('остават {0}', { 0: money(limit - spentNW) })}
           </Text>
         )}
       </View>
       {limit > 0 ? (
         <>
-          <Bar value={spentNW / limit} color={over ? colors.danger : colors.primary} height={8} label={`Днес ${money(spentNW)} от ${money(limit)}`} />
-          <Text style={s.muted}>Дневен лимит ≈ {money(limit)} за нужди и желания</Text>
+          <Bar value={spentNW / limit} color={over ? colors.danger : colors.primary} height={8} label={t('Днес {0} от {1}', { 0: money(spentNW), 1: money(limit) })} />
+          <Text style={s.muted}>{t('Дневен лимит ≈ {0} за нужди и желания', { 0: money(limit) })}</Text>
         </>
       ) : (
-        <Text style={s.muted}>Задай доход, за да видиш дневния си лимит.</Text>
+        <Text style={s.muted}>{t('Задай доход, за да видиш дневния си лимит.')}</Text>
       )}
     </Card>
   );
@@ -64,8 +65,8 @@ export function TopCategoriesCard({ ov }) {
     .slice(0, 3);
   return (
     <Card style={{ gap: 12 }}>
-      <Text style={s.h2}>Топ категории</Text>
-      {top.length === 0 && <Text style={s.muted}>Още няма разходи този месец.</Text>}
+      <Text style={s.h2}>{t('Топ категории')}</Text>
+      {top.length === 0 && <Text style={s.muted}>{t('Още няма разходи този месец.')}</Text>}
       {top.map((c) => (
         <View key={c.id} style={s.cat}>
           <IconBadge icon={c.icon} color={BUCKETS[c.bucket].color} size={36} />
@@ -75,7 +76,7 @@ export function TopCategoriesCard({ ov }) {
               <Text style={s.catValue}>{money(c.value)}</Text>
             </View>
             <Bar value={c.value / (top[0].value || 1)} color={c.shade} height={5} />
-            <Text style={s.muted}>{pct(c.value / (ov.total || 1))} от разходите</Text>
+            <Text style={s.muted}>{t('{0} от разходите', { 0: pct(c.value / (ov.total || 1)) })}</Text>
           </View>
         </View>
       ))}

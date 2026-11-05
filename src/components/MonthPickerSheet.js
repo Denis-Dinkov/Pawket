@@ -6,19 +6,20 @@ import { colors, radius, MONTHS, moneyShort } from '../theme';
 import { monthKey, countsInBudget } from '../budget';
 import Touch from './ui/Touch';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Month picker: years with expenses, months with their totals
 export default function MonthPickerSheet({ visible, onClose, expenses, year, month, onSelect }) {
   const now = new Date();
   const totals = useMemo(() => {
-    const t = {};
+    const totals = {};
     for (const e of expenses) {
       if (!countsInBudget(e)) continue;
       const d = new Date(e.date);
       const k = monthKey(d.getFullYear(), d.getMonth());
-      t[k] = (t[k] || 0) + e.amount;
+      totals[k] = (totals[k] || 0) + e.amount;
     }
-    return t;
+    return totals;
   }, [expenses]);
 
   const years = useMemo(() => {
@@ -29,7 +30,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
 
   return (
     <Sheet visible={visible} onClose={onClose}>
-      <Text style={s.title}>Избери месец</Text>
+      <Text style={s.title}>{t('Избери месец')}</Text>
       {years.map((y) => (
         <View key={y} style={{ marginTop: 14 }}>
           <Text style={s.year}>{y}</Text>

@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseAddUrl } from '../deeplink';
+import { t } from '../i18n';
 
 
 /**
@@ -27,7 +28,7 @@ export default function useIncomingAdd(onAdd) {
   useEffect(() => {
     // Without the native module (Expo Go, web) the functions are no-ops
     QuickActions.setItems([
-      { id: 'add', title: 'Нов разход', icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : undefined },
+      { id: 'add', title: t('Нов разход'), icon: Platform.OS === 'ios' ? 'symbol:plus.circle.fill' : undefined },
     ]).catch(() => {});
     if (QuickActions.initial?.id === 'add') cb.current({ source: 'manual' });
     const sub = QuickActions.addListener((action) => action.id === 'add' && cb.current({ source: 'manual' }));

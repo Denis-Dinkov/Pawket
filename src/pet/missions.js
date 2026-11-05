@@ -2,6 +2,7 @@
 import { categoryById } from '../theme';
 import { dayKey } from './logic';
 import { countsInBudget } from '../budget';
+import { t } from '../i18n';
 
 export const MISSION_XP = 25;
 
@@ -58,13 +59,13 @@ const POOL = [
   {
     id: 'log5',
     icon: 'create-outline',
-    title: 'Записвай 5 дни тази седмица',
+    get title() { return t('Записвай 5 дни тази седмица'); },
     check: ({ week, days }) => count(week.filter((d) => days.has(dayKey(d))).length, 5),
   },
   {
     id: 'noDining2',
     icon: 'restaurant-outline',
-    title: '2 дни без заведения',
+    get title() { return t('2 дни без заведения'); },
     check: ({ week, days, expenses }) =>
       count(
         week.filter((d) => days.has(dayKey(d)) && !expenses.some((e) => e.categoryId === 'dining' && dayKey(e.date) === dayKey(d))).length,
@@ -74,13 +75,13 @@ const POOL = [
   {
     id: 'goal',
     icon: 'flag-outline',
-    title: 'Задели пари в цел',
+    get title() { return t('Задели пари в цел'); },
     check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && !e.offBudget && new Date(e.loggedAt || e.date) >= start) ? 1 : 0, 1),
   },
   {
     id: 'wants3',
     icon: 'sparkles-outline',
-    title: '3 дни с желания под дневния лимит',
+    get title() { return t('3 дни с желания под дневния лимит'); },
     check: ({ week, days, expenses, wantsPerDay }) =>
       count(
         wantsPerDay > 0
@@ -98,7 +99,7 @@ const POOL = [
   {
     id: 'streak7',
     icon: 'flame-outline',
-    title: 'Стигни серия от 7 дни',
+    get title() { return t('Стигни серия от 7 дни'); },
     check: ({ currentStreak }) => count(Math.min(currentStreak, 7), 7),
   },
 ];
@@ -131,13 +132,13 @@ export const missionsTotal = (pet) => Object.values(pet?.missionsDone || {}).red
 
 // Accessories: unlocked by habits, never bought with money
 export const REWARDS = [
-  { id: 'collar', slot: 'neck', name: 'Червен нашийник', icon: 'medal-outline', need: 'Серия от 3 дни', test: (p) => p.bestStreak >= 3 },
-  { id: 'bow', slot: 'neck', name: 'Папийонка', icon: 'ribbon-outline', need: '3 изпълнени мисии', test: (p) => p.missions >= 3 },
-  { id: 'hat', slot: 'head', name: 'Парти шапка', icon: 'balloon-outline', need: 'Етап „Младо куче“', test: (p) => p.xp >= 250 },
-  { id: 'bandana', slot: 'neck', name: 'Синьо шалче', icon: 'triangle-outline', need: 'Серия от 7 дни', test: (p) => p.bestStreak >= 7 },
-  { id: 'glasses', slot: 'head', name: 'Слънчеви очила', icon: 'glasses-outline', need: 'Постигната цел', test: (p) => p.goalsDone >= 1 },
-  { id: 'goldCollar', slot: 'neck', name: 'Златен нашийник', icon: 'diamond-outline', need: 'Серия от 30 дни', test: (p) => p.bestStreak >= 30 },
-  { id: 'medal', slot: 'neck', name: 'Медал', icon: 'trophy-outline', need: '3 постигнати цели', test: (p) => p.goalsDone >= 3 },
+  { id: 'collar', slot: 'neck', get name() { return t('Червен нашийник'); }, icon: 'medal-outline', get need() { return t('Серия от 3 дни'); }, test: (p) => p.bestStreak >= 3 },
+  { id: 'bow', slot: 'neck', get name() { return t('Папийонка'); }, icon: 'ribbon-outline', get need() { return t('3 изпълнени мисии'); }, test: (p) => p.missions >= 3 },
+  { id: 'hat', slot: 'head', get name() { return t('Парти шапка'); }, icon: 'balloon-outline', get need() { return t('Етап „Младо куче“'); }, test: (p) => p.xp >= 250 },
+  { id: 'bandana', slot: 'neck', get name() { return t('Синьо шалче'); }, icon: 'triangle-outline', get need() { return t('Серия от 7 дни'); }, test: (p) => p.bestStreak >= 7 },
+  { id: 'glasses', slot: 'head', get name() { return t('Слънчеви очила'); }, icon: 'glasses-outline', get need() { return t('Постигната цел'); }, test: (p) => p.goalsDone >= 1 },
+  { id: 'goldCollar', slot: 'neck', get name() { return t('Златен нашийник'); }, icon: 'diamond-outline', get need() { return t('Серия от 30 дни'); }, test: (p) => p.bestStreak >= 30 },
+  { id: 'medal', slot: 'neck', get name() { return t('Медал'); }, icon: 'trophy-outline', get need() { return t('3 постигнати цели'); }, test: (p) => p.goalsDone >= 3 },
 ];
 
 export function rewardsState({ pet, goalsDone = 0 }) {

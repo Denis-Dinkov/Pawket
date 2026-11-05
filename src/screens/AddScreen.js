@@ -4,7 +4,7 @@ import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, normalizeMerchant } from '../store';
-import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint } from '../theme';
+import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep } from '../theme';
 import { getIncome } from '../budget';
 import { goalProgress, goalSaved } from '../plans';
 import { successFeedback, feedback } from '../haptics';
@@ -17,11 +17,12 @@ import NewCategorySheet from '../components/NewCategorySheet';
 import DatePickerSheet from '../components/DatePickerSheet';
 import useKeyboardHeight from '../hooks/useKeyboardHeight';
 import { themed } from '../themed';
+import { t, tList } from '../i18n';
 
-const DAYS = ['Днес', 'Вчера', 'Преди 2 дни'];
+const DAYS = tList(['Днес', 'Вчера', 'Преди 2 дни']);
 const MODES = [
-  { key: 'expense', label: 'Разход' },
-  { key: 'income', label: 'Доход' },
+  { key: 'expense', get label() { return t('Разход'); } },
+  { key: 'income', get label() { return t('Доход'); } },
 ];
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'del'];
 const QUICK = 6;
@@ -147,15 +148,15 @@ export default function AddScreen({ onDone, prefill = {} }) {
     const goal = open.find((g) => g.kind === 'emergency') || open[0];
     const part = Math.round(salary * 0.2);
     if (!goal) {
-      setTimeout(() => showToast({ text: `Заплатата е записана. Създай цел в „Планове“ и заделяй 20% (${money(part)}) веднага.`, icon: 'flag-outline' }), 500);
+      setTimeout(() => showToast({ text: t('Заплатата е записана. Създай цел в „Планове“ и заделяй 20% ({0}) веднага.', { 0: money(part) }), icon: 'flag-outline' }), 500);
       return;
     }
     setTimeout(
       () =>
         showToast({
-          text: `Първо плати на себе си: ${money(part)} към „${goal.name}“?`,
+          text: t('Първо плати на себе си: {0} към „{1}“?', { 0: money(part), 1: goal.name }),
           icon: 'wallet-outline',
-          actionLabel: 'Задели',
+          actionLabel: t('Задели'),
           onAction: () => contributeGoal(goal, part),
         }),
       500
@@ -169,7 +170,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
     onDone(null);
   };
 
-  const hint = !(value > 0) ? 'Въведи сума' : 'Избери категория';
+  const hint = !(value > 0) ? t('Въведи сума') : t('Избери категория');
   const accent = isIncome ? colors.savings : colors.text;
 
   const CategoryTile = ({ c, fill }) => {
@@ -200,10 +201,10 @@ export default function AddScreen({ onDone, prefill = {} }) {
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: keyboard }}>
       <View style={s.header}>
         <Touch onPress={() => onDone(null)} hitSlop={12} style={s.headerSide}>
-          <Text style={s.cancel}>Отказ</Text>
+          <Text style={s.cancel}>{t('Отказ')}</Text>
         </Touch>
         {editingAny ? (
-          <Text style={s.title}>Редакция</Text>
+          <Text style={s.title}>{t('Редакция')}</Text>
         ) : (
           <Segmented options={MODES} value={mode} onChange={setMode} style={{ width: 190 }} />
         )}
@@ -217,10 +218,10 @@ export default function AddScreen({ onDone, prefill = {} }) {
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
         {fromGoal && (
-          <Pill small variant="soft" icon="wallet-outline" label={`От „${fromGoal.name}“ · ${money(goalSaved(fromGoal, expenses))}`} style={{ alignSelf: 'center', marginBottom: 6 }} />
+          <Pill small variant="soft" icon="wallet-outline" label={t('От „{0}“ · {1}', { 0: fromGoal.name, 1: money(goalSaved(fromGoal, expenses)) })} style={{ alignSelf: 'center', marginBottom: 6 }} />
         )}
         {prefill.source === 'applepay' && !isIncome && !editing && (
-          <Pill small variant="ink" icon="logo-apple" label="Плащане с Apple Pay" style={{ alignSelf: 'center', marginBottom: 6 }} />
+          <Pill small variant="ink" icon="logo-apple" label={t('Плащане с Apple Pay')} style={{ alignSelf: 'center', marginBottom: 6 }} />
         )}
 
         <Touch
@@ -231,20 +232,20 @@ export default function AddScreen({ onDone, prefill = {} }) {
             setPadOpen(true);
           }}
           style={s.amountWrap}
-          accessibilityLabel={`Сума: ${amount || '0'} евро`}
-          accessibilityHint={padOpen ? undefined : 'Отваря клавиатурата за сумата'}
+          accessibilityLabel={t('Сума: {0} евро', { 0: (amount || '0').replace(',', decimalSep()) })}
+          accessibilityHint={padOpen ? undefined : t('Отваря клавиатурата за сумата')}
           accessibilityLiveRegion="polite"
         >
           {isIncome && <Text style={[s.amount, { color: colors.savings }]}>+</Text>}
           <Text style={[s.amount, { color: amount ? accent : colors.placeholder }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.2}>
-            {amount || '0'}
+            {(amount || '0').replace(',', decimalSep())}
           </Text>
           <Text style={s.currency} maxFontSizeMultiplier={1.2}>€</Text>
           {!padOpen && <Ionicons name="pencil" size={16} color={colors.muted} style={{ marginLeft: 4 }} />}
         </Touch>
         {!isIncome && rememberedOk && !picked && merchant.trim() !== '' && (
           <Text style={s.remembered}>
-            {merchant.trim()} → {categoryById(remembered).name} (запомнено)
+            {t('{0} → {1} (запомнено)', { 0: merchant.trim(), 1: categoryById(remembered).name })}
           </Text>
         )}
 
@@ -257,13 +258,13 @@ export default function AddScreen({ onDone, prefill = {} }) {
             haptic="select"
             small
             icon="calendar-outline"
-            label={daysAgo > 2 ? dayLabel(day.toISOString()) : 'Друга дата'}
+            label={daysAgo > 2 ? dayLabel(day.toISOString()) : t('Друга дата')}
             variant={daysAgo > 2 ? 'active' : 'outline'}
             onPress={() => {
               Keyboard.dismiss();
               setPickDate(true);
             }}
-            accessibilityLabel={daysAgo > 2 ? `Дата: ${dayLabel(day.toISOString())}, смени` : 'Друга дата, отваря календар'}
+            accessibilityLabel={daysAgo > 2 ? t('Дата: {0}, смени', { 0: dayLabel(day.toISOString()) }) : t('Друга дата, отваря календар')}
           />
         </View>
 
@@ -274,11 +275,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
               <TextInput
                 value={merchant}
                 onChangeText={setMerchant}
-                placeholder="Къде? (магазин, заведение)"
+                placeholder={t('Къде? (магазин, заведение)')}
                 placeholderTextColor={colors.muted}
                 style={s.input}
                 returnKeyType="next"
-                accessibilityLabel="Къде"
+                accessibilityLabel={t('Къде')}
               />
             </View>
           )}
@@ -287,11 +288,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
             <TextInput
               value={note}
               onChangeText={setNote}
-              placeholder={isIncome ? 'Бележка (напр. от кого)' : 'За какво? (бележка)'}
+              placeholder={isIncome ? t('Бележка (напр. от кого)') : t('За какво? (бележка)')}
               placeholderTextColor={colors.muted}
               style={s.input}
               returnKeyType="done"
-              accessibilityLabel="Бележка"
+              accessibilityLabel={t('Бележка')}
             />
           </View>
           {!isIncome && !editing && !fromGoal && (
@@ -301,10 +302,10 @@ export default function AddScreen({ onDone, prefill = {} }) {
               style={[s.field, s.sep]}
               accessibilityRole="switch"
               accessibilityState={{ checked: repeat }}
-              accessibilityLabel="Повтаря се всеки месец"
+              accessibilityLabel={t('Повтаря се всеки месец')}
             >
               <Ionicons name="repeat" size={18} color={colors.muted} />
-              <Text style={[s.input, { color: colors.text }]}>Всеки месец</Text>
+              <Text style={[s.input, { color: colors.text }]}>{t('Всеки месец')}</Text>
               <View pointerEvents="none">
                 <Switch value={repeat} trackColor={{ true: colors.primary }} />
               </View>
@@ -317,10 +318,10 @@ export default function AddScreen({ onDone, prefill = {} }) {
               style={[s.field, s.sep]}
               accessibilityRole="switch"
               accessibilityState={{ checked: !offBudget }}
-              accessibilityLabel="Брои се в бюджета за месеца"
+              accessibilityLabel={t('Брои се в бюджета за месеца')}
             >
               <Ionicons name="calculator-outline" size={18} color={colors.muted} />
-              <Text style={[s.input, { color: colors.text }]}>Брои се в месеца</Text>
+              <Text style={[s.input, { color: colors.text }]}>{t('Брои се в месеца')}</Text>
               <View pointerEvents="none">
                 <Switch value={!offBudget} trackColor={{ true: colors.primary }} />
               </View>
@@ -328,17 +329,17 @@ export default function AddScreen({ onDone, prefill = {} }) {
           )}
         </View>
         {fromGoal && (
-          <Text style={s.incomeHint}>Плащането намалява „{fromGoal.name}“ и не се брои в разходите за месеца — парите вече са заделени.</Text>
+          <Text style={s.incomeHint}>{t('Плащането намалява „{0}“ и не се брои в разходите за месеца — парите вече са заделени.', { 0: fromGoal.name })}</Text>
         )}
         {offBudget && !isIncome && !fromGoal && (
-          <Text style={s.incomeHint}>Платено с пари, които вече имаш настрана (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.</Text>
+          <Text style={s.incomeHint}>{t('Платено с пари, които вече имаш настрана (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.')}</Text>
         )}
         {repeat && !isIncome && (
-          <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(day.getDate())} число се записва сам. Управлява се от „Планове“.</Text>
+          <Text style={s.incomeHint}>{t('Всеки месец на {0} число се записва сам. Управлява се от „Планове“.', { 0: dayOrdinal(day.getDate()) })}</Text>
         )}
         {isIncome ? (
           <>
-            <Text style={[s.bucketLabel, { marginTop: 18, marginBottom: 10 }]}>Вид доход</Text>
+            <Text style={[s.bucketLabel, { marginTop: 18, marginBottom: 10 }]}>{t('Вид доход')}</Text>
             <View style={s.grid}>
               {INCOME_KINDS.map((k) => {
                 const active = k.id === kind;
@@ -360,8 +361,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
             </View>
             <Text style={s.incomeHint}>
               {kind === 'salary'
-                ? `Заплатата замества месечния доход от настройките${baseIncome ? ` (${money(baseIncome)})` : ''} за този месец — не се брои двойно.`
-                : 'Добавя се към месечния доход и увеличава бюджета за месеца по 50/30/20.'}
+                ? t('Заплатата замества месечния доход от настройките{0} за този месец — не се брои двойно.', { 0: baseIncome ? ` (${money(baseIncome)})` : '' })
+                : t('Добавя се към месечния доход и увеличава бюджета за месеца по 50/30/20.')}
             </Text>
           </>
         ) : allCats ? (
@@ -380,14 +381,14 @@ export default function AddScreen({ onDone, prefill = {} }) {
                     .map((c) => (
                       <CategoryTile key={c.id} c={c} />
                     ))}
-                  <Touch onPress={() => setNewCategoryFor(bucket)} style={[s.cat, s.newCat]} accessibilityLabel={`Нова категория в ${b.label}`}>
+                  <Touch onPress={() => setNewCategoryFor(bucket)} style={[s.cat, s.newCat]} accessibilityLabel={t('Нова категория в {0}', { 0: b.label })}>
                     <Ionicons name="add" size={22} color={b.color} />
-                    <Text style={[s.catText, { color: b.color, fontWeight: '700' }]}>Нова</Text>
+                    <Text style={[s.catText, { color: b.color, fontWeight: '700' }]}>{t('Нова')}</Text>
                   </Touch>
                 </View>
               </View>
             ))}
-            <Pill small label="По-малко" icon="chevron-up" variant="outline" style={{ alignSelf: 'center', marginTop: 12 }} onPress={() => setAllCats(false)} />
+            <Pill small label={t('По-малко')} icon="chevron-up" variant="outline" style={{ alignSelf: 'center', marginTop: 12 }} onPress={() => setAllCats(false)} />
           </>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14, marginHorizontal: -20 }} contentContainerStyle={s.quickRow}>
@@ -397,9 +398,9 @@ export default function AddScreen({ onDone, prefill = {} }) {
               </View>
             ))}
             <View style={s.quickCell}>
-              <Touch onPress={() => setAllCats(true)} style={[s.cat, s.newCat, s.catFill]} accessibilityLabel="Всички категории">
+              <Touch onPress={() => setAllCats(true)} style={[s.cat, s.newCat, s.catFill]} accessibilityLabel={t('Всички категории')}>
                 <Ionicons name="grid-outline" size={20} color={colors.primary} />
-                <Text style={[s.catText, { color: colors.primary, fontWeight: '700' }]}>Всички</Text>
+                <Text style={[s.catText, { color: colors.primary, fontWeight: '700' }]}>{t('Всички')}</Text>
               </Touch>
             </View>
           </ScrollView>
@@ -418,21 +419,21 @@ export default function AddScreen({ onDone, prefill = {} }) {
                 style={({ pressed }) => [s.key, pressed && { backgroundColor: colors.faint }]}
                 onPress={() => setAmount((a) => press(a, k))}
                 onLongPress={k === 'del' ? () => setAmount('') : undefined}
-                accessibilityLabel={k === 'del' ? 'Изтрий цифра' : k === ',' ? 'Запетая' : k}
+                accessibilityLabel={k === 'del' ? t('Изтрий цифра') : k === ',' ? t('Запетая') : k}
               >
                 {k === 'del' ? (
                   <Ionicons name="backspace-outline" size={24} color={colors.text} />
                 ) : (
-                  <Text style={s.keyText} maxFontSizeMultiplier={1.3}>{k}</Text>
+                  <Text style={s.keyText} maxFontSizeMultiplier={1.3}>{k === ',' ? decimalSep() : k}</Text>
                 )}
               </Touch>
             ))}
           </View>
         )}
         {canWait && (
-          <Touch haptic="select" style={s.waitBtn} onPress={wait} accessibilityHint="Записва го в Желания за 48 часа вместо като разход">
+          <Touch haptic="select" style={s.waitBtn} onPress={wait} accessibilityHint={t('Записва го в Желания за 48 часа вместо като разход')}>
             <Ionicons name="hourglass-outline" size={18} color={colors.wants} />
-            <Text style={s.waitText}>Не бързай: отложи за 48 часа</Text>
+            <Text style={s.waitText}>{t('Не бързай: отложи за 48 часа')}</Text>
           </Touch>
         )}
         <Touch
@@ -444,7 +445,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
         >
           <Ionicons name="checkmark" size={20} color={valid ? colors.onAccent : colors.muted} />
           <Text style={[s.saveText, !valid && { color: colors.muted }]}>
-            {valid ? `${editingAny ? 'Запази промените' : 'Запази'} · ${isIncome ? '+' : ''}${money(value)}` : hint}
+            {valid ? `${editingAny ? t('Запази промените') : t('Запази')} · ${isIncome ? '+' : ''}${money(value)}` : hint}
           </Text>
         </Touch>
       </View>

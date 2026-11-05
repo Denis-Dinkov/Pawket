@@ -10,17 +10,17 @@ import { themed } from '../themed';
  * item = { id, text, income } — a new id plays it again.
  */
 export default function FlyingAmount({ item, onDone }) {
-  const t = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!item) return;
     if (motionReduced()) {
       onDone();
       return;
     }
-    t.setValue(0);
+    progress.setValue(0);
     // Waits for the page sheet to slide away
-    Animated.timing(t, { toValue: 1, duration: 1000, delay: 350, easing: EASE, useNativeDriver: true }).start(() => onDone());
-  }, [item, t, onDone]);
+    Animated.timing(progress, { toValue: 1, duration: 1000, delay: 350, easing: EASE, useNativeDriver: true }).start(() => onDone());
+  }, [item, progress, onDone]);
   if (!item) return null;
   return (
     <Animated.View
@@ -28,10 +28,10 @@ export default function FlyingAmount({ item, onDone }) {
       style={[
         s.wrap,
         {
-          opacity: t.interpolate({ inputRange: [0, 0.1, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+          opacity: progress.interpolate({ inputRange: [0, 0.1, 0.75, 1], outputRange: [0, 1, 1, 0] }),
           transform: [
-            { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [0, -360] }) },
-            { scale: t.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.6, 1.1, 0.9] }) },
+            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, -360] }) },
+            { scale: progress.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.6, 1.1, 0.9] }) },
           ],
         },
       ]}

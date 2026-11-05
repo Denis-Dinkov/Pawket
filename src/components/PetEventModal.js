@@ -8,6 +8,7 @@ import { expressionFor } from '../pet/logic';
 import { outfitOf } from '../pet/outfit';
 import { successFeedback } from '../haptics';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Monthly report (+XP) and a celebration on reaching a new growth stage
 export default function PetEventModal({ event, pet, stage, onClose }) {
@@ -25,13 +26,13 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
           <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} {...outfitOf(pet)} size={140} />
           {levelUp && (
             <>
-              <Text style={s.h1}>{pet.name} порасна! 🎉</Text>
-              <Text style={s.text}>Вече е „{levelUp.name}“. Благодарение на добрите ти навици.</Text>
+              <Text style={s.h1}>{t('{0} порасна! 🎉', { 0: pet.name })}</Text>
+              <Text style={s.text}>{t('Вече е „{0}“. Благодарение на добрите ти навици.', { 0: levelUp.name })}</Text>
             </>
           )}
           {reports.length > 0 && (
             <View style={{ alignSelf: 'stretch', marginTop: 14, gap: 8 }}>
-              <Text style={s.h2}>Месечен отчет</Text>
+              <Text style={s.h2}>{t('Месечен отчет')}</Text>
               {reports.map((r) => (
                 <View key={r.key} style={s.row}>
                   <Text style={s.month}>
@@ -43,7 +44,7 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
               ))}
             </View>
           )}
-          <Pill label="Супер!" variant="ink" onPress={onClose} style={s.btn} />
+          <Pill label={t('Супер!')} variant="ink" onPress={onClose} style={s.btn} />
         </View>
       </View>
     </Modal>

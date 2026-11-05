@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, BUCKETS, MONTHS, money, moneyShort, pct, radius, categoryById, currentColorScheme } from '../theme';
+import { colors, BUCKETS, MONTHS, money, moneyShort, pct, radius, categoryById, currentColorScheme, monthLower } from '../theme';
 import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
@@ -39,6 +39,7 @@ import { TodayCard, TopCategoriesCard } from '../components/HomeCards';
 import { normalizeLayout } from '../homeLayout';
 import { themed } from '../themed';
 import { outfitOf } from '../pet/outfit';
+import { t } from '../i18n';
 
 const RECENT = 3;
 const ROOM = 268;
@@ -54,7 +55,7 @@ function SplitBar({ ov }) {
       style={s.split}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Разпределение: ${parts.map((p) => `${BUCKETS[p.k].label} ${pct(ov.income ? ov.byBucket[p.k] / ov.income : 0)}`).join(', ')} от дохода`}
+      accessibilityLabel={t('Разпределение: {0} от дохода', { 0: parts.map((p) => `${BUCKETS[p.k].label} ${pct(ov.income ? ov.byBucket[p.k] / ov.income : 0)}`).join(', ') })}
     >
       {parts.map((p) => p.v > 0 && <View key={p.k} style={{ flex: p.v, backgroundColor: BUCKETS[p.k].color }} />)}
       {free > 0 && <View style={{ flex: free, backgroundColor: colors.faint }} />}
@@ -75,7 +76,7 @@ function Legend({ ov }) {
               <Text style={s.legendName} numberOfLines={1}>{b.label}</Text>
             </View>
             <Text style={[s.legendValue, over && { color: colors.danger, fontWeight: '700' }]} numberOfLines={2}>
-              {over ? `${moneyShort(ov.byBucket[k] - target)} над ${moneyShort(target)}` : `${moneyShort(ov.byBucket[k])} от ${moneyShort(target)}`}
+              {over ? t('{0} над {1}', { 0: moneyShort(ov.byBucket[k] - target), 1: moneyShort(target) }) : t('{0} от {1}', { 0: moneyShort(ov.byBucket[k]), 1: moneyShort(target) })}
             </Text>
           </View>
         );
@@ -95,7 +96,7 @@ const DockHeader = memo(
     return (
       <Animated.View pointerEvents={docked ? 'auto' : 'none'} style={[s.dockWrap, { opacity }]}>
         {/* The shadow sits on a solid view: iOS draws it from the shape alone, not from the gradient's pixels on every frame */}
-        <Touch haptic={false} onPress={onPress} accessibilityLabel="Нагоре" style={s.dockShadow}>
+        <Touch haptic={false} onPress={onPress} accessibilityLabel={t('Нагоре')} style={s.dockShadow}>
           <LinearGradient colors={[colors.roomFrom, colors.roomTo]} style={[s.dock, { paddingTop: topInset + 6 }]}>
             <View style={s.dockPet}>
               <Pet expression={expression} stage={stageKey} {...outfitOf(pet)} size={52} animate={false} />
@@ -110,9 +111,9 @@ const DockHeader = memo(
               <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
               {todayLeft != null &&
                 (todayLeft < 0 ? (
-                  <Text style={[s.dockSub, { color: colors.danger, fontWeight: '700' }]}>днес {money(Math.round(-todayLeft))} над лимита</Text>
+                  <Text style={[s.dockSub, { color: colors.danger, fontWeight: '700' }]}>{t('днес {0} над лимита', { 0: money(Math.round(-todayLeft)) })}</Text>
                 ) : (
-                  <Text style={s.dockSub}>днес {money(Math.round(todayLeft))}</Text>
+                  <Text style={s.dockSub}>{t('днес {0}', { 0: money(Math.round(todayLeft)) })}</Text>
                 ))}
             </View>
           </LinearGradient>
@@ -192,8 +193,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   const bubble = isCurrent
     ? petLine({ status, daily, advice, activeToday: hasExpenseToday || pet.lastActiveDay === dayKey(now), goal: goal && { name: goal.g.name, done: goal.p.done }, now }).text
     : ov.score == null
-      ? `За ${MONTHS[month].toLowerCase()} няма доход — не мога да го оценя.`
-      : `${MONTHS[month]} завърши с ${ov.score}/100 ${MONTH_EMOJI[expressionFor(ov.score)]}`;
+      ? t('За {0} няма доход — не мога да го оценя.', { 0: monthLower(month) })
+      : t('{0} завърши с {1}/100 {2}', { 0: MONTHS[month], 1: ov.score, 2: MONTH_EMOJI[expressionFor(ov.score)] });
 
   const openAdd = (prefill) => setTimeout(() => onAdd(prefill), 450);
   const edit = (e) => {
@@ -213,8 +214,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     plans: () => (
       <View style={s.duo}>
         {upcomingSoon && (
-          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
-            <Text style={s.miniHead}>Предстои</Text>
+          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint={t('Отваря Планове')}>
+            <Text style={s.miniHead}>{t('Предстои')}</Text>
             <Text style={s.miniValue} numberOfLines={1}>
               {upcoming.rule.merchant || upcoming.rule.note || categoryById(upcoming.rule.categoryId)?.name} · {money(upcoming.rule.amount)}
             </Text>
@@ -222,31 +223,31 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           </Touch>
         )}
         {activeGoal && (
-          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint="Отваря Планове">
-            <Text style={s.miniHead}>Цел</Text>
+          <Touch style={s.mini} onPress={() => onTab('plans')} accessibilityHint={t('Отваря Планове')}>
+            <Text style={s.miniHead}>{t('Цел')}</Text>
             <Text style={s.miniValue} numberOfLines={1}>
               {goal.g.name} · {pct(goal.p.progress)}
             </Text>
-            <Bar value={goal.p.progress} color={colors.savings} height={5} label={`${goal.g.name}: ${money(goal.p.saved)} от ${money(goal.g.target)}`} />
+            <Bar value={goal.p.progress} color={colors.savings} height={5} label={t('{0}: {1} от {2}', { 0: goal.g.name, 1: money(goal.p.saved), 2: money(goal.g.target) })} />
             <Text style={s.miniSub}>
-              {money(goal.p.saved)} от {money(goal.g.target)}
+              {t('{0} от {1}', { 0: money(goal.p.saved), 1: money(goal.g.target) })}
             </Text>
           </Touch>
         )}
       </View>
     ),
     missions: () => (
-      <Touch onPress={() => onTab('pet')} accessibilityHint={`Отваря ${pet.name}`}>
+      <Touch onPress={() => onTab('pet')} accessibilityHint={t('Отваря {0}', { 0: pet.name })}>
         <Card style={{ gap: 10 }}>
           <View style={s.cardHead}>
-            <Text style={s.h2}>Мисии тази седмица</Text>
+            <Text style={s.h2}>{t('Мисии тази седмица')}</Text>
             <View style={s.streak}>
               <Ionicons name="flame" size={15} color={colors.orange} />
-              <Text style={s.streakText}>{plural(currentStreak, 'ден', 'дни')}</Text>
+              <Text style={s.streakText}>{plural(currentStreak, t('ден'), t('дни'))}</Text>
             </View>
           </View>
           {missions.map((m) => (
-            <View key={m.id} style={s.mission} accessible accessibilityLabel={`${m.title}: ${m.done ? 'изпълнена' : `${m.n} от ${m.of}`}`}>
+            <View key={m.id} style={s.mission} accessible accessibilityLabel={`${m.title}: ${m.done ? t('изпълнена') : t('{0} от {1}', { 0: m.n, 1: m.of })}`}>
               <Ionicons name={m.done ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={m.done ? colors.savings : colors.muted} />
               <Text style={[s.missionText, m.done && s.missionDone]} numberOfLines={2}>{m.title}</Text>
               <Text style={s.missionCount}>{m.done ? '+25 XP' : `${m.n}/${m.of}`}</Text>
@@ -259,7 +260,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     rule: () => (
       <Card style={{ gap: 14 }}>
         <View style={s.cardHead}>
-          <Text style={s.h2}>Правило 50/30/20</Text>
+          <Text style={s.h2}>{t('Правило 50/30/20')}</Text>
           {ov.score != null && ov.list.length > 0 && <Text style={s.score}>{ov.score}/100</Text>}
         </View>
         {Object.entries(BUCKETS).map(([k, b]) => {
@@ -269,14 +270,14 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
               <View style={s.cardHead}>
                 <Text style={s.bucketName}>{b.label}</Text>
                 <Text style={s.miniSub}>
-                  {money(ov.byBucket[k])} от {money(target)}
+                  {t('{0} от {1}', { 0: money(ov.byBucket[k]), 1: money(target) })}
                 </Text>
               </View>
               <Bar
                 value={target ? ov.byBucket[k] / target : 0}
                 color={k !== 'savings' && ov.byBucket[k] > target ? colors.danger : b.color}
                 height={6}
-                label={`${b.label}: ${money(ov.byBucket[k])} от ${money(target)}`}
+                label={t('{0}: {1} от {2}', { 0: b.label, 1: money(ov.byBucket[k]), 2: money(target) })}
               />
             </View>
           );
@@ -287,14 +288,14 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     expenses: () => (
       <View>
         <View style={s.listHead}>
-          <Text style={s.section}>Разходи</Text>
-          <Text style={s.miniSub}>{plural(ov.list.length, 'плащане', 'плащания')}</Text>
+          <Text style={s.section}>{t('Разходи')}</Text>
+          <Text style={s.miniSub}>{plural(ov.list.length, t('плащане'), t('плащания'))}</Text>
         </View>
         {view === 'all' && (
           <Segmented
             options={[
-              { key: 'recent', label: 'Последни' },
-              { key: 'all', label: `Всички (${ov.list.length})` },
+              { key: 'recent', label: t('Последни') },
+              { key: 'all', label: t('Всички ({0})', { 0: ov.list.length }) },
             ]}
             value={view}
             onChange={setView}
@@ -303,8 +304,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         )}
         {ov.list.length === 0 ? (
           <Card style={{ alignItems: 'center', gap: 10 }}>
-            <Text style={s.empty}>Няма разходи за {MONTHS[month].toLowerCase()}.</Text>
-            <Pill icon="add" label="Добави първия" variant="ink" onPress={() => onAdd({})} />
+            <Text style={s.empty}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
+            <Pill icon="add" label={t('Добави първия')} variant="ink" onPress={() => onAdd({})} />
           </Card>
         ) : view === 'recent' ? (
           <Card style={{ paddingVertical: 6 }}>
@@ -315,7 +316,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             ))}
             {ov.list.length > RECENT && (
               <Touch style={s.seeAll} onPress={() => setView('all')}>
-                <Text style={s.seeAllText}>Всички {ov.list.length}</Text>
+                <Text style={s.seeAllText}>{t('Всички {0}', { 0: ov.list.length })}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.primary} />
               </Touch>
             )}
@@ -362,7 +363,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           insetTop={insets.top}
           height={ROOM}
           bubble={bubble}
-          bubbleAction={canFeed && isCurrent ? { label: 'Без разходи днес 🦴', onPress: feed } : null}
+          bubbleAction={canFeed && isCurrent ? { label: t('Без разходи днес 🦴'), onPress: feed } : null}
           onBubble={() => setAdviceOpen(true)}
           onStat={setStatOpen}
           bounceKey={pet.lastFedAt}
@@ -370,7 +371,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           top={
             <>
               <MonthPill tone="room" compact year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
-              <Touch style={s.gear} onPress={onOpenSettings} hitSlop={8} accessibilityLabel="Настройки">
+              <Touch style={s.gear} onPress={onOpenSettings} hitSlop={8} accessibilityLabel={t('Настройки')}>
                 <Ionicons name="settings-outline" size={20} color={colors.text} />
               </Touch>
             </>
@@ -385,11 +386,11 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Text style={s.label}>
                   {free
                     ? free.free < 0
-                      ? 'Над бюджета с'
-                      : `Свободни до ${ov.progress.daysInMonth} ${MONTHS[month].toLowerCase()}`
+                      ? t('Над бюджета с')
+                      : t('Свободни до {0} {1}', { 0: ov.progress.daysInMonth, 1: monthLower(month) })
                     : ov.remaining < 0
-                      ? 'Над дохода с'
-                      : `Остана от ${MONTHS[month].toLowerCase()}`}
+                      ? t('Над дохода с')
+                      : t('Остана от {0}', { 0: monthLower(month) })}
                 </Text>
                 <Money whole value={Math.abs(heroValue)} size={32} color={heroValue < 0 ? colors.danger : colors.text} />
                 {ov.income > 0 && (
@@ -397,10 +398,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     style={s.incomeLine}
                     hitSlop={8}
                     onPress={() => setIncomeOpen(true)}
-                    accessibilityLabel={`Доход ${moneyShort(ov.income)}`}
-                    accessibilityHint="Показва доходите за месеца"
+                    accessibilityLabel={t('Доход {0}', { 0: moneyShort(ov.income) })}
+                    accessibilityHint={t('Показва доходите за месеца')}
                   >
-                    <Text style={s.miniSub}>от {moneyShort(ov.income)} доход</Text>
+                    <Text style={s.miniSub}>{t('от {0} доход', { 0: moneyShort(ov.income) })}</Text>
                     <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                   </Touch>
                 )}
@@ -412,19 +413,19 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                   accessible
                   accessibilityLabel={
                     daily.over
-                      ? `Днес похарчени ${moneyShort(daily.spentToday)} от ${moneyShort(daily.limit)}, над лимита с ${moneyShort(-daily.left)}`
-                      : `Днес остават ${moneyShort(daily.left)} от ${moneyShort(daily.limit)}`
+                      ? t('Днес похарчени {0} от {1}, над лимита с {2}', { 0: moneyShort(daily.spentToday), 1: moneyShort(daily.limit), 2: moneyShort(-daily.left) })
+                      : t('Днес остават {0} от {1}', { 0: moneyShort(daily.left), 1: moneyShort(daily.limit) })
                   }
                 >
-                  <Text style={s.label}>{daily.over ? 'Днес' : 'Днес остават'}</Text>
+                  <Text style={s.label}>{daily.over ? t('Днес') : t('Днес остават')}</Text>
                   <Money whole value={daily.over ? daily.spentToday : daily.left} size={22} color={daily.over ? colors.danger : colors.savings} />
                   <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]}>
-                    {daily.over ? `${moneyShort(-daily.left)} над лимита ${moneyShort(daily.limit)}` : `от ${moneyShort(daily.limit)}`}
+                    {daily.over ? t('{0} над лимита {1}', { 0: moneyShort(-daily.left), 1: moneyShort(daily.limit) }) : t('от {0}', { 0: moneyShort(daily.limit) })}
                   </Text>
                 </View>
               ) : !isCurrent && ov.score != null ? (
                 <View style={s.today}>
-                  <Text style={s.label}>Оценка</Text>
+                  <Text style={s.label}>{t('Оценка')}</Text>
                   <Text style={[s.todayValue, { color: colors.primary }]}>{ov.score}/100</Text>
                 </View>
               ) : null}
@@ -435,20 +436,20 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Legend ov={ov} />
               </>
             ) : (
-              <Pill icon="settings-outline" label="Задай месечния си доход" variant="soft" onPress={onOpenSettings} />
+              <Pill icon="settings-outline" label={t('Задай месечния си доход')} variant="soft" onPress={onOpenSettings} />
             )}
             {/* Early warning only: the spending budget runs out before the month does at today's pace */}
             {isCurrent && forecast && free && free.free >= 0 && forecast.end < 0 && current.list.length >= 3 && (
               <View
                 style={[s.forecast, { backgroundColor: colors.dangerSoft }]}
                 accessible
-                accessibilityLabel={`При това темпо бюджетът свършва с ${moneyShort(-forecast.end)} преди края на месеца`}
+                accessibilityLabel={t('При това темпо бюджетът свършва с {0} преди края на месеца', { 0: moneyShort(-forecast.end) })}
               >
                 <Ionicons name="trending-down" size={16} color={colors.danger} />
                 <Text style={s.forecastText}>
-                  При това темпо ще надхвърлиш бюджета с{' '}
+                  {t('При това темпо ще надхвърлиш бюджета с')} 
                   <Text style={{ fontWeight: '800', color: colors.danger }}>{moneyShort(-forecast.end)}</Text>
-                  {forecast.daysLeft > 1 ? `. Свали харченето с ${moneyShort(Math.ceil(-forecast.end / forecast.daysLeft))}/ден.` : '.'}
+                  {forecast.daysLeft > 1 ? t('. Свали харченето с {0}/ден.', { 0: moneyShort(Math.ceil(-forecast.end / forecast.daysLeft)) }) : '.'}
                 </Text>
               </View>
             )}
@@ -457,7 +458,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           {!isCurrent && (
             <Pill
               icon="arrow-undo-outline"
-              label="Към текущия месец"
+              label={t('Към текущия месец')}
               variant="soft"
               style={{ alignSelf: 'center' }}
               onPress={() => onMonthChange(now.getFullYear(), now.getMonth())}
@@ -470,7 +471,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             </Appear>
           ))}
 
-          <Pill icon="options-outline" label="Подреди началото" variant="outline" style={s.layoutBtn} onPress={() => setLayoutOpen(true)} />
+          <Pill icon="options-outline" label={t('Подреди началото')} variant="outline" style={s.layoutBtn} onPress={() => setLayoutOpen(true)} />
         </View>
       </Animated.ScrollView>
 

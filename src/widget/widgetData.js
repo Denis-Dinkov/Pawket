@@ -1,12 +1,13 @@
 // Widget data — pure logic, used by the app and by the Android task handler.
-import { moneyShort, money } from '../theme';
+import { moneyShort, money, decimalSep } from '../theme';
 import { petStatus, EXPRESSIONS } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { dailyLimit, freeToSpend } from '../budget';
 import { pendingSpend } from '../plans';
 import { outfitOf, lookKey } from '../pet/outfit';
+import { t } from '../i18n';
 // Labels come in as props — the iOS widget function can't see anything outside itself
-const labels = () => ({ needsLabel: 'Нужди', wantsLabel: 'Желания', savingsLabel: 'Спестявания' });
+const labels = () => ({ needsLabel: t('Нужди'), wantsLabel: t('Желания'), savingsLabel: t('Спестявания') });
 
 export const WIDGET_EMOJI = {
   ecstatic: '🤩', happy: '🐶', worried: '😟', sad: '😢', crying: '😭', hungry: '🦴', sleeping: '💤',
@@ -21,13 +22,13 @@ export function shortAmount(n) {
   if (v < 1000) return `${sign}${Math.round(v)}`;
   // Round down so we never show more than is actually left (1 988 → 1,9k)
   const k = v < 10000 ? Math.floor(v / 100) / 10 : Math.floor(v / 1000);
-  return `${sign}${String(k).replace('.', ',')}k`;
+  return `${sign}${String(k).replace('.', decimalSep())}k`;
 }
 
 // Serializable props: strings and numbers only, already formatted
 export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], recurring = [], pet }, now = new Date()) {
   if (!pet) {
-    return { ...labels(), ready: 0, petName: 'Pawket', expression: 'sleeping', emoji: WIDGET_EMOJI.sleeping, moodLabel: 'Отвори приложението', remainingLabel: 'Свободни', remainingText: '—', remainingShort: '—', leftRatio: 0, perDayText: '', todayText: '', over: 0, todayOver: 0, tip: '', mood: 0, fullness: 0, needs: 0, wants: 0, savings: 0, needsPct: '', wantsPct: '', savingsPct: '', stageKey: 'kitten', lookKey: '' };
+    return { ...labels(), ready: 0, petName: 'Pawket', expression: 'sleeping', emoji: WIDGET_EMOJI.sleeping, moodLabel: t('Отвори приложението'), remainingLabel: t('Свободни'), remainingText: '—', remainingShort: '—', leftRatio: 0, perDayText: '', todayText: '', over: 0, todayOver: 0, tip: '', mood: 0, fullness: 0, needs: 0, wants: 0, savings: 0, needsPct: '', wantsPct: '', savingsPct: '', stageKey: 'kitten', lookKey: '' };
   }
   const st = petStatus({ expenses, incomes, incomeEntries, pet, now });
   const ov = st.overview;
@@ -53,14 +54,14 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     moodColor: EXPRESSIONS[st.expression].color,
     mood: st.mood,
     fullness: st.fullness,
-    remainingLabel: free && free.free < 0 ? 'Над бюджета с' : 'Свободни',
-    remainingText: free ? moneyShort(Math.abs(free.free)) : 'задай доход',
+    remainingLabel: free && free.free < 0 ? t('Над бюджета с') : t('Свободни'),
+    remainingText: free ? moneyShort(Math.abs(free.free)) : t('задай доход'),
     remainingShort: free ? shortAmount(free.free) : '—',
     leftRatio: free ? clamp01(free.ratio) : 0,
-    perDayText: daily ? `≈ ${money(daily.limit)}/ден` : '',
+    perDayText: daily ? t('≈ {0}/ден', { 0: money(daily.limit) }) : '',
     over: free && free.free < 0 ? 1 : 0,
     // The same words as Home: what's left for today, or how much over the limit
-    todayText: daily ? (left < 0 ? `Днес ${moneyShort(-left)} над лимита` : `Днес остават ${moneyShort(left)}`) : 'Задай доход в приложението',
+    todayText: daily ? (left < 0 ? t('Днес {0} над лимита', { 0: moneyShort(-left) }) : t('Днес остават {0}', { 0: moneyShort(left) })) : t('Задай доход в приложението'),
     todayOver: daily && left < 0 ? 1 : 0,
     needsPct: share('needs', 50),
     wantsPct: share('wants', 30),
@@ -102,9 +103,12 @@ export function activityProps({ expenses = [], incomes = {}, incomeEntries = [],
     // Over the limit it reads "−42 €", so the red number isn't mistaken for what's left
     todayLeftText: daily ? `${left < 0 ? '−' : ''}${moneyShort(Math.abs(left))}` : '—',
     over: daily?.over ? 1 : 0,
+    // The Live Activity runs outside the app and can't translate, so its labels come ready-made
+    todayLabel: daily?.over ? t('Днес над лимита') : t('Днес остават'),
+    todayShort: t('днес'),
     spentRatio: daily && daily.limit > 0 ? clamp01(daily.spentToday / daily.limit) : 0,
-    remainingText: free ? `${free.free < 0 ? 'Над бюджета с' : 'Свободни до края на месеца'} ${moneyShort(Math.abs(free.free))}` : 'Задай доход в приложението',
-    remainingShort: free ? `месец ${moneyShort(free.free)}` : '',
-    tip: tip?.title || 'Всичко е наред 🐶',
+    remainingText: free ? `${free.free < 0 ? t('Над бюджета с') : t('Свободни до края на месеца')} ${moneyShort(Math.abs(free.free))}` : t('Задай доход в приложението'),
+    remainingShort: free ? t('месец {0}', { 0: moneyShort(free.free) }) : '',
+    tip: tip?.title || t('Всичко е наред 🐶'),
   };
 }

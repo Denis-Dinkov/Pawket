@@ -13,11 +13,12 @@ import { EXPRESSIONS, HUNGRY_AT } from '../pet/logic';
 import { themed } from '../themed';
 import { plural } from '../format';
 import { outfitOf } from '../pet/outfit';
+import { t } from '../i18n';
 
 const isNight = (now) => now.getHours() >= 20 || now.getHours() < 6;
 
 // Mood / fullness / level: each says its state in words, not just in color
-function Chip({ icon, label, color, onPress, a11y, hint = 'Обяснява стойността и как да я вдигнеш' }) {
+function Chip({ icon, label, color, onPress, a11y, hint = t('Обяснява стойността и как да я вдигнеш') }) {
   return (
     <Touch haptic="select" style={s.chip} onPress={onPress} accessibilityLabel={a11y} accessibilityHint={hint}>
       {icon}
@@ -32,22 +33,22 @@ function Chip({ icon, label, color, onPress, a11y, hint = 'Обяснява ст
 
 // Hearts that float up from the dog when he's petted
 function Hearts({ id }) {
-  const t = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
   // Plays once per pat: a hidden tab coming back re-runs effects, which mustn't replay it
   const played = useRef(null);
   useEffect(() => {
     if (played.current === id) return;
     played.current = id;
-    t.setValue(0);
-    Animated.timing(t, { toValue: 1, duration: DURATION.burst, easing: EASE, useNativeDriver: true }).start();
-  }, [id, t]);
+    progress.setValue(0);
+    Animated.timing(progress, { toValue: 1, duration: DURATION.burst, easing: EASE, useNativeDriver: true }).start();
+  }, [id, progress]);
   return [-26, 0, 24].map((x, i) => (
     <Animated.Text
       key={i}
       style={{
         position: 'absolute', bottom: 150, left: '50%', marginLeft: x + 14, fontSize: 18 - Math.abs(x) / 8,
-        opacity: t.interpolate({ inputRange: [0, 0.15 + i * 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
-        transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [0, -60 - i * 12] }) }],
+        opacity: progress.interpolate({ inputRange: [0, 0.15 + i * 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+        transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, -60 - i * 12] }) }],
       }}
     >
       💗
@@ -70,7 +71,7 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
         icon={<Text style={s.emoji}>{expr.emoji}</Text>}
         label={expr.label}
         onPress={() => onStat('mood')}
-        a11y={`Настроение: ${expr.label}${status.score != null ? `, ${status.mood} от 100` : ''}`}
+        a11y={t('Настроение: {0}{1}', { 0: expr.label, 1: status.score != null ? t(', {0} от 100', { 0: status.mood }) : '' })}
       />
       )}
       <Chip
@@ -78,7 +79,7 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
         label={`${status.fullness}%`}
         color={hungry ? colors.danger : status.fullness < 60 ? colors.warning : null}
         onPress={() => onStat('fullness')}
-        a11y={`Ситост ${status.fullness} процента${hungry ? ', гладен' : ''}`}
+        a11y={t('Ситост {0} процента{1}', { 0: status.fullness, 1: hungry ? t(', гладен') : '' })}
       />
       {/* Compact (in the room on Home): the stage lives on Charlie's tab, the streak takes its place */}
       {compact ? (
@@ -87,8 +88,8 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
             icon={<Ionicons name="flame" size={13} color={colors.orange} />}
             label={String(streak)}
             onPress={onStreak}
-            a11y={`Серия ${plural(streak, 'ден', 'дни')}`}
-            hint="Отваря мисиите"
+            a11y={t('Серия {0}', { 0: plural(streak, t('ден'), t('дни')) })}
+            hint={t('Отваря мисиите')}
           />
         ) : null
       ) : (
@@ -96,7 +97,7 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
         icon={<Ionicons name="star" size={13} color={colors.warning} />}
         label={status.stage.name}
         onPress={() => onStat('growth')}
-        a11y={`Етап ${status.stage.name}, ${Math.round(status.progress * 100)} процента до следващото`}
+        a11y={t('Етап {0}, {1} процента до следващото', { 0: status.stage.name, 1: Math.round(status.progress * 100) })}
       />
       )}
     </View>
@@ -128,19 +129,19 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
       <View style={s.top}>{top}</View>
       {badges ? <View style={[s.badges, { top: insetTop + 52 }]}>{badges}</View> : null}
 
-      <Touch style={s.bubble} onPress={onBubble} accessibilityLabel={`${pet.name} казва: ${bubble}`} accessibilityHint="Отваря всички съвети">
+      <Touch style={s.bubble} onPress={onBubble} accessibilityLabel={t('{0} казва: {1}', { 0: pet.name, 1: bubble })} accessibilityHint={t('Отваря всички съвети')}>
         <Text style={s.bubbleText} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{bubble}</Text>
         {bubbleAction ? (
           <Touch haptic="success" style={s.bubbleBtn} onPress={bubbleAction.onPress}>
             <Text style={s.bubbleBtnText}>{bubbleAction.label}</Text>
           </Touch>
         ) : (
-          <Text style={s.more}>Съвети ›</Text>
+          <Text style={s.more}>{t('Съвети ›')}</Text>
         )}
         <View style={s.tail} />
       </Touch>
 
-      <Touch haptic={false} pressScale={1} onPress={pet_} style={s.pet} accessibilityLabel={`${pet.name}, ${status.stage.name.toLowerCase()}, ${expr.label.toLowerCase()}`} accessibilityHint="Погали го">
+      <Touch haptic={false} pressScale={1} onPress={pet_} style={s.pet} accessibilityLabel={`${pet.name}, ${status.stage.name.toLowerCase()}, ${expr.label.toLowerCase()}`} accessibilityHint={t('Погали го')}>
         <Pet expression={status.expression} stage={status.stage.key} {...outfitOf(pet)} size={150} bounceKey={`${bounceKey}-${pats}`} />
       </Touch>
       {pats > 0 && !motionReduced() && <Hearts id={pats} />}

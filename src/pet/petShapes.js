@@ -366,14 +366,14 @@ const attrName = (k) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 
 export function toSvg(nodes) {
   return nodes
-    .map(({ t, children, text, ...props }) => {
+    .map(({ t: tag, children, text, ...props }) => {
       const attrs = Object.entries(props)
         .filter(([, v]) => v != null)
         .map(([k, v]) => `${attrName(k)}="${v}"`)
         .join(' ');
-      if (t === 'g') return `<g ${attrs}>${toSvg(children)}</g>`;
-      if (t === 'text') return `<text ${attrs}>${text}</text>`;
-      return `<${t} ${attrs}/>`;
+      if (tag === 'g') return `<g ${attrs}>${toSvg(children)}</g>`;
+      if (tag === 'text') return `<text ${attrs}>${text}</text>`;
+      return `<${tag} ${attrs}/>`;
     })
     .join('');
 }

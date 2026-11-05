@@ -1,3 +1,4 @@
+import { t, tList, getLang } from './i18n';
 // Design tokens and category data. No RN imports — also used by the widget.
 
 // Every text color here has at least 4.5:1 contrast against bg and card (WCAG AA).
@@ -114,26 +115,26 @@ export const tint = (hex, alpha = 0.12) =>
 
 // color is a getter so it follows the live palette (light / dark)
 export const BUCKETS = {
-  needs: { label: 'Нужди', target: 0.5, get color() { return colors.needs; }, icon: 'home' },
-  wants: { label: 'Желания', target: 0.3, get color() { return colors.wants; }, icon: 'sparkles' },
-  savings: { label: 'Спестявания', target: 0.2, get color() { return colors.savings; }, icon: 'wallet' },
+  needs: { get label() { return t('Нужди'); }, target: 0.5, get color() { return colors.needs; }, icon: 'home' },
+  wants: { get label() { return t('Желания'); }, target: 0.3, get color() { return colors.wants; }, icon: 'sparkles' },
+  savings: { get label() { return t('Спестявания'); }, target: 0.2, get color() { return colors.savings; }, icon: 'wallet' },
 };
 
 // Every category belongs to a bucket of the 50/30/20 rule
 // shade is a tint of the bucket color — for the donut segments
 export const CATEGORIES = [
-  { id: 'rent', name: 'Наем', icon: 'home', bucket: 'needs', shade: '#2F6BFF' },
-  { id: 'groceries', name: 'Храна', icon: 'cart', bucket: 'needs', shade: '#4C8DFF' },
-  { id: 'bills', name: 'Сметки', icon: 'flash', bucket: 'needs', shade: '#6FA6FF' },
-  { id: 'transport', name: 'Транспорт', icon: 'car', bucket: 'needs', shade: '#93BEFF' },
-  { id: 'health', name: 'Здраве', icon: 'medkit', bucket: 'needs', shade: '#B3D1FF' },
-  { id: 'dining', name: 'Заведения', icon: 'restaurant', bucket: 'wants', shade: '#C9307F' },
-  { id: 'shopping', name: 'Пазаруване', icon: 'bag-handle', bucket: 'wants', shade: '#D6479A' },
-  { id: 'fun', name: 'Забавления', icon: 'film', bucket: 'wants', shade: '#E26CB0' },
-  { id: 'travel', name: 'Пътувания', icon: 'airplane', bucket: 'wants', shade: '#EC93C6' },
-  { id: 'subscriptions', name: 'Абонаменти', icon: 'repeat', bucket: 'wants', shade: '#F4BBDC' },
-  { id: 'saving', name: 'Спестявания', icon: 'wallet', bucket: 'savings', shade: '#14A877' },
-  { id: 'invest', name: 'Инвестиции', icon: 'trending-up', bucket: 'savings', shade: '#5ED3A4' },
+  { id: 'rent', get name() { return t('Наем'); }, icon: 'home', bucket: 'needs', shade: '#2F6BFF' },
+  { id: 'groceries', get name() { return t('Храна'); }, icon: 'cart', bucket: 'needs', shade: '#4C8DFF' },
+  { id: 'bills', get name() { return t('Сметки'); }, icon: 'flash', bucket: 'needs', shade: '#6FA6FF' },
+  { id: 'transport', get name() { return t('Транспорт'); }, icon: 'car', bucket: 'needs', shade: '#93BEFF' },
+  { id: 'health', get name() { return t('Здраве'); }, icon: 'medkit', bucket: 'needs', shade: '#B3D1FF' },
+  { id: 'dining', get name() { return t('Заведения'); }, icon: 'restaurant', bucket: 'wants', shade: '#C9307F' },
+  { id: 'shopping', get name() { return t('Пазаруване'); }, icon: 'bag-handle', bucket: 'wants', shade: '#D6479A' },
+  { id: 'fun', get name() { return t('Забавления'); }, icon: 'film', bucket: 'wants', shade: '#E26CB0' },
+  { id: 'travel', get name() { return t('Пътувания'); }, icon: 'airplane', bucket: 'wants', shade: '#EC93C6' },
+  { id: 'subscriptions', get name() { return t('Абонаменти'); }, icon: 'repeat', bucket: 'wants', shade: '#F4BBDC' },
+  { id: 'saving', get name() { return t('Спестявания'); }, icon: 'wallet', bucket: 'savings', shade: '#14A877' },
+  { id: 'invest', get name() { return t('Инвестиции'); }, icon: 'trending-up', bucket: 'savings', shade: '#5ED3A4' },
 ];
 
 // The user's custom categories. store.js passes them in here on every change,
@@ -169,19 +170,29 @@ export const CUSTOM_SHADES = {
 
 // Income kinds. Salary replaces the monthly income setting; the rest are added on top.
 export const INCOME_KINDS = [
-  { id: 'salary', name: 'Заплата', icon: 'briefcase' },
-  { id: 'bonus', name: 'Бонус', icon: 'sparkles' },
-  { id: 'freelance', name: 'Хонорар', icon: 'laptop' },
-  { id: 'gift', name: 'Подарък', icon: 'gift' },
-  { id: 'refund', name: 'Връщане', icon: 'arrow-undo' },
-  { id: 'other', name: 'Друго', icon: 'cash' },
+  { id: 'salary', get name() { return t('Заплата'); }, icon: 'briefcase' },
+  { id: 'bonus', get name() { return t('Бонус'); }, icon: 'sparkles' },
+  { id: 'freelance', get name() { return t('Хонорар'); }, icon: 'laptop' },
+  { id: 'gift', get name() { return t('Подарък'); }, icon: 'gift' },
+  { id: 'refund', get name() { return t('Връщане'); }, icon: 'arrow-undo' },
+  { id: 'other', get name() { return t('Друго'); }, icon: 'cash' },
 ];
 export const incomeKindById = (id) => INCOME_KINDS.find((k) => k.id === id) || INCOME_KINDS[INCOME_KINDS.length - 1];
 export const categoryColor = (id) => BUCKETS[categoryById(id)?.bucket]?.color || colors.muted;
 
-// Thousands are grouped with a no-break space from 5 digits on, as in Bulgarian (CLDR bg):
-// 1240 → '1240', 12400 → '12 400', 1234567 → '1 234 567'
-const groupThousands = (int) => (int.length < 5 ? int : int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'));
+// Bulgarian groups thousands with a no-break space from 5 digits on (CLDR bg): 1240, 12 400, 1 234 567.
+// English uses commas from 4 digits on: 1,240, 12,400
+const groupThousands = (int) =>
+  getLang() === 'en'
+    ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    : int.length < 5
+      ? int
+      : int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+
+// The decimal separator: "12,50 €" / "€12.50"
+export const decimalSep = () => (getLang() === 'en' ? '.' : ',');
+// Where the euro sign goes: after the amount in Bulgarian, before it in English
+export const euroFirst = () => getLang() === 'en';
 
 // 1240.5 → { sign: '', int: '1240', dec: '50' }; dec is '' for whole amounts (2200 → '2200')
 export function splitMoney(n) {
@@ -196,18 +207,19 @@ export function splitMoney(n) {
 
 export const money = (n) => {
   const { sign, int, dec } = splitMoney(n);
-  return `${sign}${int}${dec ? `,${dec}` : ''}\u00A0€`;
+  const amount = `${int}${dec ? `${decimalSep()}${dec}` : ''}`;
+  return euroFirst() ? `${sign}€${amount}` : `${sign}${amount}\u00A0€`;
 };
 
 export const moneyShort = (n) => {
   const { sign, int } = splitMoney(Math.round(Number(n) || 0));
-  return `${sign}${int}\u00A0€`;
+  return euroFirst() ? `${sign}€${int}` : `${sign}${int}\u00A0€`;
 };
 
 export const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
 
 
-export const MONTHS = [
-  'Януари', 'Февруари', 'Март', 'Април', 'Май', 'Юни',
-  'Юли', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември',
-];
+export const MONTHS = tList(['Януари', 'Февруари', 'Март', 'Април', 'Май', 'Юни', 'Юли', 'Август', 'Септември', 'Октомври', 'Ноември', 'Декември']);
+
+// A month name inside a sentence: "до 30 ноември", but "until November 30"
+export const monthLower = (m) => (getLang() === 'en' ? MONTHS[m] : MONTHS[m].toLowerCase());

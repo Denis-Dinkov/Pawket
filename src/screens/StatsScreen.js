@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, currentColorScheme, BUCKETS, getCategories, MONTHS, money, pct, radius } from '../theme';
+import { colors, currentColorScheme, BUCKETS, getCategories, MONTHS, money, pct, radius, monthLower } from '../theme';
 import { monthOverview, filterMonth, summarize, shiftMonth } from '../budget';
 import { getAdvice } from '../pet/advice';
 import { stageFor, petStatus } from '../pet/logic';
@@ -29,6 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 
 const TOP_CATS = 3;
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenSettings }) {
   const store = useStore();
@@ -74,8 +75,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
         <View style={s.overscroll} />
         <GradientHero tone="room" bottomSpace={56}>
           <View style={s.titleRow}>
-            <Text style={s.title} accessibilityRole="header">Отчети</Text>
-            <Pill small variant="white" icon="calendar-outline" label={`Твоята ${year}`} onPress={() => setReview(true)} />
+            <Text style={s.title} accessibilityRole="header">{t('Отчети')}</Text>
+            <Pill small variant="white" icon="calendar-outline" label={t('Твоята {0}', { 0: year })} onPress={() => setReview(true)} />
           </View>
           <View style={{ marginTop: 14 }}>
             <MonthPill tone="room" year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
@@ -85,10 +86,10 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
 
         <View style={s.sheet} onLayout={scrim.onSheetLayout}>
           {/* Where the money went: the top categories first, the rest one tap away */}
-          <Text style={[s.section, { marginTop: 4 }]}>Къде отидоха парите</Text>
+          <Text style={[s.section, { marginTop: 4 }]}>{t('Къде отидоха парите')}</Text>
           {cats.length === 0 ? (
             <Card>
-              <Text style={s.hint}>Няма разходи за {MONTHS[month].toLowerCase()}.</Text>
+              <Text style={s.hint}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
             </Card>
           ) : (
             <Card style={{ paddingVertical: 6 }}>
@@ -100,8 +101,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
                     key={c.id}
                     onPress={() => setCategory(c)}
                     style={[s.catRow, i > 0 && s.sep]}
-                    accessibilityLabel={`${c.name}: ${money(c.value)}, ${pct(c.value / (total || 1))} от общо`}
-                    accessibilityHint="Показва разходите в категорията"
+                    accessibilityLabel={t('{0}: {1}, {2} от общо', { 0: c.name, 1: money(c.value), 2: pct(c.value / (total || 1)) })}
+                    accessibilityHint={t('Показва разходите в категорията')}
                   >
                     <IconBadge icon={c.icon} color={bucketColor} size={42} />
                     <View style={{ flex: 1, gap: 6 }}>
@@ -111,11 +112,10 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
                       </View>
                       <Bar value={c.value / maxCat} color={c.shade} height={6} />
                       <View style={s.catHead}>
-                        <Text style={s.small}>{pct(c.value / (total || 1))} от общо</Text>
+                        <Text style={s.small}>{t('{0} от общо', { 0: pct(c.value / (total || 1)) })}</Text>
                         {delta != null && Math.abs(delta) >= 0.01 && (
                           <Text style={[s.delta, { color: delta > 0 ? colors.danger : colors.savings, backgroundColor: delta > 0 ? colors.dangerSoft : colors.savingsSoft }]}>
-                            {delta > 0 ? '+' : '−'}
-                            {pct(Math.abs(delta))} спрямо {MONTHS[prevYM.month].toLowerCase()}
+                            {t('{0} {1} спрямо {2}', { 0: delta > 0 ? '+' : '−', 1: pct(Math.abs(delta)), 2: monthLower(prevYM.month) })}
                           </Text>
                         )}
                       </View>
@@ -126,7 +126,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
               })}
               {cats.length > TOP_CATS && (
                 <Touch style={[s.more, s.sep]} onPress={() => setAllCats((v) => !v)}>
-                  <Text style={s.moreText}>{allCats ? 'По-малко' : `Всички ${cats.length} категории`}</Text>
+                  <Text style={s.moreText}>{allCats ? t('По-малко') : t('Всички {0} категории', { 0: cats.length })}</Text>
                   <Ionicons name={allCats ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
                 </Touch>
               )}
@@ -135,20 +135,20 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
 
           {ov.list.length > 0 && (
             <>
-              <Text style={s.section}>Как харчиш</Text>
+              <Text style={s.section}>{t('Как харчиш')}</Text>
               <SpendingChart ov={ov} stats={stats} year={year} month={month} />
 
-              <Text style={s.section}>Къде пазаруваш</Text>
+              <Text style={s.section}>{t('Къде пазаруваш')}</Text>
               <TopMerchants stats={stats} total={total} />
             </>
           )}
 
           {/* One tip here; the dog's full list is the same sheet as on Home */}
           {advice.length > 0 && (
-            <Touch style={{ marginTop: 24 }} onPress={() => setAdviceOpen(true)} accessibilityHint="Показва всички съвети">
+            <Touch style={{ marginTop: 24 }} onPress={() => setAdviceOpen(true)} accessibilityHint={t('Показва всички съвети')}>
               <AdviceCard tip={advice[0]} />
               <View style={s.allTips}>
-                <Text style={s.moreText}>{advice.length > 1 ? `Всички съвети (${advice.length})` : `Съветите на ${pet.name}`}</Text>
+                <Text style={s.moreText}>{advice.length > 1 ? t('Всички съвети ({0})', { 0: advice.length }) : t('Съветите на {0}', { 0: pet.name })}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.primary} />
               </View>
             </Touch>

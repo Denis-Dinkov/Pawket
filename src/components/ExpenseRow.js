@@ -7,6 +7,7 @@ import { colors, categoryById, BUCKETS, money } from '../theme';
 import { dayLabel, timeLabel, SOURCES } from '../format';
 import Touch from './ui/Touch';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Expense row: compact (latest 10) or detailed (all, with time and source)
 export default function ExpenseRow({ expense, onPress, onLongPress, detailed = false }) {
@@ -27,12 +28,12 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}
-      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${deposit ? ' заделени' : ''}${outside ? ', не се брои в месеца' : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
-      accessibilityHint="Отваря подробности. Задръж, за да изтриеш."
+      accessibilityLabel={`${cat?.name || t('Без категория')}, ${money(expense.amount)}${deposit ? t(' заделени') : ''}${outside ? t(', не се брои в месеца') : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
+      accessibilityHint={t('Отваря подробности. Задръж, за да изтриеш.')}
     >
       <IconBadge icon={cat?.icon || 'help'} color={color} size={44} />
       <View style={{ flex: 1 }}>
-        <Text style={s.name} numberOfLines={1}>{cat?.name || 'Без категория'}</Text>
+        <Text style={s.name} numberOfLines={1}>{cat?.name || t('Без категория')}</Text>
         <Text style={s.sub} numberOfLines={1}>{subtitle}</Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
@@ -40,7 +41,7 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
         <View style={s.meta}>
           {expense.source !== 'manual' && <Ionicons name={source.icon} size={12} color={colors.muted} />}
           <Text style={s.metaText}>
-            {outside ? 'извън месеца' : detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}
+            {outside ? t('извън месеца') : detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}
           </Text>
         </View>
       </View>

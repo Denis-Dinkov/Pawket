@@ -67,10 +67,10 @@ const TAGS = { path: Path, circle: Circle, ellipse: Ellipse };
 const native = Platform.OS !== 'web';
 
 function render(nodes) {
-  return nodes.map(({ t, children, text, ...props }, i) => {
-    if (t === 'g') return <G key={i} {...props}>{render(children)}</G>;
-    if (t === 'text') return <SvgText key={i} {...props}>{text}</SvgText>;
-    const Tag = TAGS[t];
+  return nodes.map(({ t: tag, children, text, ...props }, i) => {
+    if (tag === 'g') return <G key={i} {...props}>{render(children)}</G>;
+    if (tag === 'text') return <SvgText key={i} {...props}>{text}</SvgText>;
+    const Tag = TAGS[tag];
     return <Tag key={i} {...props} />;
   });
 }

@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, money, pct, radius, categoryById, BUCKETS, MONTHS, currentColorScheme } from '../theme';
-import { cleanAmountInput, dayLabel, dayOrdinal } from '../format';
+import { colors, money, pct, radius, categoryById, BUCKETS, MONTHS, currentColorScheme, monthLower, decimalSep } from '../theme';
+import { cleanAmountInput, dayLabel, dayOrdinal, amountText } from '../format';
 import { goalProgress, monthlyNeeded, upcomingPayments, GOAL_ICONS, averageNeeds, wishHoursLeft, FUND_PRESETS } from '../plans';
 import Appear from '../components/ui/Appear';
 import Card from '../components/ui/Card';
@@ -17,16 +17,17 @@ import Sheet from '../components/ui/Sheet';
 import Bar from '../components/Bar';
 import Segmented from '../components/ui/Segmented';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
-const parseMoney = (t) => parseFloat(String(t).replace(/\s/g, '').replace(',', '.')) || 0;
-const toText = (n) => (n ? String(n).replace('.', ',') : '');
+const parseMoney = (text) => parseFloat(String(text).replace(/\s/g, '').replace(',', '.')) || 0;
+const toText = amountText;
 
 function AmountField({ value, onChange, label, autoFocus }) {
   return (
     <View style={s.amountRow}>
       <TextInput
         value={value}
-        onChangeText={(t) => onChange(cleanAmountInput(t))}
+        onChangeText={(text) => onChange(cleanAmountInput(text))}
         placeholder="0"
         placeholderTextColor={colors.placeholder}
         keyboardType="decimal-pad"
@@ -43,9 +44,9 @@ function AmountField({ value, onChange, label, autoFocus }) {
 
 // Create or edit a goal: name, icon, amount and an optional month to reach it by
 const KINDS = [
-  { key: 'goal', label: 'Цел' },
-  { key: 'fund', label: 'Касичка' },
-  { key: 'emergency', label: 'Авариен фонд' },
+  { key: 'goal', get label() { return t('Цел'); } },
+  { key: 'fund', get label() { return t('Касичка'); } },
+  { key: 'emergency', get label() { return t('Авариен фонд'); } },
 ];
 
 function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset }) {
@@ -57,7 +58,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
   const pickKind = (k) => {
     setKind(k);
     if (k === 'emergency') {
-      setName('Авариен фонд');
+      setName(t('Авариен фонд'));
       setIcon('umbrella');
       setTarget(toText(Math.ceil((needs * cover) / 10) * 10));
     }
@@ -71,9 +72,9 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
   });
   const valid = name.trim() && parseMoney(target) > 0;
   const kindHint = {
-    goal: 'Нещо, за което спестяваш: ваканция, телефон, курс.',
-    fund: 'Годишен разход, който винаги изненадва. Делиш го на месеци и плащаш от касичката, когато дойде.',
-    emergency: needs > 0 ? `Резерв за ${cover} месеца нужди. Средно харчиш ${money(Math.round(needs))} на месец за нужди.` : 'Резерв за 3 до 6 месеца нужди.',
+    goal: t('Нещо, за което спестяваш: ваканция, телефон, курс.'),
+    fund: t('Годишен разход, който винаги изненадва. Делиш го на месеци и плащаш от касичката, когато дойде.'),
+    emergency: needs > 0 ? t('Резерв за {0} месеца нужди. Средно харчиш {1} на месец за нужди.', { 0: cover, 1: money(Math.round(needs)) }) : t('Резерв за 3 до 6 месеца нужди.'),
   }[kind];
   const deadline = months ? new Date(new Date().getFullYear(), new Date().getMonth() + months, 1) : null;
 
@@ -88,11 +89,11 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
           style={[s.primaryBtn, !valid && { opacity: 0.4 }]}
           onPress={() => onSave({ name, icon, kind: kind === 'goal' ? null : kind, target: parseMoney(target), deadline: deadline?.toISOString() || null })}
         >
-          <Text style={s.primaryBtnText}>{goal ? 'Запази' : 'Създай цел'}</Text>
+          <Text style={s.primaryBtnText}>{goal ? t('Запази') : t('Създай цел')}</Text>
         </Touch>
       }
     >
-      <Text style={s.sheetTitle}>{goal ? 'Редакция' : 'Ново спестяване'}</Text>
+      <Text style={s.sheetTitle}>{goal ? t('Редакция') : t('Ново спестяване')}</Text>
       {!goal && <Segmented options={KINDS} value={kind} onChange={pickKind} />}
       <Text style={[s.hint, { marginTop: 8 }]}>{kindHint}</Text>
       {kind === 'emergency' && !goal && (
@@ -102,7 +103,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
               key={m}
               small
               haptic="select"
-              label={`${m} месеца`}
+              label={t('{0} месеца', { 0: m })}
               variant={cover === m ? 'active' : 'outline'}
               onPress={() => {
                 setCover(m);
@@ -130,23 +131,22 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
           ))}
         </View>
       )}
-      <Text style={s.label}>{kind === 'fund' ? 'Колко струва годишно?' : 'За какво спестяваш?'}</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="напр. Ваканция" placeholderTextColor={colors.muted} style={s.textInput} maxLength={30} />
-      <Text style={s.label}>Сума</Text>
-      <AmountField value={target} onChange={setTarget} label="Целева сума в евро" />
-      <Text style={s.label}>Срок</Text>
+      <Text style={s.label}>{kind === 'fund' ? t('Колко струва годишно?') : t('За какво спестяваш?')}</Text>
+      <TextInput value={name} onChangeText={setName} placeholder={t('напр. Ваканция')} placeholderTextColor={colors.muted} style={s.textInput} maxLength={30} />
+      <Text style={s.label}>{t('Сума')}</Text>
+      <AmountField value={target} onChange={setTarget} label={t('Целева сума в евро')} />
+      <Text style={s.label}>{t('Срок')}</Text>
       <View style={s.chipRow}>
         {(kind === 'fund' ? [3, 6, 9, 12] : [0, 3, 6, 12]).map((m) => (
-          <Pill key={m} small haptic="select" label={m ? `${m} месеца` : 'Без срок'} variant={months === m ? 'active' : 'outline'} onPress={() => setMonths(m)} />
+          <Pill key={m} small haptic="select" label={m ? t('{0} месеца', { 0: m }) : t('Без срок')} variant={months === m ? 'active' : 'outline'} onPress={() => setMonths(m)} />
         ))}
       </View>
       {deadline && (
         <Text style={s.hint}>
-          До {MONTHS[deadline.getMonth()].toLowerCase()} {deadline.getFullYear()}
-          {parseMoney(target) > 0 ? ` · ≈ ${money(Math.ceil(parseMoney(target) / months))} на месец` : ''}
+          {t('До {0} {1} {2}', { 0: monthLower(deadline.getMonth()), 1: deadline.getFullYear(), 2: parseMoney(target) > 0 ? t(' · ≈ {0} на месец', { 0: money(Math.ceil(parseMoney(target) / months)) }) : '' })}
         </Text>
       )}
-      <Text style={s.label}>Икона</Text>
+      <Text style={s.label}>{t('Икона')}</Text>
       <View style={s.iconGrid}>
         {GOAL_ICONS.map((ic) => (
           <Touch
@@ -162,7 +162,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
         ))}
       </View>
       {goal && (
-        <Pill icon="trash-outline" label="Изтрий целта" variant="outline" textStyle={{ color: colors.danger }} style={s.deleteBtn} onPress={onDelete} />
+        <Pill icon="trash-outline" label={t('Изтрий целта')} variant="outline" textStyle={{ color: colors.danger }} style={s.deleteBtn} onPress={onDelete} />
       )}
     </Sheet>
   );
@@ -180,16 +180,16 @@ function WishSheet({ visible, onClose, onSave }) {
       onClose={onClose}
       footer={
         <Touch haptic="success" disabled={!valid} style={[s.primaryBtn, !valid && { opacity: 0.4 }]} onPress={() => onSave({ name, amount: v })}>
-          <Text style={s.primaryBtnText}>Изчакай 48 часа</Text>
+          <Text style={s.primaryBtnText}>{t('Изчакай 48 часа')}</Text>
         </Touch>
       }
     >
-      <Text style={s.sheetTitle}>Ново желание</Text>
-      <Text style={[s.hint, { textAlign: 'center' }]}>Записваш го сега, решаваш след 2 дни. Често желанието минава само, а парите отиват в цел.</Text>
-      <Text style={s.label}>Какво искаш?</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="напр. Слушалки" placeholderTextColor={colors.muted} style={s.textInput} maxLength={40} />
-      <Text style={s.label}>Цена</Text>
-      <AmountField value={amount} onChange={setAmount} label="Цена в евро" />
+      <Text style={s.sheetTitle}>{t('Ново желание')}</Text>
+      <Text style={[s.hint, { textAlign: 'center' }]}>{t('Записваш го сега, решаваш след 2 дни. Често желанието минава само, а парите отиват в цел.')}</Text>
+      <Text style={s.label}>{t('Какво искаш?')}</Text>
+      <TextInput value={name} onChangeText={setName} placeholder={t('напр. Слушалки')} placeholderTextColor={colors.muted} style={s.textInput} maxLength={40} />
+      <Text style={s.label}>{t('Цена')}</Text>
+      <AmountField value={amount} onChange={setAmount} label={t('Цена в евро')} />
     </Sheet>
   );
 }
@@ -207,32 +207,31 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
       onClose={onClose}
       footer={
         <Touch haptic="success" disabled={!(v > 0)} style={[s.primaryBtn, s.savingsBtn, !(v > 0) && { opacity: 0.4 }]} onPress={() => onSave(v, { existing: from === 'existing' })}>
-          <Text style={s.primaryBtnText}>{v > 0 ? `Задели ${money(v)}` : 'Въведи сума'}</Text>
+          <Text style={s.primaryBtnText}>{v > 0 ? t('Задели {0}', { 0: money(v) }) : t('Въведи сума')}</Text>
         </Touch>
       }
     >
-      <Text style={s.sheetTitle}>Към „{goal?.name}“</Text>
+      <Text style={s.sheetTitle}>{t('Към „{0}“', { 0: goal?.name })}</Text>
       <Segmented
         options={[
-          { key: 'new', label: 'От този месец' },
-          { key: 'existing', label: 'Вече ги имам' },
+          { key: 'new', label: t('От този месец') },
+          { key: 'existing', label: t('Вече ги имам') },
         ]}
         value={from}
         onChange={setFrom}
         style={{ marginTop: 6, marginBottom: 10 }}
       />
       <Text style={[s.hint, { textAlign: 'center' }]}>
-        Остават {money(left)}.{' '}
-        {from === 'existing'
-          ? 'Пари от друга сметка или стари спестявания: пълнят целта, но не намаляват бюджета за месеца.'
-          : 'Сумата се записва в „Спестявания“ и се брои към 20% за месеца.'}
+        {t('Остават {0}. {1}', { 0: money(left), 1: from === 'existing'
+          ? t('Пари от друга сметка или стари спестявания: пълнят целта, но не намаляват бюджета за месеца.')
+          : t('Сумата се записва в „Спестявания“ и се брои към 20% за месеца.') })}
       </Text>
-      <AmountField value={amount} onChange={setAmount} label="Сума в евро" autoFocus />
+      <AmountField value={amount} onChange={setAmount} label={t('Сума в евро')} autoFocus />
       <View style={[s.chipRow, { justifyContent: 'center' }]}>
         {[20, 50, 100].map((n) => (
           <Pill key={n} small haptic="select" label={money(n)} variant="outline" onPress={() => setAmount(String(n))} />
         ))}
-        {left > 0 && <Pill small haptic="select" label={`Всичко ${money(left)}`} variant="outline" onPress={() => setAmount(toText(Math.round(left * 100) / 100))} />}
+        {left > 0 && <Pill small haptic="select" label={t('Всичко {0}', { 0: money(left) })} variant="outline" onPress={() => setAmount(toText(Math.round(left * 100) / 100))} />}
       </View>
     </Sheet>
   );
@@ -250,7 +249,7 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
       onClose={onClose}
       footer={
         <Touch haptic="success" disabled={!(v > 0)} style={[s.primaryBtn, !(v > 0) && { opacity: 0.4 }]} onPress={() => onSave({ amount: v, day })}>
-          <Text style={s.primaryBtnText}>Запази</Text>
+          <Text style={s.primaryBtnText}>{t('Запази')}</Text>
         </Touch>
       }
     >
@@ -258,32 +257,32 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
         <IconBadge icon={cat?.icon || 'repeat'} color={BUCKETS[cat?.bucket]?.color || colors.muted} size={52} />
         <View style={{ flex: 1 }}>
           <Text style={s.sheetTitle}>{rule.merchant || rule.note || cat?.name}</Text>
-          <Text style={s.hint}>{cat?.name} · всеки месец</Text>
+          <Text style={s.hint}>{t('{0} · всеки месец', { 0: cat?.name })}</Text>
         </View>
       </View>
-      <Text style={s.label}>Сума</Text>
-      <AmountField value={amount} onChange={setAmount} label="Сума в евро" />
-      <Text style={s.label}>Число от месеца</Text>
+      <Text style={s.label}>{t('Сума')}</Text>
+      <AmountField value={amount} onChange={setAmount} label={t('Сума в евро')} />
+      <Text style={s.label}>{t('Число от месеца')}</Text>
       <View style={s.dayRow}>
-        <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.max(1, d - 1))} accessibilityLabel="По-рано">
+        <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.max(1, d - 1))} accessibilityLabel={t('По-рано')}>
           <Ionicons name="remove" size={20} color={colors.text} />
         </Touch>
-        <Text style={s.dayText} accessibilityLiveRegion="polite">{dayOrdinal(day)} число</Text>
-        <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.min(31, d + 1))} accessibilityLabel="По-късно">
+        <Text style={s.dayText} accessibilityLiveRegion="polite">{t('{0} число', { 0: dayOrdinal(day) })}</Text>
+        <Touch style={s.stepBtn} onPress={() => setDay((d) => Math.min(31, d + 1))} accessibilityLabel={t('По-късно')}>
           <Ionicons name="add" size={20} color={colors.text} />
         </Touch>
       </View>
-      <Text style={s.hint}>При по-кратък месец се записва на последния ден.</Text>
+      <Text style={s.hint}>{t('При по-кратък месец се записва на последния ден.')}</Text>
       <View style={[s.chipRow, { justifyContent: 'center', marginTop: 18 }]}>
         <Pill
           icon={rule.paused ? 'play' : 'pause'}
-          label={rule.paused ? 'Продължи' : 'Спри временно'}
+          label={rule.paused ? t('Продължи') : t('Спри временно')}
           variant="outline"
           onPress={() => onSave({ paused: !rule.paused })}
         />
-        <Pill icon="trash-outline" label="Премахни" variant="outline" textStyle={{ color: colors.danger }} onPress={onDelete} />
+        <Pill icon="trash-outline" label={t('Премахни')} variant="outline" textStyle={{ color: colors.danger }} onPress={onDelete} />
       </View>
-      <Text style={[s.hint, { textAlign: 'center' }]}>Записаните вече плащания остават.</Text>
+      <Text style={[s.hint, { textAlign: 'center' }]}>{t('Записаните вече плащания остават.')}</Text>
     </Sheet>
   );
 }
@@ -291,7 +290,7 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
 // "март", or "март 2027" when the deadline isn't this year
 const deadlineLabel = (iso) => {
   const d = new Date(iso);
-  const name = MONTHS[d.getMonth()].toLowerCase();
+  const name = monthLower(d.getMonth());
   return d.getFullYear() === new Date().getFullYear() ? name : `${name} ${d.getFullYear()}`;
 };
 
@@ -318,19 +317,19 @@ export default function PlansScreen({ onAdd }) {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar style={currentColorScheme() === 'dark' ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={[s.container, { paddingTop: insets.top + 20 }]} showsVerticalScrollIndicator={false}>
-        <Text style={s.title} accessibilityRole="header">Планове</Text>
+        <Text style={s.title} accessibilityRole="header">{t('Планове')}</Text>
 
         {/* Recurring payments first: they shape every month */}
         <View style={s.sectionHead}>
-          <Text style={s.section} accessibilityRole="header">Повтарящи се плащания</Text>
-          {monthlyTotal > 0 && <Text style={s.hint}>{money(monthlyTotal)}/месец</Text>}
+          <Text style={s.section} accessibilityRole="header">{t('Повтарящи се плащания')}</Text>
+          {monthlyTotal > 0 && <Text style={s.hint}>{t('{0}/месец', { 0: money(monthlyTotal) })}</Text>}
         </View>
         {recurring.length === 0 ? (
           <Card style={s.emptyCard}>
             <Ionicons name="repeat" size={30} color={colors.primary} />
-            <Text style={s.emptyTitle}>Наем, сметки, абонаменти</Text>
-            <Text style={s.hintCenter}>При нов разход включи „Всеки месец“ и той ще се записва сам. Дневният лимит вече ги смята предварително.</Text>
-            <Pill icon="add" label="Нов разход" variant="ink" onPress={() => onAdd({})} />
+            <Text style={s.emptyTitle}>{t('Наем, сметки, абонаменти')}</Text>
+            <Text style={s.hintCenter}>{t('При нов разход включи „Всеки месец“ и той ще се записва сам. Дневният лимит вече ги смята предварително.')}</Text>
+            <Pill icon="add" label={t('Нов разход')} variant="ink" onPress={() => onAdd({})} />
           </Card>
         ) : (
           <Card style={{ paddingVertical: 4 }}>
@@ -343,7 +342,7 @@ export default function PlansScreen({ onAdd }) {
                     <Text style={[s.ruleName, rule.paused && { color: colors.muted }]} numberOfLines={1}>
                       {rule.merchant || rule.note || cat?.name}
                     </Text>
-                    <Text style={s.hint}>{rule.paused ? 'Спряно' : `Следващо: ${dayLabel(date.toISOString(), now)}`}</Text>
+                    <Text style={s.hint}>{rule.paused ? t('Спряно') : t('Следващо: {0}', { 0: dayLabel(date.toISOString(), now) })}</Text>
                   </View>
                   <Text style={s.ruleAmount}>{money(rule.amount)}</Text>
                 </Touch>
@@ -353,16 +352,16 @@ export default function PlansScreen({ onAdd }) {
         )}
 
         <View style={s.sectionHead}>
-          <Text style={s.section} accessibilityRole="header">Цели и касички</Text>
-          <Pill small icon="add" label="Нова" variant="soft" onPress={() => setGoalEdit('new')} />
+          <Text style={s.section} accessibilityRole="header">{t('Цели и касички')}</Text>
+          <Pill small icon="add" label={t('Нова')} variant="soft" onPress={() => setGoalEdit('new')} />
         </View>
         {!hasEmergency && needs > 0 && (
           <Touch onPress={() => setGoalEdit({ preset: { kind: 'emergency' } })}>
             <Card style={[s.goalHead, { borderColor: colors.needs }]}>
               <IconBadge icon="umbrella" color={colors.needs} size={44} />
               <View style={{ flex: 1 }}>
-                <Text style={s.goalName}>Създай авариен фонд</Text>
-                <Text style={s.hint}>3 месеца нужди ≈ {money(Math.ceil((needs * 3) / 10) * 10)}. Спокойствие при неочакван разход.</Text>
+                <Text style={s.goalName}>{t('Създай авариен фонд')}</Text>
+                <Text style={s.hint}>{t('3 месеца нужди ≈ {0}. Спокойствие при неочакван разход.', { 0: money(Math.ceil((needs * 3) / 10) * 10) })}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.muted} />
             </Card>
@@ -371,25 +370,24 @@ export default function PlansScreen({ onAdd }) {
         {list.length === 0 ? (
           <Card style={s.emptyCard}>
             <Ionicons name="flag-outline" size={30} color={colors.savings} />
-            <Text style={s.emptyTitle}>Спестявай за нещо конкретно</Text>
-            <Text style={s.hintCenter}>Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към 20% спестявания.</Text>
-            <Pill icon="add" label="Създай цел" variant="ink" onPress={() => setGoalEdit('new')} />
+            <Text style={s.emptyTitle}>{t('Спестявай за нещо конкретно')}</Text>
+            <Text style={s.hintCenter}>{t('Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към 20% спестявания.')}</Text>
+            <Pill icon="add" label={t('Създай цел')} variant="ink" onPress={() => setGoalEdit('new')} />
           </Card>
         ) : (
           list.map(({ g, saved, left, progress, done }) => {
             const perMonth = monthlyNeeded(g, saved, now);
             return (
               <Card key={g.id} style={s.goal}>
-                <Touch style={s.goalHead} onPress={() => setGoalEdit(g)} accessibilityHint="Редактира целта">
+                <Touch style={s.goalHead} onPress={() => setGoalEdit(g)} accessibilityHint={t('Редактира целта')}>
                   <IconBadge icon={done ? 'trophy' : g.icon} color={colors.savings} size={44} solid={done} />
                   <View style={{ flex: 1 }}>
                     <Text style={s.goalName}>
                       {g.name}
-                      {g.kind === 'fund' ? '  · касичка' : g.kind === 'emergency' ? `  · ${needs > 0 ? `${(saved / needs).toFixed(1).replace('.', ',')} мес.` : 'резерв'}` : ''}
+                      {g.kind === 'fund' ? t('  · касичка') : g.kind === 'emergency' ? `  · ${needs > 0 ? t('{0} мес.', { 0: (saved / needs).toFixed(1).replace('.', decimalSep()) }) : t('резерв')}` : ''}
                     </Text>
                     <Text style={s.hint}>
-                      {money(saved)} от {money(g.target)}
-                      {g.deadline ? ` · до ${deadlineLabel(g.deadline)}` : ''}
+                      {t('{0} от {1} {2}', { 0: money(saved), 1: money(g.target), 2: g.deadline ? t(' · до {0}', { 0: deadlineLabel(g.deadline) }) : '' })}
                     </Text>
                   </View>
                   <Text style={[s.goalPct, done && { color: colors.savings }]}>{pct(progress)}</Text>
@@ -397,20 +395,20 @@ export default function PlansScreen({ onAdd }) {
                 <Bar value={progress} color={colors.savings} height={8} label={`${g.name}: ${pct(progress)}`} />
                 <View style={s.goalFoot}>
                   <Text style={[s.hint, { flex: 1 }]}>
-                    {done ? 'Постигната! 🎉' : perMonth ? `≈ ${money(Math.ceil(perMonth))} на месец до срока` : `Остават ${money(left)}`}
+                    {done ? t('Постигната! 🎉') : perMonth ? t('≈ {0} на месец до срока', { 0: money(Math.ceil(perMonth)) }) : t('Остават {0}', { 0: money(left) })}
                   </Text>
                   {/* Paying the cost out of the goal doesn't count as spending again */}
                   {saved > 0 && (
                     <Pill
                       small
                       icon="card-outline"
-                      label="Плати"
+                      label={t('Плати')}
                       variant="outline"
                       onPress={() => onAdd({ fromGoalId: g.id, note: g.name })}
-                      accessibilityLabel={`Плати от „${g.name}“`}
+                      accessibilityLabel={t('Плати от „{0}“', { 0: g.name })}
                     />
                   )}
-                  {!done && <Pill small icon="add" label="Задели" variant="ink" onPress={() => setDeposit(g)} />}
+                  {!done && <Pill small icon="add" label={t('Задели')} variant="ink" onPress={() => setDeposit(g)} />}
                 </View>
               </Card>
             );
@@ -419,15 +417,15 @@ export default function PlansScreen({ onAdd }) {
 
         {/* The 48-hour wishlist */}
         <View style={s.sectionHead}>
-          <Text style={s.section} accessibilityRole="header">Желания · 48 часа</Text>
-          <Pill small icon="add" label="Желание" variant="soft" onPress={() => setWishOpen(true)} />
+          <Text style={s.section} accessibilityRole="header">{t('Желания · 48 часа')}</Text>
+          <Pill small icon="add" label={t('Желание')} variant="soft" onPress={() => setWishOpen(true)} />
         </View>
         {openWishes.length === 0 ? (
           <Appear index={1}>
             <Card style={s.emptyCard}>
               <Ionicons name="hourglass-outline" size={28} color={colors.wants} />
-              <Text style={s.emptyTitle}>Искаш нещо скъпо?</Text>
-              <Text style={s.hintCenter}>Запиши го тук и изчакай 2 дни. Ако още го искаш — купуваш. Ако не — парите отиват в цел.</Text>
+              <Text style={s.emptyTitle}>{t('Искаш нещо скъпо?')}</Text>
+              <Text style={s.hintCenter}>{t('Запиши го тук и изчакай 2 дни. Ако още го искаш — купуваш. Ако не — парите отиват в цел.')}</Text>
             </Card>
           </Appear>
         ) : (
@@ -440,23 +438,23 @@ export default function PlansScreen({ onAdd }) {
                     <IconBadge icon={left ? 'hourglass' : 'checkmark-done'} color={colors.wants} size={44} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.goalName}>{w.name}</Text>
-                      <Text style={s.hint}>{left ? `Още ${left} ч. до решението` : 'Мина 48 часа. Още ли го искаш?'}</Text>
+                      <Text style={s.hint}>{left ? t('Още {0} ч. до решението', { 0: left }) : t('Мина 48 часа. Още ли го искаш?')}</Text>
                     </View>
                     <Text style={s.goalPct}>{money(w.amount)}</Text>
                   </View>
                   {left > 0 ? (
-                    <Bar value={1 - left / 48} color={colors.wants} height={6} label={`Изчакани ${48 - left} от 48 часа`} />
+                    <Bar value={1 - left / 48} color={colors.wants} height={6} label={t('Изчакани {0} от 48 часа', { 0: 48 - left })} />
                   ) : (
                     <View style={s.chipRow}>
                       <Pill
                         icon="heart-dislike-outline"
-                        label={firstGoal ? `Отказвам се · към „${firstGoal.name}“` : 'Отказвам се'}
+                        label={firstGoal ? t('Отказвам се · към „{0}“', { 0: firstGoal.name }) : t('Отказвам се')}
                         variant="ink"
                         onPress={() => resolveWish(w.id, 'skipped', firstGoal)}
                       />
                       <Pill
                         icon="bag-check-outline"
-                        label="Купувам"
+                        label={t('Купувам')}
                         variant="outline"
                         // The wish is marked as bought only when the expense is saved, so "Отказ" keeps it
                         onPress={() => onAdd({ amount: w.amount, merchant: '', note: w.name, categoryId: w.categoryId, wishId: w.id })}
@@ -465,7 +463,7 @@ export default function PlansScreen({ onAdd }) {
                   )}
                   {left > 0 && (
                     <Touch hitSlop={8} onPress={() => removeWish(w.id)} style={{ alignSelf: 'flex-start' }}>
-                      <Text style={[s.hint, { color: colors.primary, fontWeight: '700' }]}>Премахни</Text>
+                      <Text style={[s.hint, { color: colors.primary, fontWeight: '700' }]}>{t('Премахни')}</Text>
                     </Touch>
                   )}
                 </Card>
@@ -478,7 +476,7 @@ export default function PlansScreen({ onAdd }) {
       <GoalSheet
         key={`goal-${goalEdit === 'new' ? 'new' : goalEdit?.preset ? 'preset' : goalEdit?.id || 'closed'}`}
         goal={goalEdit && goalEdit !== 'new' && !goalEdit.preset ? goalEdit : null}
-        preset={goalEdit?.preset ? { ...goalEdit.preset, name: 'Авариен фонд', icon: 'umbrella', target: Math.ceil((needs * 3) / 10) * 10 } : null}
+        preset={goalEdit?.preset ? { ...goalEdit.preset, name: t('Авариен фонд'), icon: 'umbrella', target: Math.ceil((needs * 3) / 10) * 10 } : null}
         needs={needs}
         visible={!!goalEdit}
         onClose={() => setGoalEdit(null)}
@@ -490,7 +488,7 @@ export default function PlansScreen({ onAdd }) {
         onDelete={() => {
           removeGoal(goalEdit.id);
           setGoalEdit(null);
-          showToast({ text: 'Целта е изтрита. Спестените пари остават в „Спестявания“.', icon: 'trash-outline' });
+          showToast({ text: t('Целта е изтрита. Спестените пари остават в „Спестявания“.'), icon: 'trash-outline' });
         }}
       />
       <WishSheet
@@ -525,7 +523,7 @@ export default function PlansScreen({ onAdd }) {
         onDelete={() => {
           removeRecurring(ruleEdit.id);
           setRuleEdit(null);
-          showToast({ text: 'Повтарящото се плащане е премахнато. Вече записаните разходи остават.', icon: 'trash-outline' });
+          showToast({ text: t('Повтарящото се плащане е премахнато. Вече записаните разходи остават.'), icon: 'trash-outline' });
         }}
       />
     </View>

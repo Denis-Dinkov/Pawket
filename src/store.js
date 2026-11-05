@@ -9,6 +9,7 @@ import { weekMissions, weekKey, activityDays, streak, MISSION_XP } from './pet/m
 import { outfitOf, toggleItem } from './pet/outfit';
 import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
+import { t, setLang, resolveLang } from './i18n';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -35,12 +36,14 @@ const EMPTY = {
   wishes: [],
   // theme: 'system' | 'light' | 'dark'; reminder: the evening notification
   // liveActivity: Charlie and today's limit in the Dynamic Island
-  settings: { theme: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true },
+  settings: { theme: 'system', language: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true },
   lastBackupAt: null,
 };
 // Older saves lack the newer keys; settings are merged one level deep
 const withDefaults = (d) => ({ ...EMPTY, ...d, settings: { ...EMPTY.settings, ...(d?.settings || {}) } });
-export const DEFAULT_PET_NAME = 'Чарли';
+// The default name, stored in Bulgarian; a dog still called that is shown as "Charlie" in English
+const DEFAULT_PET_NAME_BG = 'Чарли';
+export const defaultPetName = () => t('Чарли');
 // The default name from back when the pet was a cat
 const OLD_DEFAULT_NAME = 'Мърка';
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -61,8 +64,11 @@ function migrateV1(v1) {
 async function load() {
   const raw = await AsyncStorage.getItem(KEY);
   if (raw) {
-    const data = withDefaults(JSON.parse(raw));
-    if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME };
+    const saved = JSON.parse(raw);
+    // Saves from before English existed stay in Bulgarian; new installs follow the phone
+    if (saved && !saved.settings?.language) saved.settings = { ...(saved.settings || {}), language: 'bg' };
+    const data = withDefaults(saved);
+    if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME_BG };
     return data;
   }
   const old = await AsyncStorage.getItem(KEY_V1);
@@ -76,11 +82,14 @@ export function StoreProvider({ children }) {
   const [pendingEvent, setPendingEvent] = useState(null);
   // Short message at the bottom of the screen, optionally with an action ("Undo"): { id, text, actionLabel?, onAction? }
   const [toast, setToast] = useState(null);
-  const showToast = useCallback((t) => setToast({ id: Date.now(), ...t }), []);
+  const showToast = useCallback((next) => setToast({ id: Date.now(), ...next }), []);
   const stageRef = useRef(null);
 
   // Custom categories are needed by the pure modules too (theme.categoryById)
   setCustomCategories(data.categories);
+  // The language is set here, before anything below (or any screen) produces text
+  const lang = resolveLang(data.settings?.language);
+  setLang(lang);
 
   useEffect(() => {
     load()
@@ -177,7 +186,7 @@ export function StoreProvider({ children }) {
         },
       };
     });
-    if (fresh.length) showToast({ text: `Мисия изпълнена: ${fresh[0].title} · +${MISSION_XP * fresh.length} XP`, icon: 'trophy', celebrate: true });
+    if (fresh.length) showToast({ text: t('Мисия изпълнена: {0} · +{1} XP', { 0: fresh[0].title, 1: MISSION_XP * fresh.length }), icon: 'trophy', celebrate: true });
   }, [ready, mExpenses, mIncomeEntries, mIncomes, mPet, showToast]);
 
   // Celebration on reaching a new growth stage
@@ -195,6 +204,8 @@ export function StoreProvider({ children }) {
     () => ({
       ready,
       ...data,
+      // The default name follows the language (Чарли / Charlie); a name the user chose stays as it is
+      pet: data.pet && data.pet.name === DEFAULT_PET_NAME_BG ? { ...data.pet, name: defaultPetName() } : data.pet,
       pendingEvent,
       dismissEvent: () => setPendingEvent(null),
       showToast,
@@ -205,7 +216,7 @@ export function StoreProvider({ children }) {
           ...d,
           incomes: income > 0 ? { ...d.incomes, [monthKey(now.getFullYear(), now.getMonth())]: income } : d.incomes,
           pet: {
-            name: name.trim() || DEFAULT_PET_NAME,
+            name: name.trim() || defaultPetName(),
             createdAt: now.toISOString(),
             xp: 0,
             lastFedAt: now.toISOString(),
@@ -275,9 +286,9 @@ export function StoreProvider({ children }) {
         animateNextLayout();
         setData((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
         showToast({
-          text: 'Разходът е изтрит',
+          text: t('Разходът е изтрит'),
           icon: 'trash-outline',
-          actionLabel: 'Отмени',
+          actionLabel: t('Отмени'),
           onAction: () => {
             animateNextLayout();
             setData((d) => {
@@ -306,9 +317,9 @@ export function StoreProvider({ children }) {
         animateNextLayout();
         setData((d) => ({ ...d, incomeEntries: d.incomeEntries.filter((e) => e.id !== id) }));
         showToast({
-          text: 'Доходът е изтрит',
+          text: t('Доходът е изтрит'),
           icon: 'trash-outline',
-          actionLabel: 'Отмени',
+          actionLabel: t('Отмени'),
           onAction: () => setData((d) => ({ ...d, incomeEntries: [item, ...d.incomeEntries] })),
         });
       },
@@ -364,7 +375,7 @@ export function StoreProvider({ children }) {
           pet: existing ? d.pet : feedPet(d.pet),
         }));
         if (!before.done && before.saved + amount >= goal.target) {
-          showToast({ text: `Целта „${goal.name}“ е постигната! 🎉`, icon: 'trophy', celebrate: true });
+          showToast({ text: t('Целта „{0}“ е постигната! 🎉', { 0: goal.name }), icon: 'trophy', celebrate: true });
         }
       },
 
@@ -376,7 +387,7 @@ export function StoreProvider({ children }) {
         // The toast promises a reminder only when one could actually be scheduled
         scheduleWishReminder({ id: wish.id, name: wish.name, at: new Date(Date.now() + WISH_HOURS * 3600000) }).then((scheduled) =>
           showToast({
-            text: scheduled ? `„${wish.name}“ чака 48 часа. Ще ти напомня 🐾` : `„${wish.name}“ чака 48 часа в „Планове“ 🐾`,
+            text: scheduled ? t('„{0}“ чака 48 часа. Ще ти напомня 🐾', { 0: wish.name }) : t('„{0}“ чака 48 часа в „Планове“ 🐾', { 0: wish.name }),
             icon: 'hourglass-outline',
           })
         );
@@ -396,17 +407,17 @@ export function StoreProvider({ children }) {
           setData((d) => ({
             ...d,
             expenses: [
-              { id: newId(), amount: wish.amount, categoryId: 'saving', merchant: '', note: `${goal.name} (вместо ${wish.name})`, goalId: goal.id, source: 'goal', date: new Date().toISOString(), loggedAt: new Date().toISOString() },
+              { id: newId(), amount: wish.amount, categoryId: 'saving', merchant: '', note: t('{0} (вместо {1})', { 0: goal.name, 1: wish.name }), goalId: goal.id, source: 'goal', date: new Date().toISOString(), loggedAt: new Date().toISOString() },
               ...d.expenses,
             ],
           }));
           showToast({
-            text: before.saved + wish.amount >= goal.target && !before.done ? `Целта „${goal.name}“ е постигната! 🎉` : `+${money(wish.amount)} към „${goal.name}“ вместо „${wish.name}“ 💪`,
+            text: before.saved + wish.amount >= goal.target && !before.done ? t('Целта „{0}“ е постигната! 🎉', { 0: goal.name }) : t('+{0} към „{1}“ вместо „{2}“ 💪', { 0: money(wish.amount), 1: goal.name, 2: wish.name }),
             icon: 'trophy',
             celebrate: true,
           });
         } else if (decision === 'skipped') {
-          showToast({ text: `Спести ${money(wish.amount)} 💪`, icon: 'trophy', celebrate: true });
+          showToast({ text: t('Спести {0} 💪', { 0: money(wish.amount) }), icon: 'trophy', celebrate: true });
         }
       },
       removeWish: (id) => {
@@ -471,14 +482,14 @@ export function StoreProvider({ children }) {
       // Order and visibility of the Home sections
       setHomeLayout: (homeLayout) => setData((d) => ({ ...d, homeLayout })),
 
-      setPetName: (name) => setData((d) => ({ ...d, pet: d.pet && { ...d.pet, name: name.trim() || DEFAULT_PET_NAME } })),
+      setPetName: (name) => setData((d) => ({ ...d, pet: d.pet && { ...d.pet, name: name.trim() || defaultPetName() } })),
 
       resetAll: () => {
         setPendingEvent(null);
         setData(EMPTY);
       },
     }),
-    [ready, data, pendingEvent, showToast]
+    [ready, data, pendingEvent, showToast, lang]
   );
   const toastValue = useMemo(() => ({ toast, dismissToast: () => setToast(null) }), [toast]);
 

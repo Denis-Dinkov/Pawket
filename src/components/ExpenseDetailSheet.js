@@ -12,6 +12,7 @@ import { dayLabel, timeLabel, SOURCES } from '../format';
 import { feedback } from '../haptics';
 import { useStore } from '../store';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Deletes right away: the store shows an "Undo" toast instead of asking first
 export function confirmDelete(expense, onDelete) {
@@ -44,7 +45,7 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
   };
   return (
     <View>
-      {onBack && <Pill small icon="chevron-back" label="Назад" variant="outline" onPress={onBack} />}
+      {onBack && <Pill small icon="chevron-back" label={t('Назад')} variant="outline" onPress={onBack} />}
       <View style={s.head}>
         <IconBadge icon={cat?.icon || 'help'} color={bucket?.color || colors.muted} size={64} />
         <Text style={s.cat}>{cat?.name}</Text>
@@ -52,14 +53,14 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
         <Pill small variant="soft" label={bucket?.label} style={{ alignSelf: 'center', marginTop: 8 }} />
       </View>
       <View style={s.card}>
-        <Row icon="storefront-outline" label="Къде" value={expense.merchant || '—'} />
-        <Row icon="document-text-outline" label="За какво" value={expense.note || cat?.name} />
-        <Row icon="calendar-outline" label="Кога" value={`${dayLabel(expense.date)}, ${timeLabel(expense.date)}`} />
-        <Row icon={source.icon} label="Плащане" value={source.label} />
+        <Row icon="storefront-outline" label={t('Къде')} value={expense.merchant || '—'} />
+        <Row icon="document-text-outline" label={t('За какво')} value={expense.note || cat?.name} />
+        <Row icon="calendar-outline" label={t('Кога')} value={`${dayLabel(expense.date)}, ${timeLabel(expense.date)}`} />
+        <Row icon={source.icon} label={t('Плащане')} value={source.label} />
       </View>
       {/* A payment out of a goal is never counted in the month, so there's nothing to switch */}
       {expense.fromGoalId ? (
-        <Text style={s.note}>Платено от цел — не се брои в разходите за месеца.</Text>
+        <Text style={s.note}>{t('Платено от цел — не се брои в разходите за месеца.')}</Text>
       ) : (
         <>
           {/* The whole row toggles: a bigger target than the switch alone */}
@@ -69,28 +70,28 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
             style={[s.card, s.switchCard]}
             accessibilityRole="switch"
             accessibilityState={{ checked: counts }}
-            accessibilityLabel="Брои се в бюджета за месеца"
+            accessibilityLabel={t('Брои се в бюджета за месеца')}
           >
             <Ionicons name="calculator-outline" size={18} color={colors.muted} />
-            <Text style={s.switchLabel}>Брои се в месеца</Text>
+            <Text style={s.switchLabel}>{t('Брои се в месеца')}</Text>
             <View pointerEvents="none">
               <Switch value={counts} trackColor={{ true: colors.primary }} />
             </View>
           </Touch>
           <Text style={s.note}>
             {counts
-              ? 'Изключи го, ако е платено с пари, които вече имаш настрана — от друга сметка или стари спестявания.'
+              ? t('Изключи го, ако е платено с пари, които вече имаш настрана — от друга сметка или стари спестявания.')
               : expense.goalId
-                ? 'Пари, които вече имаш настрана: пълнят целта, но не намаляват бюджета за месеца.'
-                : 'Остава в историята, но не намалява бюджета и не влиза в отчетите.'}
+                ? t('Пари, които вече имаш настрана: пълнят целта, но не намаляват бюджета за месеца.')
+                : t('Остава в историята, но не намалява бюджета и не влиза в отчетите.')}
           </Text>
         </>
       )}
       <View style={s.actions}>
-        {onEdit && <Pill icon="create-outline" label="Редактирай" variant="ink" onPress={() => onEdit(expense)} />}
+        {onEdit && <Pill icon="create-outline" label={t('Редактирай')} variant="ink" onPress={() => onEdit(expense)} />}
         <Pill
           icon="trash-outline"
-          label="Изтрий"
+          label={t('Изтрий')}
           variant="outline"
           textStyle={{ color: colors.danger }}
           style={{ borderColor: colors.faint }}

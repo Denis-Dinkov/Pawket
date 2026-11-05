@@ -2,6 +2,7 @@
 // A repeating notification can't skip a day, so the next 7 evenings are scheduled one by one
 // and rescheduled whenever the app opens or something is recorded.
 import { Platform } from 'react-native';
+import { t, getLang } from './i18n';
 
 let Notifications = null;
 try {
@@ -19,15 +20,19 @@ export const ACTION_ADD = 'add';
 export const remindersAvailable = () => !!Notifications;
 
 let setUp = false;
+// The action buttons are registered in the current language, again after the language changes
+let categoryLang = null;
 async function setUpOnce() {
-  if (setUp || !Notifications) return;
+  if (!Notifications) return;
+  if (setUp && categoryLang === getLang()) return;
+  categoryLang = getLang();
   setUp = true;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
   });
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
-    { identifier: ACTION_NO_SPEND, buttonTitle: 'Без разходи днес', options: { opensAppToForeground: true } },
-    { identifier: ACTION_ADD, buttonTitle: 'Запиши разход', options: { opensAppToForeground: true } },
+    { identifier: ACTION_NO_SPEND, buttonTitle: t('Без разходи днес'), options: { opensAppToForeground: true } },
+    { identifier: ACTION_ADD, buttonTitle: t('Запиши разход'), options: { opensAppToForeground: true } },
   ]).catch(() => {});
 }
 
@@ -46,7 +51,7 @@ export async function requestReminderPermission() {
  * Schedules the next 7 evenings at `hour`, skipping today if there's already an entry.
  * Turning the reminder off (enabled: false) just removes them.
  */
-export async function syncReminders({ enabled, hour = 20, petName = 'Чарли', activeToday = false, now = new Date() }) {
+export async function syncReminders({ enabled, hour = 20, petName = t('Чарли'), activeToday = false, now = new Date() }) {
   if (!Notifications) return;
   try {
     await setUpOnce();
@@ -63,8 +68,8 @@ export async function syncReminders({ enabled, hour = 20, petName = 'Чарли'
       await Notifications.scheduleNotificationAsync({
         identifier: `${PREFIX}${i}`,
         content: {
-          title: `${petName} е гладен 🦴`,
-          body: 'Похарчи ли нещо днес? Запиши го или натисни „Без разходи днес“.',
+          title: t('{0} е гладен 🦴', { 0: petName }),
+          body: t('Похарчи ли нещо днес? Запиши го или натисни „Без разходи днес“.'),
           categoryIdentifier: CATEGORY,
           data: { kind: 'evening' },
         },
@@ -90,8 +95,8 @@ export async function scheduleWishReminder({ id, name, at }) {
     await Notifications.scheduleNotificationAsync({
       identifier: `${WISH_PREFIX}${id}`,
       content: {
-        title: `48 часа минаха ⏳`,
-        body: `Още ли искаш „${name}“? Реши в „Планове“.`,
+        title: t('48 часа минаха ⏳'),
+        body: t('Още ли искаш „{0}“? Реши в „Планове“.', { 0: name }),
         data: { kind: 'wish' },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },

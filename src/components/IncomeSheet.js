@@ -11,6 +11,7 @@ import { colors, radius, MONTHS, money, incomeKindById } from '../theme';
 import { sortByDateDesc } from '../budget';
 import { dayLabel } from '../format';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 // Income for the month: the monthly income setting + recorded income entries
 export default function IncomeSheet({ visible, onClose, info, year, month, onAdd, onEdit, onDelete }) {
@@ -19,7 +20,7 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
   return (
     <Sheet visible={visible} onClose={onClose}>
       <Text style={s.title}>
-        Доходи · {MONTHS[month]} {year}
+        {t('Доходи · {0} {1}', { 0: MONTHS[month], 1: year })}
       </Text>
       <Money value={info.total} size={36} color={colors.savings} prefix="+" style={{ textAlign: 'center', marginTop: 6 }} />
 
@@ -27,8 +28,8 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
         <View style={s.row}>
           <IconBadge icon="calendar-outline" color={colors.needs} size={42} />
           <View style={{ flex: 1 }}>
-            <Text style={s.name}>Месечен доход</Text>
-            <Text style={s.sub}>{replaced ? 'заменен от записаната заплата' : 'от настройките'}</Text>
+            <Text style={s.name}>{t('Месечен доход')}</Text>
+            <Text style={s.sub}>{replaced ? t('заменен от записаната заплата') : t('от настройките')}</Text>
           </View>
           <Text style={[s.amount, replaced && s.struck]}>+{money(info.base)}</Text>
         </View>
@@ -40,7 +41,7 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
               style={[s.row, s.sep]}
               onLongPress={() => confirmDelete(e, () => onDelete(e.id))}
               onPress={() => onEdit(e)}
-              accessibilityHint="Отваря дохода за промяна. Задръж, за да го изтриеш."
+              accessibilityHint={t('Отваря дохода за промяна. Задръж, за да го изтриеш.')}
             >
               <IconBadge icon={k.icon} color={colors.savings} size={42} />
               <View style={{ flex: 1 }}>
@@ -54,11 +55,11 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
           );
         })}
       </View>
-      {info.list.length > 0 && <Text style={s.hint}>Натисни доход, за да го промениш. Задръж, за да го изтриеш.</Text>}
+      {info.list.length > 0 && <Text style={s.hint}>{t('Натисни доход, за да го промениш. Задръж, за да го изтриеш.')}</Text>}
 
       <Touch style={s.add} onPress={onAdd}>
         <Ionicons name="add" size={20} color={colors.onAccent} />
-        <Text style={s.addText}>Добави доход</Text>
+        <Text style={s.addText}>{t('Добави доход')}</Text>
       </Touch>
     </Sheet>
   );

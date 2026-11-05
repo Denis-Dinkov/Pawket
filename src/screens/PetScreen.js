@@ -30,8 +30,10 @@ import PetStatSheet from '../components/PetStatSheet';
 import YearReviewSheet from '../components/YearReviewSheet';
 import { AdviceCard } from '../components/AdviceSheet';
 import { themed } from '../themed';
+import { t, tList } from '../i18n';
 
-const WEEK = ['П', 'В', 'С', 'Ч', 'П', 'С', 'Н'];
+// The first letter of each short day name: П В С Ч П С Н / M T W T F S S
+const WEEK_SHORT = tList(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']);
 
 // Today, while nothing is recorded yet: the empty ring breathes, asking for an entry
 function Pulse({ children, active }) {
@@ -110,7 +112,7 @@ export default function PetScreen() {
           insetTop={insets.top}
           height={300}
           bubble={bubble}
-          bubbleAction={!activeToday ? { label: 'Без разходи днес 🦴', onPress: feed } : null}
+          bubbleAction={!activeToday ? { label: t('Без разходи днес 🦴'), onPress: feed } : null}
           onBubble={() => setStatOpen('mood')}
           onStat={setStatOpen}
           bounceKey={pet.lastFedAt}
@@ -132,16 +134,16 @@ export default function PetScreen() {
                 </View>
               </StreakCount>
               <View style={{ flex: 1 }}>
-                <Text style={s.h2}>Серия: {plural(current, 'ден', 'дни')} 🔥</Text>
-                <Text style={s.muted}>Най-дълга: {plural(pet.bestStreak || current, 'ден', 'дни')} · запиши нещо всеки ден</Text>
+                <Text style={s.h2}>{t('Серия: {0} 🔥', { 0: plural(current, t('ден'), t('дни')) })}</Text>
+                <Text style={s.muted}>{t('Най-дълга: {0} · запиши нещо всеки ден', { 0: plural(pet.bestStreak || current, t('ден'), t('дни')) })}</Text>
               </View>
             </View>
-            <View style={s.week} accessible accessibilityLabel={`Тази седмица: ${WEEK.map((d, i) => {
+            <View style={s.week} accessible accessibilityLabel={t('Тази седмица: {0}', { 0: [...WEEK_SHORT].map((d) => d.charAt(0)).map((d, i) => {
               const day = new Date(start);
               day.setDate(start.getDate() + i);
-              return `${d} ${days.has(dayKey(day)) ? 'да' : 'не'}`;
-            }).join(', ')}`}>
-              {WEEK.map((d, i) => {
+              return `${d} ${days.has(dayKey(day)) ? t('да') : t('не')}`;
+            }).join(', ') })}>
+              {[...WEEK_SHORT].map((d) => d.charAt(0)).map((d, i) => {
                 const day = new Date(start);
                 day.setDate(start.getDate() + i);
                 const done = days.has(dayKey(day));
@@ -160,10 +162,10 @@ export default function PetScreen() {
             </View>
           </Card>
 
-          <Text style={s.section} accessibilityRole="header">Мисии тази седмица</Text>
+          <Text style={s.section} accessibilityRole="header">{t('Мисии тази седмица')}</Text>
           <Card style={{ gap: 14 }}>
             {missions.map((m) => (
-              <View key={m.id} style={{ gap: 6 }} accessible accessibilityLabel={`${m.title}: ${m.done ? 'изпълнена' : `${m.n} от ${m.of}`}`}>
+              <View key={m.id} style={{ gap: 6 }} accessible accessibilityLabel={`${m.title}: ${m.done ? t('изпълнена') : t('{0} от {1}', { 0: m.n, 1: m.of })}`}>
                 <View style={s.head}>
                   <Ionicons name={m.done ? 'checkmark-circle' : m.icon} size={22} color={m.done ? colors.savings : colors.primary} />
                   <Text style={[s.mission, m.done && { color: colors.muted }]}>{m.title}</Text>
@@ -172,11 +174,11 @@ export default function PetScreen() {
                 {!m.done && <Bar value={m.n / m.of} color={colors.primary} height={5} />}
               </View>
             ))}
-            <Text style={s.muted}>Нови мисии всеки понеделник. Изпълнени досега: {missionsTotal(pet)}.</Text>
+            <Text style={s.muted}>{t('Нови мисии всеки понеделник. Изпълнени досега: {0}.', { 0: missionsTotal(pet) })}</Text>
           </Card>
 
-          <Text style={s.section} accessibilityRole="header">Награди за {pet.name}</Text>
-          <Text style={s.muted}>Отключват се с навици, не с пари. Докосни отключена награда, за да я сложиш.</Text>
+          <Text style={s.section} accessibilityRole="header">{t('Награди за {0}', { 0: pet.name })}</Text>
+          <Text style={s.muted}>{t('Отключват се с навици, не с пари. Докосни отключена награда, за да я сложиш.')}</Text>
           <View style={s.rewards}>
             {rewards.map((r) => {
               const on = outfit[r.slot] === r.id;
@@ -187,7 +189,7 @@ export default function PetScreen() {
                   disabled={!r.unlocked}
                   style={[s.reward, on && s.rewardOn, !r.unlocked && { opacity: 0.55 }]}
                   onPress={() => wearItem(r.id)}
-                  accessibilityLabel={`${r.name}, ${r.slot === 'head' ? 'на главата' : 'на врата'}, ${r.unlocked ? (on ? 'сложена' : 'отключена') : `заключена: ${r.need}`}`}
+                  accessibilityLabel={`${r.name}, ${r.slot === 'head' ? t('на главата') : t('на врата')}, ${r.unlocked ? (on ? t('сложена') : t('отключена')) : t('заключена: {0}', { 0: r.need })}`}
                   accessibilityState={{ selected: on, disabled: !r.unlocked }}
                 >
                   {r.unlocked ? <ItemPreview id={r.id} size={44} /> : (
@@ -197,16 +199,16 @@ export default function PetScreen() {
                   )}
                   <Text style={s.rewardName} numberOfLines={2}>{r.name}</Text>
                   <Text style={[s.rewardNeed, on && { color: colors.primary, fontWeight: '700' }]} numberOfLines={2}>
-                    {r.unlocked ? (on ? 'Сложена' : r.slot === 'head' ? 'За главата' : 'За врата') : r.need}
+                    {r.unlocked ? (on ? t('Сложена') : r.slot === 'head' ? t('За главата') : t('За врата')) : r.need}
                   </Text>
                 </Touch>
               );
             })}
           </View>
-          <Text style={s.muted}>Може по едно нещо на главата и едно на врата.</Text>
+          <Text style={s.muted}>{t('Може по едно нещо на главата и едно на врата.')}</Text>
 
           {/* Growth: four little Charlies, what each stage adds, and how far the next one is */}
-          <Text style={s.section} accessibilityRole="header">Растеж</Text>
+          <Text style={s.section} accessibilityRole="header">{t('Растеж')}</Text>
           <Card style={{ gap: 14 }}>
             <View style={s.path}>
               {STAGES.map((st, i) => {
@@ -217,7 +219,7 @@ export default function PetScreen() {
                     key={st.key}
                     style={[s.step, isCurrent && s.stepOn]}
                     accessible
-                    accessibilityLabel={`${st.name}, ${st.xp} XP${reached ? (isCurrent ? ', сегашният етап' : ', достигнат') : ', предстои'}. ${STAGE_PERKS[st.key]}`}
+                    accessibilityLabel={`${st.name}, ${st.xp} XP${reached ? (isCurrent ? t(', сегашният етап') : t(', достигнат')) : t(', предстои')}. ${STAGE_PERKS[st.key]}`}
                   >
                     <View style={[s.stepPet, !reached && { opacity: 0.5 }]}>
                       <Pet expression="happy" stage={st.key} size={58} animate={false} />
@@ -225,7 +227,7 @@ export default function PetScreen() {
                     <Text style={[s.stepName, !reached && { color: colors.muted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                       {st.name}
                     </Text>
-                    <Text style={s.stepXp}>{i === 0 ? 'старт' : `${st.xp} XP`}</Text>
+                    <Text style={s.stepXp}>{i === 0 ? t('старт') : `${st.xp} XP`}</Text>
                   </View>
                 );
               })}
@@ -233,8 +235,8 @@ export default function PetScreen() {
             <Bar value={status.progress} color={colors.needs} height={6} label={`${pet.xp || 0} XP`} />
             <Text style={s.muted}>
               {status.next
-                ? `${pet.xp || 0} XP · още ${status.next.xp - (pet.xp || 0)} до „${status.next.name}“. Ще получи: ${STAGE_PERKS[status.next.key]}.`
-                : `${pet.xp || 0} XP · най-високият етап. ${pet.name} носи корона.`}
+                ? t('{0} XP · още {1} до „{2}“. Ще получи: {3}.', { 0: pet.xp || 0, 1: status.next.xp - (pet.xp || 0), 2: status.next.name, 3: STAGE_PERKS[status.next.key] })
+                : t('{0} XP · най-високият етап. {1} носи корона.', { 0: pet.xp || 0, 1: pet.name })}
             </Text>
           </Card>
 
@@ -242,8 +244,8 @@ export default function PetScreen() {
             <Card style={s.reviewCard}>
               <Ionicons name="calendar" size={24} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={s.h2}>Твоята {reviewYear} с {pet.name}</Text>
-                <Text style={s.muted}>Най-добрият месец, топ категория, спестено</Text>
+                <Text style={s.h2}>{t('Твоята {0} с {1}', { 0: reviewYear, 1: pet.name })}</Text>
+                <Text style={s.muted}>{t('Най-добрият месец, топ категория, спестено')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.muted} />
             </Card>
@@ -251,10 +253,10 @@ export default function PetScreen() {
 
           {advice.length > 0 && (
             <>
-              <Text style={s.section} accessibilityRole="header">Съвети</Text>
+              <Text style={s.section} accessibilityRole="header">{t('Съвети')}</Text>
               <View style={{ gap: 12 }}>
-                {advice.map((t) => (
-                  <AdviceCard key={t.id} tip={t} />
+                {advice.map((tip) => (
+                  <AdviceCard key={tip.id} tip={tip} />
                 ))}
               </View>
             </>

@@ -5,6 +5,7 @@ import { colors, radius } from '../../theme';
 import useKeyboardHeight from '../../hooks/useKeyboardHeight';
 import { themed } from '../../themed';
 import { DURATION, EASE_IN, SPRING, motionReduced } from '../../motion';
+import { t } from '../../i18n';
 
 const OFFSCREEN = 500;
 
@@ -59,7 +60,7 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={s.root} pointerEvents={visible ? 'auto' : 'none'}>
         <Animated.View style={[StyleSheet.absoluteFill, s.backdrop, { opacity: backdrop }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Затвори" />
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('Затвори')} />
         </Animated.View>
         <Animated.View
           style={[

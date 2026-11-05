@@ -24,8 +24,8 @@ export default function Toast({ toast: current, onDismiss, bottom = 110 }) {
         y.setValue(0);
         Animated.spring(y, { toValue: 1, useNativeDriver: true, ...SPRING.standard }).start();
       }
-      const t = setTimeout(onDismiss, VISIBLE_MS);
-      return () => clearTimeout(t);
+      const timer = setTimeout(onDismiss, VISIBLE_MS);
+      return () => clearTimeout(timer);
     }
     if (motionReduced()) {
       setShown(null);

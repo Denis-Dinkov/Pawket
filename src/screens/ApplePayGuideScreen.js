@@ -10,13 +10,14 @@ import IconBadge from '../components/ui/IconBadge';
 import Pill from '../components/ui/Pill';
 import Touch from '../components/ui/Touch';
 import { themed } from '../themed';
+import { t, tList } from '../i18n';
 
 const STEPS = [
-  ['Отвори „Команди“', 'Приложението Shortcuts → раздел „Автоматизация“ → бутон „+“.'],
-  ['Избери „Транзакция“', 'Отбележи картите си от Wallet. Избери „Изпълни веднага“ и натисни „Напред“.'],
-  ['Кодирай търговеца', 'Нова празна автоматизация → действие „URL кодиране“ → в него сложи „Търговец“ от входа на командата.'],
-  ['Отвори Pawket', 'Добави „Отвори URL адреси“ и постави шаблона отдолу. Замени [Сума] със „Сума“, а [Търговец] — с резултата от „URL кодиране“.'],
-  ['Готово!', 'След следващото плащане Pawket ще се отвори с попълнени сума и магазин. Избираш категория и „Запази“.'],
+  tList(['Отвори „Команди“', 'Приложението Shortcuts → раздел „Автоматизация“ → бутон „+“.']),
+  tList(['Избери „Транзакция“', 'Отбележи картите си от Wallet. Избери „Изпълни веднага“ и натисни „Напред“.']),
+  tList(['Кодирай търговеца', 'Нова празна автоматизация → действие „URL кодиране“ → в него сложи „Търговец“ от входа на командата.']),
+  tList(['Отвори Pawket', 'Добави „Отвори URL адреси“ и постави шаблона отдолу. Замени [Сума] със „Сума“, а [Търговец] — с резултата от „URL кодиране“.']),
+  tList(['Готово!', 'След следващото плащане Pawket ще се отвори с попълнени сума и магазин. Избираш категория и „Запази“.']),
 ];
 
 // Guide for the Shortcuts automation that opens "New expense" after Apple Pay
@@ -33,15 +34,15 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
       <View style={s.header}>
         <Touch onPress={onClose} hitSlop={12} style={s.back}>
           <Ionicons name="chevron-back" size={18} color={colors.primary} />
-          <Text style={s.backText}>Назад</Text>
+          <Text style={s.backText}>{t('Назад')}</Text>
         </Touch>
       </View>
 
       <View style={s.hero}>
         <IconBadge icon="logo-apple" color={colors.ink} size={64} solid />
-        <Text style={s.h1}>Запис след Apple Pay</Text>
+        <Text style={s.h1}>{t('Запис след Apple Pay')}</Text>
         <Text style={s.sub}>
-          След всяко плащане iPhone отваря Pawket с попълнени сума и магазин. Категорията я помня по магазина — често стига едно „Запази“.
+          {t('След всяко плащане iPhone отваря Pawket с попълнени сума и магазин. Категорията я помня по магазина — често стига едно „Запази“.')}
         </Text>
       </View>
 
@@ -59,29 +60,29 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
         ))}
       </Card>
 
-      <Text style={s.section}>Шаблон за „Отвори URL адреси“</Text>
+      <Text style={s.section}>{t('Шаблон за „Отвори URL адреси“')}</Text>
       <Touch onPress={copy} style={s.template}>
         <Text style={s.code} selectable>
           {APPLE_PAY_TEMPLATE}
         </Text>
         <View style={s.copy}>
           <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color="#fff" />
-          <Text style={s.copyText}>{copied ? 'Копирано' : 'Копирай'}</Text>
+          <Text style={s.copyText}>{copied ? t('Копирано') : t('Копирай')}</Text>
         </View>
       </Touch>
 
       <Pill
         icon="flash-outline"
-        label="Пробвай как изглежда"
+        label={t('Пробвай как изглежда')}
         variant="soft"
         style={{ alignSelf: 'center', marginTop: 18 }}
         onPress={() => onTry({ amount: 4.8, merchant: 'Starbucks', source: 'applepay' })}
       />
 
       <View style={s.notes}>
-        <Text style={s.note}>• Изисква iOS 17 или по-нов.</Text>
-        <Text style={s.note}>• Работи за плащания с картите в Apple Wallet (телефон или часовник).</Text>
-        <Text style={s.note}>• Някои банки подават плащането със закъснение от няколко секунди.</Text>
+        <Text style={s.note}>{t('• Изисква iOS 17 или по-нов.')}</Text>
+        <Text style={s.note}>{t('• Работи за плащания с картите в Apple Wallet (телефон или часовник).')}</Text>
+        <Text style={s.note}>{t('• Някои банки подават плащането със закъснение от няколко секунди.')}</Text>
       </View>
     </ScrollView>
   );

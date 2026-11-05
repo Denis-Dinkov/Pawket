@@ -1,6 +1,7 @@
 // Recurring payments and savings goals. Pure logic, no RN imports.
 import { monthKey, shiftMonth, countsInBudget, spendRoom } from './budget';
 import { categoryById } from './theme';
+import { t } from './i18n';
 
 const parseKey = (key) => {
   const [y, m] = key.split('-').map(Number);
@@ -177,9 +178,9 @@ export const wishHoursLeft = (wish, now = new Date()) =>
 
 // Ready-made sinking funds for yearly costs
 export const FUND_PRESETS = [
-  { name: 'Застраховка', icon: 'shield-checkmark' },
-  { name: 'Данъци', icon: 'document-text' },
-  { name: 'ГТП и гуми', icon: 'car' },
-  { name: 'Коледа', icon: 'gift' },
-  { name: 'Ваканция', icon: 'airplane' },
+  { get name() { return t('Застраховка'); }, icon: 'shield-checkmark' },
+  { get name() { return t('Данъци'); }, icon: 'document-text' },
+  { get name() { return t('ГТП и гуми'); }, icon: 'car' },
+  { get name() { return t('Коледа'); }, icon: 'gift' },
+  { get name() { return t('Ваканция'); }, icon: 'airplane' },
 ];

@@ -10,6 +10,7 @@ import { yearReview } from '../yearReview';
 import { plural } from '../format';
 import { themed } from '../themed';
 import { outfitOf } from '../pet/outfit';
+import { t } from '../i18n';
 
 function Fact({ icon, color, label, value, sub }) {
   return (
@@ -33,27 +34,27 @@ export default function YearReviewSheet({ visible, onClose, year, data, pet, sta
     <Sheet visible={visible} onClose={onClose} maxHeight={0.94}>
       <View style={s.hero}>
         <Pet expression="ecstatic" stage={stage} {...outfitOf(pet)} size={110} />
-        <Text style={s.title} accessibilityRole="header">Твоята {year} с {pet?.name}</Text>
-        <Text style={s.sub}>{plural(r.count, 'плащане', 'плащания')} за годината</Text>
+        <Text style={s.title} accessibilityRole="header">{t('Твоята {0} с {1}', { 0: year, 1: pet?.name })}</Text>
+        <Text style={s.sub}>{t('{0} за годината', { 0: plural(r.count, t('плащане'), t('плащания')) })}</Text>
       </View>
 
       {r.count === 0 ? (
-        <Text style={s.sub}>Още няма разходи за {year}.</Text>
+        <Text style={s.sub}>{t('Още няма разходи за {0}.', { 0: year })}</Text>
       ) : (
         <>
           <View style={s.totals}>
             <View style={s.total}>
-              <Text style={s.factLabel}>Похарчено</Text>
+              <Text style={s.factLabel}>{t('Похарчено')}</Text>
               <Money value={r.total - r.saved} size={24} />
             </View>
             <View style={s.total}>
-              <Text style={s.factLabel}>Спестено</Text>
+              <Text style={s.factLabel}>{t('Спестено')}</Text>
               <Money value={r.saved} size={24} color={colors.savings} />
             </View>
           </View>
 
           {/* Spending per month: the best month is marked with a star */}
-          <View style={s.chart} accessible accessibilityLabel={`Разходи по месеци: ${r.months.map((m) => `${MONTHS[m.month]} ${money(m.total)}`).join(', ')}`}>
+          <View style={s.chart} accessible accessibilityLabel={t('Разходи по месеци: {0}', { 0: r.months.map((m) => `${MONTHS[m.month]} ${money(m.total)}`).join(', ') })}>
             {r.months.map((m) => (
               <View key={m.month} style={s.col}>
                 <View style={s.track}>
@@ -71,23 +72,23 @@ export default function YearReviewSheet({ visible, onClose, year, data, pet, sta
 
           <View style={s.facts}>
             {r.best && (
-              <Fact icon="star" color={colors.savings} label="Най-добър месец" value={MONTHS[r.best.month]} sub={`оценка ${r.best.score}/100`} />
+              <Fact icon="star" color={colors.savings} label={t('Най-добър месец')} value={MONTHS[r.best.month]} sub={t('оценка {0}/100', { 0: r.best.score })} />
             )}
-            {r.avgScore != null && <Fact icon="ribbon" color={colors.primary} label="Средна оценка" value={`${r.avgScore}/100`} />}
+            {r.avgScore != null && <Fact icon="ribbon" color={colors.primary} label={t('Средна оценка')} value={`${r.avgScore}/100`} />}
             {r.topCategory && (
               <Fact
                 icon={r.topCategory.icon}
                 color={BUCKETS[r.topCategory.bucket].color}
-                label="Най-много пари отидоха за"
+                label={t('Най-много пари отидоха за')}
                 value={r.topCategory.name}
                 sub={money(r.topCategory.value)}
               />
             )}
             {r.topMerchant && (
-              <Fact icon="storefront" color={colors.wants} label="Най-често пазаруваш в" value={r.topMerchant.name} sub={`${plural(r.topMerchant.count, 'път', 'пъти')} · ${money(r.topMerchant.value)}`} />
+              <Fact icon="storefront" color={colors.wants} label={t('Най-често пазаруваш в')} value={r.topMerchant.name} sub={`${plural(r.topMerchant.count, t('път'), t('пъти'))} · ${money(r.topMerchant.value)}`} />
             )}
-            {r.priciest && <Fact icon="trending-up" color={colors.danger} label="Най-скъп месец" value={MONTHS[r.priciest.month]} sub={money(r.priciest.total)} />}
-            {pet?.bestStreak > 0 && <Fact icon="flame" color={colors.orange} label="Най-дълга серия" value={plural(pet.bestStreak, 'ден', 'дни')} />}
+            {r.priciest && <Fact icon="trending-up" color={colors.danger} label={t('Най-скъп месец')} value={MONTHS[r.priciest.month]} sub={money(r.priciest.total)} />}
+            {pet?.bestStreak > 0 && <Fact icon="flame" color={colors.orange} label={t('Най-дълга серия')} value={plural(pet.bestStreak, t('ден'), t('дни'))} />}
           </View>
         </>
       )}

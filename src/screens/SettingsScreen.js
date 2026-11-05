@@ -3,9 +3,9 @@ import { View, ScrollView, Alert, Platform, Switch, Linking } from 'react-native
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
-import { colors, MONTHS, BUCKETS, money, radius } from '../theme';
+import { colors, MONTHS, BUCKETS, money, radius, monthLower } from '../theme';
 import { getIncome } from '../budget';
-import { cleanAmountInput } from '../format';
+import { cleanAmountInput, amountText } from '../format';
 import { stageFor } from '../pet/logic';
 import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
@@ -20,16 +20,17 @@ import { liveActivityAvailable } from '../widget/liveActivity';
 import { backupAvailable, shareBackup, pickBackup } from '../backup';
 import { dayLabel, plural } from '../format';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
-const parseMoney = (t) => parseFloat(String(t).replace(/\s/g, '').replace(',', '.')) || 0;
+const parseMoney = (text) => parseFloat(String(text).replace(/\s/g, '').replace(',', '.')) || 0;
 
-function confirm(title, msg, onYes, yes = 'Изтрий') {
+function confirm(title, msg, onYes, yes = t('Изтрий')) {
   if (Platform.OS === 'web') {
     if (window.confirm(`${title}\n\n${msg}`)) onYes();
     return;
   }
   Alert.alert(title, msg, [
-    { text: 'Отказ', style: 'cancel' },
+    { text: t('Отказ'), style: 'cancel' },
     { text: yes, style: 'destructive', onPress: onYes },
   ]);
 }
@@ -45,9 +46,9 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
     if (!on) return setSettings({ reminder: { ...reminder, enabled: false } });
     const granted = await requestReminderPermission();
     if (!granted) {
-      Alert.alert('Известията са изключени', 'Разреши известията за Pawket от Настройки на телефона, за да получаваш напомняне.', [
-        { text: 'Отказ', style: 'cancel' },
-        { text: 'Отвори Настройки', onPress: () => Linking.openSettings() },
+      Alert.alert(t('Известията са изключени'), t('Разреши известията за Pawket от Настройки на телефона, за да получаваш напомняне.'), [
+        { text: t('Отказ'), style: 'cancel' },
+        { text: t('Отвори Настройки'), onPress: () => Linking.openSettings() },
       ]);
       return undefined;
     }
@@ -60,7 +61,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
     try {
       await shareBackup(exportData());
     } catch {
-      showToast({ text: 'Архивът не се запази. Опитай пак.', icon: 'alert-circle' });
+      showToast({ text: t('Архивът не се запази. Опитай пак.'), icon: 'alert-circle' });
     } finally {
       setBackupBusy(false);
     }
@@ -71,14 +72,14 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
       const backup = await pickBackup();
       if (!backup) return;
       const count = backup.data.expenses.length;
-      const when = backup.exportedAt ? dayLabel(backup.exportedAt) : 'неизвестна дата';
-      confirm('Възстановяване от архив', `Архив от ${when} с ${plural(count, 'плащане', 'плащания')}. Сегашните данни ще бъдат заменени.`, () => {
+      const when = backup.exportedAt ? dayLabel(backup.exportedAt) : t('неизвестна дата');
+      confirm(t('Възстановяване от архив'), t('Архив от {0} с {1}. Сегашните данни ще бъдат заменени.', { 0: when, 1: plural(count, t('плащане'), t('плащания')) }), () => {
         restoreData(backup);
-        showToast({ text: 'Данните са възстановени', icon: 'checkmark-circle' });
+        showToast({ text: t('Данните са възстановени'), icon: 'checkmark-circle' });
         onClose();
-      }, 'Възстанови');
+      }, t('Възстанови'));
     } catch (e) {
-      Alert.alert('Не мога да отворя архива', e.message);
+      Alert.alert(t('Не мога да отворя архива'), e.message);
     }
   };
   const [newCategory, setNewCategory] = useState(false);
@@ -87,7 +88,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
   const y = now.getFullYear();
   const m = now.getMonth();
   const current = getIncome(incomes, y, m);
-  const [incomeText, setIncomeText] = useState(current ? String(current).replace('.', ',') : '');
+  const [incomeText, setIncomeText] = useState(amountText(current));
   const [name, setName] = useState(pet?.name || '');
   const { stage, next } = stageFor(pet?.xp || 0);
 
@@ -102,7 +103,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
       <View style={s.header}>
         <View style={{ width: 60 }} />
-        <Text style={s.title}>Настройки</Text>
+        <Text style={s.title}>{t('Настройки')}</Text>
         <Touch
           hitSlop={12}
           onPress={() => {
@@ -111,20 +112,20 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             onClose();
           }}
         >
-          <Text style={s.done}>Готово</Text>
+          <Text style={s.done}>{t('Готово')}</Text>
         </Touch>
       </View>
 
       <Card style={{ marginTop: 20 }}>
-        <Text style={s.label}>Месечен доход</Text>
+        <Text style={s.label}>{t('Месечен доход')}</Text>
         <View style={s.incomeRow}>
           <TextInput
             value={incomeText}
-            onChangeText={(t) => setIncomeText(cleanAmountInput(t))}
+            onChangeText={(text) => setIncomeText(cleanAmountInput(text))}
             maxLength={10}
             onEndEditing={saveIncome}
             onBlur={saveIncome}
-            placeholder="Въведи доход"
+            placeholder={t('Въведи доход')}
             placeholderTextColor={colors.muted}
             keyboardType="decimal-pad"
             style={s.incomeInput}
@@ -132,7 +133,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <Text style={s.currency}>€</Text>
         </View>
         <Text style={s.hint}>
-          Важи от {MONTHS[m].toLowerCase()} {y} нататък — миналите месеци пазят своя доход.
+          {t('Важи от {0} {1} нататък — миналите месеци пазят своя доход.', { 0: monthLower(m), 1: y })}
         </Text>
         {income > 0 && (
           <View style={s.split}>
@@ -147,17 +148,17 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
         <View style={s.petRow}>
           <Pet expression="happy" stage={stage.key} size={70} />
           <View style={{ flex: 1 }}>
-            <Text style={s.label}>Име на кучето</Text>
+            <Text style={s.label}>{t('Име на кучето')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
               onEndEditing={() => setPetName(name)}
-              placeholder="Чарли"
+              placeholder={t('Чарли')}
               placeholderTextColor={colors.muted}
               style={s.nameInput}
             />
             <Text style={s.hint}>
-              {stage.name} · {pet?.xp || 0} XP{next ? ` · ${next.name} при ${next.xp} XP` : ''}
+              {stage.name} · {pet?.xp || 0} XP{next ? t(' · {0} при {1} XP', { 0: next.name, 1: next.xp }) : ''}
             </Text>
           </View>
         </View>
@@ -165,13 +166,13 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
 
       <Card style={{ marginTop: 14 }}>
         <View style={s.catHead}>
-          <Text style={s.label}>Моите категории</Text>
+          <Text style={s.label}>{t('Моите категории')}</Text>
           <Touch onPress={() => setNewCategory(true)} hitSlop={8}>
-            <Text style={s.addLink}>+ Нова</Text>
+            <Text style={s.addLink}>{t('+ Нова')}</Text>
           </Touch>
         </View>
         {mine.length === 0 ? (
-          <Text style={s.hint}>Добави свои категории — появяват се при „Нов разход“ в избраната част от 50/30/20.</Text>
+          <Text style={s.hint}>{t('Добави свои категории — появяват се при „Нов разход“ в избраната част от 50/30/20.')}</Text>
         ) : (
           mine.map((c) => (
             <View key={c.id} style={s.catRow}>
@@ -182,9 +183,9 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
               </View>
               <Touch
                 hitSlop={12}
-                accessibilityLabel={`Изтрий категория ${c.name}`}
+                accessibilityLabel={t('Изтрий категория {0}', { 0: c.name })}
                 onPress={() =>
-                  confirm('Изтриване на категория', `„${c.name}“ изчезва от избора. Старите разходи в нея се запазват.`, () =>
+                  confirm(t('Изтриване на категория'), t('„{0}“ изчезва от избора. Старите разходи в нея се запазват.', { 0: c.name }), () =>
                     removeCategory(c.id)
                   )
                 }
@@ -197,15 +198,26 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
       </Card>
 
       <Card style={{ marginTop: 14, gap: 10 }}>
-        <Text style={s.label}>Тема</Text>
+        <Text style={s.label}>{t('Тема')}</Text>
         <Segmented
           options={[
-            { key: 'system', label: 'Като телефона' },
-            { key: 'light', label: 'Светла' },
-            { key: 'dark', label: 'Тъмна' },
+            { key: 'system', label: t('Като телефона') },
+            { key: 'light', label: t('Светла') },
+            { key: 'dark', label: t('Тъмна') },
           ]}
           value={settings.theme}
           onChange={(theme) => setSettings({ theme })}
+        />
+        <Text style={[s.label, { marginTop: 6 }]}>{t('Език')}</Text>
+        {/* Each language is named in itself, so it can be found whatever the app is showing */}
+        <Segmented
+          options={[
+            { key: 'system', label: t('Като телефона') },
+            { key: 'bg', label: 'Български' },
+            { key: 'en', label: 'English' },
+          ]}
+          value={settings.language || 'system'}
+          onChange={(language) => setSettings({ language })}
         />
       </Card>
 
@@ -214,14 +226,14 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <View style={s.switchRow}>
             <IconBadge icon="phone-portrait-outline" color={colors.primary} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={s.linkTitle}>{pet?.name} в Dynamic Island</Text>
-              <Text style={s.hint}>До камерата: кучето и колко можеш да харчиш днес. Задръж, за да видиш повече.</Text>
+              <Text style={s.linkTitle}>{t('{0} в Dynamic Island', { 0: pet?.name })}</Text>
+              <Text style={s.hint}>{t('До камерата: кучето и колко можеш да харчиш днес. Задръж, за да видиш повече.')}</Text>
             </View>
             <Switch
               value={settings.liveActivity !== false}
               onValueChange={(v) => setSettings({ liveActivity: v })}
               trackColor={{ true: colors.primary }}
-              accessibilityLabel="Чарли в Dynamic Island"
+              accessibilityLabel={t('Чарли в Dynamic Island')}
             />
           </View>
         </Card>
@@ -232,10 +244,10 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <View style={s.switchRow}>
             <IconBadge icon="notifications-outline" color={colors.primary} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={s.linkTitle}>Вечерно напомняне</Text>
-              <Text style={s.hint}>Само в дните без запис: „{pet?.name} е гладен — похарчи ли нещо днес?“</Text>
+              <Text style={s.linkTitle}>{t('Вечерно напомняне')}</Text>
+              <Text style={s.hint}>{t('Само в дните без запис: „{0} е гладен — похарчи ли нещо днес?“', { 0: pet?.name })}</Text>
             </View>
-            <Switch value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel="Вечерно напомняне" />
+            <Switch value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel={t('Вечерно напомняне')} />
           </View>
           {reminder.enabled && (
             <Segmented
@@ -252,18 +264,18 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <View style={s.switchRow}>
             <IconBadge icon="cloud-upload-outline" color={colors.needs} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={s.linkTitle}>Архив на данните</Text>
+              <Text style={s.linkTitle}>{t('Архив на данните')}</Text>
               <Text style={[s.hint, backupAge != null && backupAge > 30 && { color: colors.danger }, backupAge == null && { color: colors.warning }]}>
                 {backupAge == null
-                  ? 'Още няма архив. Данните са само на този телефон.'
-                  : `Последен архив: ${dayLabel(lastBackupAt)}${backupAge > 30 ? ' — време е за нов' : ''}`}
+                  ? t('Още няма архив. Данните са само на този телефон.')
+                  : t('Последен архив: {0}{1}', { 0: dayLabel(lastBackupAt), 1: backupAge > 30 ? t(' — време е за нов') : '' })}
               </Text>
             </View>
           </View>
-          <Text style={s.hint}>Запази файла във „Файлове → iCloud Drive“ (или Google Drive). Така разходите и растежът на {pet?.name} оцеляват при смяна на телефон.</Text>
+          <Text style={s.hint}>{t('Запази файла във „Файлове → iCloud Drive“ (или Google Drive). Така разходите и растежът на {0} оцеляват при смяна на телефон.', { 0: pet?.name })}</Text>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            <Pill icon="share-outline" label={backupBusy ? 'Подготвям…' : 'Запази архив'} variant="ink" onPress={backupBusy ? undefined : saveBackup} />
-            <Pill icon="download-outline" label="Възстанови" variant="outline" onPress={loadBackup} />
+            <Pill icon="share-outline" label={backupBusy ? t('Подготвям…') : t('Запази архив')} variant="ink" onPress={backupBusy ? undefined : saveBackup} />
+            <Pill icon="download-outline" label={t('Възстанови')} variant="outline" onPress={loadBackup} />
           </View>
         </Card>
       )}
@@ -273,8 +285,8 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <Card style={[s.linkRow, { marginTop: 14 }]}>
             <IconBadge icon="logo-apple" color={colors.ink} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={s.linkTitle}>Запис след Apple Pay</Text>
-              <Text style={s.hint}>Автоматично отваря „Нов разход“ след плащане</Text>
+              <Text style={s.linkTitle}>{t('Запис след Apple Pay')}</Text>
+              <Text style={s.hint}>{t('Автоматично отваря „Нов разход“ след плащане')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Card>
@@ -284,14 +296,14 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
       <Touch
         style={s.danger}
         onPress={() =>
-          confirm('Изтриване на всички данни', 'Разходите, доходите и кучето ще бъдат изтрити безвъзвратно.', () => {
+          confirm(t('Изтриване на всички данни'), t('Разходите, доходите и кучето ще бъдат изтрити безвъзвратно.'), () => {
             resetAll();
             onClose();
           })
         }
       >
         <Ionicons name="trash-outline" size={16} color={colors.danger} />
-        <Text style={s.dangerText}>Изтрий всички данни</Text>
+        <Text style={s.dangerText}>{t('Изтрий всички данни')}</Text>
       </Touch>
 
       <NewCategorySheet

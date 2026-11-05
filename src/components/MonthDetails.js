@@ -9,8 +9,9 @@ import { colors, BUCKETS, categoryById, money, moneyShort, pct } from '../theme'
 import { dayLabel, plural } from '../format';
 import { countsInBudget } from '../budget';
 import { themed } from '../themed';
+import { t, tList } from '../i18n';
 
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const WEEKDAYS = tList(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']);
 // Fixed monthly costs: left out of the day-to-day average, or one rent payment makes it meaningless
 const FIXED = new Set(['rent', 'bills', 'subscriptions']);
 const isDayToDay = (e) =>
@@ -66,23 +67,23 @@ export function SpendingChart({ ov, stats, year, month }) {
     <Card style={{ gap: 12 }}>
       <Segmented
         options={[
-          { key: 'days', label: 'По дни' },
-          { key: 'week', label: 'По седмица' },
+          { key: 'days', label: t('По дни') },
+          { key: 'week', label: t('По седмица') },
         ]}
         value={mode}
         onChange={setMode}
       />
       {mode === 'days' ? <DailyBars ov={ov} stats={stats} year={year} month={month} /> : <WeekdayBars stats={stats} />}
       <View style={s.pair}>
-        <View style={s.stat} accessible accessibilityLabel={`Средно на ден ${money(stats.avgPerDay)}, без наем, сметки и спестявания`}>
-          <Text style={s.statLabel}>Средно на ден</Text>
+        <View style={s.stat} accessible accessibilityLabel={t('Средно на ден {0}, без наем, сметки и спестявания', { 0: money(stats.avgPerDay) })}>
+          <Text style={s.statLabel}>{t('Средно на ден')}</Text>
           <Text style={s.statValue}>{money(stats.avgPerDay)}</Text>
-          <Text style={s.statSub}>без наем, сметки и спестявания</Text>
+          <Text style={s.statSub}>{t('без наем, сметки и спестявания')}</Text>
         </View>
-        <View style={s.stat} accessible accessibilityLabel={`Дни без разходи: ${stats.noSpendDays} от ${stats.elapsed}`}>
-          <Text style={s.statLabel}>Дни без разходи</Text>
+        <View style={s.stat} accessible accessibilityLabel={t('Дни без разходи: {0} от {1}', { 0: stats.noSpendDays, 1: stats.elapsed })}>
+          <Text style={s.statLabel}>{t('Дни без разходи')}</Text>
           <Text style={s.statValue}>
-            {stats.noSpendDays} <Text style={s.statOf}>от {stats.elapsed}</Text>
+            {stats.noSpendDays} <Text style={s.statOf}>{t('от {0}', { 0: stats.elapsed })}</Text>
           </Text>
         </View>
       </View>
@@ -103,8 +104,8 @@ function DailyBars({ ov, stats, year, month }) {
     <View>
       <Text style={s.caption}>
         {picked
-          ? `${dayLabel(new Date(year, month, sel + 1))}: ${money(picked.total)} · ${plural(picked.count, 'плащане', 'плащания')}`
-          : 'Натисни ден за детайли'}
+          ? `${dayLabel(new Date(year, month, sel + 1))}: ${money(picked.total)} · ${plural(picked.count, t('плащане'), t('плащания'))}`
+          : t('Натисни ден за детайли')}
       </Text>
       <View style={s.chart}>
         {lineAt != null && <View style={[s.line, { bottom: `${lineAt * 100}%` }]} />}
@@ -127,7 +128,7 @@ function DailyBars({ ov, stats, year, month }) {
         <Text style={s.axisText}>15</Text>
         <Text style={s.axisText}>{ov.progress.daysInMonth}</Text>
       </View>
-      {lineAt != null && <Text style={s.legend}>— — дневен бюджет по 50/30/20 ≈ {money(dailyBudget)}</Text>}
+      {lineAt != null && <Text style={s.legend}>{t('— — дневен бюджет по 50/30/20 ≈ {0}', { 0: money(dailyBudget) })}</Text>}
     </View>
   );
 }
@@ -152,7 +153,7 @@ function WeekdayBars({ stats }) {
         ))}
       </View>
       {Math.max(...stats.byWeekday) > 0 && (
-        <Text style={s.legend}>Най-много харчиш в {['понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота', 'неделя'][top]}.</Text>
+        <Text style={s.legend}>{t('Най-много харчиш в {0}.', { 0: [t('понеделник'), t('вторник'), t('сряда'), t('четвъртък'), t('петък'), t('събота'), t('неделя')][top] })}</Text>
       )}
     </View>
   );
@@ -163,7 +164,7 @@ export function TopMerchants({ stats, total }) {
   if (!stats.merchants.length) {
     return (
       <Card>
-        <Text style={s.legend}>Добавяй „Къде?“ при разходите, за да видиш най-скъпите си магазини.</Text>
+        <Text style={s.legend}>{t('Добавяй „Къде?“ при разходите, за да видиш най-скъпите си магазини.')}</Text>
       </Card>
     );
   }
@@ -180,7 +181,7 @@ export function TopMerchants({ stats, total }) {
                 {m.name}
               </Text>
               <Text style={s.mSub}>
-                {plural(m.count, 'плащане', 'плащания')} · средно {money(m.total / m.count)}
+                {t('{0} · средно {1}', { 0: plural(m.count, t('плащане'), t('плащания')), 1: money(m.total / m.count) })}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>

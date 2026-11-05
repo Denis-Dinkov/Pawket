@@ -1,12 +1,13 @@
+import { t } from './i18n';
 // The Home sections below the money card: order and visibility are kept in the store (homeLayout).
 // The dog's room and the money card are always on top.
 export const HOME_SECTIONS = [
-  { key: 'plans', name: 'Предстои и цел', icon: 'flag-outline' },
-  { key: 'missions', name: 'Мисии', icon: 'trophy-outline' },
-  { key: 'expenses', name: 'Разходи', icon: 'list' },
-  { key: 'today', name: 'Днес', icon: 'today-outline' },
-  { key: 'rule', name: 'Правило 50/30/20', icon: 'pie-chart' },
-  { key: 'topCats', name: 'Топ категории', icon: 'podium-outline' },
+  { key: 'plans', get name() { return t('Предстои и цел'); }, icon: 'flag-outline' },
+  { key: 'missions', get name() { return t('Мисии'); }, icon: 'trophy-outline' },
+  { key: 'expenses', get name() { return t('Разходи'); }, icon: 'list' },
+  { key: 'today', get name() { return t('Днес'); }, icon: 'today-outline' },
+  { key: 'rule', get name() { return t('Правило 50/30/20'); }, icon: 'pie-chart' },
+  { key: 'topCats', get name() { return t('Топ категории'); }, icon: 'podium-outline' },
 ];
 
 // v2 = the redesigned Home; v3 = the slimmer Home (missions moved to Charlie's tab).

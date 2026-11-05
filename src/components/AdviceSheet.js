@@ -8,6 +8,7 @@ import Pet from '../pet/Pet';
 import { colors, money } from '../theme';
 import { TONE_COLORS } from '../pet/advice';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 export function AdviceCard({ tip }) {
   return (
@@ -17,7 +18,7 @@ export function AdviceCard({ tip }) {
         <Text style={s.title}>{tip.title}</Text>
         <Text style={s.text}>{tip.text}</Text>
         {tip.saving > 1 && (
-          <Pill small variant="soft" icon="wallet-outline" label={`до ${money(tip.saving)} спестени`} style={{ marginTop: 10 }} textStyle={{ color: colors.savings }} />
+          <Pill small variant="soft" icon="wallet-outline" label={t('до {0} спестени', { 0: money(tip.saving) })} style={{ marginTop: 10 }} textStyle={{ color: colors.savings }} />
         )}
       </View>
     </View>
@@ -30,14 +31,14 @@ export default function AdviceSheet({ visible, onClose, advice, petName, express
     <Sheet visible={visible} onClose={onClose}>
       <View style={s.head}>
         <Pet expression={expression} stage={stage} size={110} />
-        <Text style={s.h1}>Съветите на {petName}</Text>
-        <Text style={s.sub}>Какво можеш да подобриш в бюджета си</Text>
+        <Text style={s.h1}>{t('Съветите на {0}', { 0: petName })}</Text>
+        <Text style={s.sub}>{t('Какво можеш да подобриш в бюджета си')}</Text>
       </View>
       <View style={{ gap: 12 }}>
-        {advice.map((t) => (
-          <AdviceCard key={t.id} tip={t} />
+        {advice.map((tip) => (
+          <AdviceCard key={tip.id} tip={tip} />
         ))}
-        {advice.length === 0 && <Text style={s.sub}>Всичко е наред — нямам забележки! 🐶</Text>}
+        {advice.length === 0 && <Text style={s.sub}>{t('Всичко е наред — нямам забележки! 🐶')}</Text>}
       </View>
     </Sheet>
   );

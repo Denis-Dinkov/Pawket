@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Text } from './AppText';
-import { colors, splitMoney } from '../../theme';
+import { colors, splitMoney, decimalSep, euroFirst } from '../../theme';
 import { themed } from '../../themed';
 import { useRollingNumber } from '../../motion';
+import { t } from '../../i18n';
 
 // Large amount: the integer part is bold, decimals and currency are faded.
 // It rolls to a new value instead of jumping; whole shows whole euros (for summaries).
@@ -19,13 +20,15 @@ export default function Money({ value, size = 44, color = colors.text, prefix = 
       numberOfLines={1}
       adjustsFontSizeToFit
       maxFontSizeMultiplier={maxFontSizeMultiplier}
-      accessibilityLabel={`${prefix}${final.sign ? 'минус ' : ''}${final.int}${final.dec ? `,${final.dec}` : ''} евро`}
+      accessibilityLabel={t('{0}{1}{2}{3} евро', { 0: prefix, 1: final.sign ? t('минус ') : '', 2: final.int, 3: final.dec ? `${decimalSep()}${final.dec}` : '' })}
     >
       {prefix}
       {sign}
+      {/* The euro sign: before the amount in English (€12.50), after it in Bulgarian (12,50 €) */}
+      {euroFirst() && <Text style={[s.faded, { fontSize: size * 0.6 }]}>€</Text>}
       {int}
-      {!!dec && <Text style={s.faded}>,{dec}</Text>}
-      <Text style={[s.faded, { fontSize: size * 0.6 }]}>{' €'}</Text>
+      {!!dec && <Text style={s.faded}>{decimalSep()}{dec}</Text>}
+      {!euroFirst() && <Text style={[s.faded, { fontSize: size * 0.6 }]}>{' €'}</Text>}
     </Text>
   );
 }

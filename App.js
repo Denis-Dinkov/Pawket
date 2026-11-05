@@ -1,5 +1,5 @@
 import React, { Activity, useCallback, useEffect, useRef, useState } from 'react';
-import { View, Modal, ActivityIndicator, Animated, Appearance, StyleSheet, useColorScheme } from 'react-native';
+import { View, Modal, ActivityIndicator, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,16 +29,17 @@ import Touch from './src/components/ui/Touch';
 import { syncReminders, listenToReminders, ACTION_NO_SPEND } from './src/reminders';
 import { syncLiveActivity } from './src/widget/liveActivity';
 import { themed } from './src/themed';
+import { t, getLang } from './src/i18n';
 
 // Widget and Dynamic Island updates wait until the flying amount after saving (~1.3 s) is done
 const SYNC_DELAY = 1500;
 
 const TABS = [
-  { key: 'home', icon: 'home', label: 'Начало' },
-  { key: 'stats', icon: 'stats-chart', label: 'Отчети' },
+  { key: 'home', icon: 'home', get label() { return t('Начало'); } },
+  { key: 'stats', icon: 'stats-chart', get label() { return t('Отчети'); } },
   null, // the "+" button sits in the middle
-  { key: 'plans', icon: 'flag', label: 'Планове' },
-  { key: 'pet', icon: 'paw', label: 'Чарли' },
+  { key: 'plans', icon: 'flag', get label() { return t('Планове'); } },
+  { key: 'pet', icon: 'paw', get label() { return t('Чарли'); } },
 ];
 
 // Only this re-renders when a toast comes and goes, not the whole screen behind it
@@ -72,23 +73,23 @@ function TabBar({ tab, onTab, onAdd, petName }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[s.tabBar, { paddingBottom: Math.max(insets.bottom, 10) }]} accessibilityRole="tablist">
-      {TABS.map((t) =>
-        !t ? (
-          <Touch key="add" haptic="medium" onPress={onAdd} style={s.fab} accessibilityLabel="Нов разход или доход">
+      {TABS.map((item) =>
+        !item ? (
+          <Touch key="add" haptic="medium" onPress={onAdd} style={s.fab} accessibilityLabel={t('Нов разход или доход')}>
             <Ionicons name="add" size={30} color={colors.onAccent} />
           </Touch>
         ) : (
           <Touch
-            key={t.key}
+            key={item.key}
             haptic="select"
             style={s.tab}
-            onPress={() => onTab(t.key)}
+            onPress={() => onTab(item.key)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t.key }}
+            accessibilityState={{ selected: tab === item.key }}
           >
-            <TabIcon name={t.icon} active={tab === t.key} />
-            <Text style={[s.tabText, tab === t.key && s.tabActive]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
-              {t.key === 'pet' ? petName : t.label}
+            <TabIcon name={item.icon} active={tab === item.key} />
+            <Text style={[s.tabText, tab === item.key && s.tabActive]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+              {item.key === 'pet' ? petName : item.label}
             </Text>
           </Touch>
         )
@@ -137,15 +138,22 @@ function Main() {
     if (!ready || !pet) return;
     syncReminders({ ...settings.reminder, petName: pet.name, activeToday });
   }, [ready, pet?.name, pet?.lastFedAt, activeToday, settings.reminder]);
+  // Coming back to the app counts too: iOS ends a Live Activity after 8 hours and it goes stale at
+  // midnight, so returning (even with nothing changed) starts a fresh one when needed
+  const [activeTick, setActiveTick] = useState(0);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setActiveTick((n) => n + 1));
+    return () => sub.remove();
+  }, []);
   // Dynamic Island: refreshed (with a short delay) after every change and when the app comes back
   useEffect(() => {
     if (!ready || !pet) return undefined;
-    const t = setTimeout(
+    const timer = setTimeout(
       () => syncLiveActivity({ enabled: settings.liveActivity !== false, data: { expenses, incomes, incomeEntries, recurring, pet } }),
       SYNC_DELAY
     );
-    return () => clearTimeout(t);
-  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity, snapshotTick]);
+    return () => clearTimeout(timer);
+  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity, snapshotTick, activeTick]);
 
   const onReminder = useCallback(
     (action) => (action === ACTION_NO_SPEND ? checkInNoSpend() : setAdding({ source: 'manual' })),
@@ -231,6 +239,8 @@ function Themed() {
   const pref = settings?.theme || 'system';
   const scheme = pref === 'system' ? (system === 'dark' ? 'dark' : 'light') : pref;
   applyScheme(scheme);
+  // The language is set by the store (before any text is made); a change remounts Main like the palette
+  const lang = getLang();
 
   // Native parts (alerts, keyboard, page sheets) follow the same choice
   useEffect(() => {
@@ -241,7 +251,7 @@ function Themed() {
     }
   }, [pref]);
 
-  return <Main key={scheme} />;
+  return <Main key={`${scheme}-${lang}`} />;
 }
 
 export default function App() {

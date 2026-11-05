@@ -4,12 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import Touch from './ui/Touch';
-import { colors, radius, MONTHS } from '../theme';
+import { colors, radius, MONTHS, monthLower } from '../theme';
 import { shiftMonth } from '../budget';
 import { sameDay } from '../format';
 import { themed } from '../themed';
+import { t, tList } from '../i18n';
 
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const WEEKDAYS = tList(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']);
 
 /**
  * A calendar for any past day (future days are disabled — expenses are recorded after they happen).
@@ -33,7 +34,7 @@ export default function DatePickerSheet({ visible, value, onSelect, onClose }) {
   return (
     <Sheet visible={visible} onClose={onClose}>
       <View style={s.head}>
-        <Touch style={s.nav} onPress={() => setShown(shiftMonth(year, month, -1))} accessibilityLabel="Предишен месец">
+        <Touch style={s.nav} onPress={() => setShown(shiftMonth(year, month, -1))} accessibilityLabel={t('Предишен месец')}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Touch>
         <Text style={s.title} accessibilityRole="header">
@@ -43,7 +44,7 @@ export default function DatePickerSheet({ visible, value, onSelect, onClose }) {
           style={[s.nav, isCurrentMonth && { opacity: 0.3 }]}
           disabled={isCurrentMonth}
           onPress={() => setShown(shiftMonth(year, month, 1))}
-          accessibilityLabel="Следващ месец"
+          accessibilityLabel={t('Следващ месец')}
         >
           <Ionicons name="chevron-forward" size={20} color={colors.text} />
         </Touch>
@@ -70,7 +71,7 @@ export default function DatePickerSheet({ visible, value, onSelect, onClose }) {
                 onClose();
               }}
               style={[s.cell, s.day, active && s.active, today && !active && s.today, future && { opacity: 0.3 }]}
-              accessibilityLabel={`${d} ${MONTHS[month].toLowerCase()} ${year}`}
+              accessibilityLabel={`${d} ${monthLower(month)} ${year}`}
               accessibilityState={{ selected: active, disabled: future }}
             >
               <Text style={[s.dayText, active && { color: colors.onAccent, fontWeight: '800' }]}>{d}</Text>

@@ -6,9 +6,10 @@ import Money from './ui/Money';
 import Touch from './ui/Touch';
 import Pill from './ui/Pill';
 import ProgressRing from './ui/ProgressRing';
-import { colors, BUCKETS, MONTHS, pct } from '../theme';
+import { colors, BUCKETS, MONTHS, pct, monthLower } from '../theme';
 import { scoreVerdict } from '../budget';
 import { themed } from '../themed';
+import { t } from '../i18n';
 
 
 // Top of Reports: the month's total, the change from last month, the score and the 50/30/20 shares.
@@ -17,8 +18,8 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
   const { income, total, byBucket, list, progress } = ov;
   const hasData = list.length > 0;
   const scored = hasData && income > 0;
-  const monthName = MONTHS[month].toLowerCase();
-  const prevName = MONTHS[(month + 11) % 12].toLowerCase();
+  const monthName = monthLower(month);
+  const prevName = monthLower((month + 11) % 12);
 
   return (
     <View>
@@ -26,17 +27,14 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
         <View style={{ flex: 1 }}>
           <Text style={s.label}>
             {/* The total includes the money put into savings, so it isn't called just "spent" then */}
-            {byBucket.savings > 0 ? 'Похарчено и заделено' : 'Похарчено'} през {monthName}
-            {progress.isCurrent ? ' досега' : ''}
+            {t('{0} през {1} {2}', { 0: byBucket.savings > 0 ? t('Похарчено и заделено') : t('Похарчено'), 1: monthName, 2: progress.isCurrent ? t(' досега') : '' })}
           </Text>
           <Money value={total} size={40} color={colors.text} />
           {vsPrev != null && Math.abs(vsPrev) >= 0.01 && (
             <View style={s.delta}>
               <Ionicons name={vsPrev > 0 ? 'trending-up' : 'trending-down'} size={14} color={vsPrev > 0 ? colors.danger : colors.savings} />
               <Text style={[s.deltaText, { color: vsPrev > 0 ? colors.danger : colors.savings }]}>
-                {vsPrev > 0 ? '+' : '−'}
-                {pct(Math.abs(vsPrev))} спрямо {prevName}
-                {progress.isCurrent ? ' до момента' : ''}
+                {t('{0} {1} спрямо {2} {3}', { 0: vsPrev > 0 ? '+' : '−', 1: pct(Math.abs(vsPrev)), 2: prevName, 3: progress.isCurrent ? t(' до момента') : '' })}
               </Text>
             </View>
           )}
@@ -46,14 +44,14 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
           onPress={scored ? onOpenScore : undefined}
           disabled={!scored}
           accessibilityRole="button"
-          accessibilityLabel={scored ? `Оценка ${ov.score} от 100, ${scoreVerdict(ov.score)}` : 'Оценка: още няма'}
-          accessibilityHint={scored ? 'Показва разбивката на оценката' : undefined}
+          accessibilityLabel={scored ? t('Оценка {0} от 100, {1}', { 0: ov.score, 1: scoreVerdict(ov.score) }) : t('Оценка: още няма')}
+          accessibilityHint={scored ? t('Показва разбивката на оценката') : undefined}
         >
           <ProgressRing value={scored ? ov.score / 100 : 0} size={58} stroke={6} color={colors.primary} track={colors.faint}>
             <Text style={s.ringValue}>{scored ? ov.score : '—'}</Text>
           </ProgressRing>
           <View style={s.scoreLabel}>
-            <Text style={s.scoreText}>Оценка</Text>
+            <Text style={s.scoreText}>{t('Оценка')}</Text>
             {scored && <Ionicons name="chevron-forward" size={12} color={colors.muted} />}
           </View>
         </Touch>
@@ -66,7 +64,7 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
             const share = byBucket[key] / income;
             const over = key !== 'savings' && share > b.target;
             return (
-              <View key={key} style={s.bucket} accessible accessibilityLabel={`${b.label}: ${pct(share)} от дохода, цел ${pct(b.target)}`}>
+              <View key={key} style={s.bucket} accessible accessibilityLabel={t('{0}: {1} от дохода, цел {2}', { 0: b.label, 1: pct(share), 2: pct(b.target) })}>
                 <View style={s.bucketHead}>
                   <View style={[s.dot, { backgroundColor: b.color }]} />
                   <Text style={s.bucketName} numberOfLines={1}>{b.label}</Text>
@@ -80,7 +78,7 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
           })}
         </View>
       ) : (
-        <Pill icon="settings-outline" label="Задай месечния си доход" variant="white" onPress={onOpenSettings} style={{ alignSelf: 'flex-start', marginTop: 14 }} />
+        <Pill icon="settings-outline" label={t('Задай месечния си доход')} variant="white" onPress={onOpenSettings} style={{ alignSelf: 'flex-start', marginTop: 14 }} />
       )}
     </View>
   );

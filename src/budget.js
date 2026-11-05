@@ -1,5 +1,6 @@
 // Pure budget logic (no RN) — used by the screens, the dog and the widgets.
 import { categoryById } from './theme';
+import { t } from './i18n';
 
 export const monthKey = (year, month) => `${year}-${String(month + 1).padStart(2, '0')}`;
 
@@ -113,10 +114,10 @@ export function budgetScore(args) {
 
 // Short verdict for the score (same scale as in the explanation)
 export function scoreVerdict(score) {
-  if (score >= 85) return "отлично";
-  if (score >= 65) return "добре";
-  if (score >= 45) return "внимавай";
-  return "време за промяна";
+  if (score >= 85) return t('отлично');
+  if (score >= 65) return t('добре');
+  if (score >= 45) return t('внимавай');
+  return t('време за промяна');
 }
 
 // The same score broken into parts — for the "Why is the dog like this" explanation

@@ -42,7 +42,7 @@ const PawketActivity = (props) => {
             {props.petName} · {props.moodLabel}
           </Text>
           <HStack spacing={6}>
-            <Text modifiers={[font({ size: 13 }), foregroundStyle(soft)]}>{props.over ? 'Днес над лимита' : 'Днес остават'}</Text>
+            <Text modifiers={[font({ size: 13 }), foregroundStyle(soft)]}>{props.todayLabel}</Text>
             <Text modifiers={rolling(24, 'heavy')}>{props.todayLeftText}</Text>
           </HStack>
           <ProgressView value={props.spentRatio} modifiers={[tint(color)]} />
@@ -65,7 +65,7 @@ const PawketActivity = (props) => {
     ),
     expandedTrailing: (
       <VStack alignment="trailing" spacing={0}>
-        <Text modifiers={[font({ size: 11 }), foregroundStyle(soft), opacity(0.9)]}>днес</Text>
+        <Text modifiers={[font({ size: 11 }), foregroundStyle(soft), opacity(0.9)]}>{props.todayShort}</Text>
         <Text modifiers={rolling(22, 'heavy')}>{props.todayLeftText}</Text>
       </VStack>
     ),
