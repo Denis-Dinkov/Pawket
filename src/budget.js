@@ -32,10 +32,14 @@ export function monthIncome({ incomes = {}, incomeEntries = [] }, year, month) {
 }
 
 /**
- * Whether an expense counts in the month's budget. A payment out of a goal or sinking fund (fromGoalId) doesn't:
- * its money was already counted as savings when it was put aside, so counting it again would double it.
+ * Whether an expense counts in the month's budget. Two kinds don't:
+ * - a payment out of a goal or sinking fund (fromGoalId): its money was already counted as savings
+ *   when it was put aside, so counting it again would double it;
+ * - an entry marked "outside the budget" (offBudget): paid from money the user already had elsewhere
+ *   (another account, old savings), e.g. existing savings moved into a goal. It's kept for the record
+ *   and still moves a goal's progress, but this month's numbers ignore it.
  */
-export const countsInBudget = (e) => !e.fromGoalId;
+export const countsInBudget = (e) => !e.fromGoalId && !e.offBudget;
 
 // Entries grouped by month, built once per array. The store replaces the array on every change,
 // so a cached index is never stale, and the many per-render month lookups don't re-scan and re-parse every date.

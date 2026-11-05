@@ -19,13 +19,15 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
     : where || what || dayLabel(expense.date);
   const source = SOURCES[expense.source] || SOURCES.manual;
   const deposit = !!expense.goalId;
+  // Paid with money the user already had: listed, but not counted in the month
+  const outside = !!expense.offBudget || !!expense.fromGoalId;
 
   return (
     <Touch
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]}
-      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${deposit ? ' заделени' : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
+      accessibilityLabel={`${cat?.name || 'Без категория'}, ${money(expense.amount)}${deposit ? ' заделени' : ''}${outside ? ', не се брои в месеца' : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
       accessibilityHint="Отваря подробности. Задръж, за да изтриеш."
     >
       <IconBadge icon={cat?.icon || 'help'} color={color} size={44} />
@@ -34,10 +36,12 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
         <Text style={s.sub} numberOfLines={1}>{subtitle}</Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[s.amount, deposit && { color: colors.savings }]}>{deposit ? '' : '−'}{money(expense.amount)}</Text>
+        <Text style={[s.amount, deposit && { color: colors.savings }, outside && { color: colors.muted }]}>{deposit ? '' : '−'}{money(expense.amount)}</Text>
         <View style={s.meta}>
           {expense.source !== 'manual' && <Ionicons name={source.icon} size={12} color={colors.muted} />}
-          <Text style={s.metaText}>{detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}</Text>
+          <Text style={s.metaText}>
+            {outside ? 'извън месеца' : detailed ? timeLabel(expense.date) : where || what ? dayLabel(expense.date) : ''}
+          </Text>
         </View>
       </View>
     </Touch>

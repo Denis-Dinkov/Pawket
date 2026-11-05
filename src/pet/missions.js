@@ -1,6 +1,7 @@
 // Weekly missions, the daily streak and Charlie's rewards. Pure logic, no RN imports.
 import { categoryById } from '../theme';
 import { dayKey } from './logic';
+import { countsInBudget } from '../budget';
 
 export const MISSION_XP = 25;
 
@@ -68,7 +69,7 @@ const POOL = [
     id: 'goal',
     icon: 'flag-outline',
     title: 'Сложи пари в цел',
-    check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && new Date(e.date) >= start) ? 1 : 0, 1),
+    check: ({ expenses, start }) => count(expenses.some((e) => e.goalId && !e.offBudget && new Date(e.date) >= start) ? 1 : 0, 1),
   },
   {
     id: 'wants3',
@@ -80,7 +81,7 @@ const POOL = [
           ? week.filter((d) => {
               if (!days.has(dayKey(d))) return false;
               const wants = expenses
-                .filter((e) => dayKey(e.date) === dayKey(d) && categoryById(e.categoryId)?.bucket === 'wants')
+                .filter((e) => countsInBudget(e) && dayKey(e.date) === dayKey(d) && categoryById(e.categoryId)?.bucket === 'wants')
                 .reduce((a, e) => a + e.amount, 0);
               return wants <= wantsPerDay;
             }).length

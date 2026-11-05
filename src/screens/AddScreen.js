@@ -77,6 +77,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
   };
   const [pickDate, setPickDate] = useState(false);
   const [repeat, setRepeat] = useState(false);
+  // Off: paid with money the user already had (another account, old savings), kept out of the month
+  const [offBudget, setOffBudget] = useState(!!editing?.offBudget || !!prefill.offBudget);
   const [allCats, setAllCats] = useState(false);
   // The keypad folds away after a category is picked, so the fields and the button are in view
   const [padOpen, setPadOpen] = useState(!(initialAmount > 0));
@@ -115,7 +117,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
     if (!keep) d.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     const common = { amount: Math.round(value * 100) / 100, note: note.trim(), date: d.toISOString() };
     if (editing) {
-      updateExpense(editing.id, { ...common, categoryId, merchant });
+      updateExpense(editing.id, { ...common, categoryId, merchant, offBudget: (offBudget && !editing.fromGoalId) || undefined });
     } else if (editingIncome) {
       updateIncome(editingIncome.id, { ...common, kind });
     } else if (isIncome) {
@@ -129,8 +131,9 @@ export default function AddScreen({ onDone, prefill = {} }) {
           merchant: merchant.trim(),
           source: fromGoal ? 'fund' : prefill.source || 'manual',
           ...(fromGoal && { fromGoalId: fromGoal.id }),
+          ...(offBudget && !fromGoal && { offBudget: true }),
         },
-        { repeat: repeat && !fromGoal }
+        { repeat: repeat && !fromGoal && !offBudget }
       );
       if (prefill.wishId) resolveWish(prefill.wishId, 'bought');
     }
@@ -292,23 +295,43 @@ export default function AddScreen({ onDone, prefill = {} }) {
             />
           </View>
           {!isIncome && !editing && !fromGoal && (
-            <View style={[s.field, s.sep]}>
+            <Touch
+              haptic="select"
+              onPress={() => setRepeat((v) => !v)}
+              style={[s.field, s.sep]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: repeat }}
+              accessibilityLabel="Повтаря се всеки месец"
+            >
               <Ionicons name="repeat" size={18} color={colors.muted} />
               <Text style={[s.input, { color: colors.text }]}>Всеки месец</Text>
-              <Switch
-                value={repeat}
-                onValueChange={(v) => {
-                  feedback('select');
-                  setRepeat(v);
-                }}
-                trackColor={{ true: colors.primary }}
-                accessibilityLabel="Повтаря се всеки месец"
-              />
-            </View>
+              <View pointerEvents="none">
+                <Switch value={repeat} trackColor={{ true: colors.primary }} />
+              </View>
+            </Touch>
+          )}
+          {!isIncome && !fromGoal && !editing?.fromGoalId && !repeat && (
+            <Touch
+              haptic="select"
+              onPress={() => setOffBudget((v) => !v)}
+              style={[s.field, s.sep]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !offBudget }}
+              accessibilityLabel="Брои се в бюджета за месеца"
+            >
+              <Ionicons name="calculator-outline" size={18} color={colors.muted} />
+              <Text style={[s.input, { color: colors.text }]}>Брои се в месеца</Text>
+              <View pointerEvents="none">
+                <Switch value={!offBudget} trackColor={{ true: colors.primary }} />
+              </View>
+            </Touch>
           )}
         </View>
         {fromGoal && (
           <Text style={s.incomeHint}>Плащането намалява „{fromGoal.name}“ и не се брои в разходите за месеца — парите вече са заделени.</Text>
+        )}
+        {offBudget && !isIncome && !fromGoal && (
+          <Text style={s.incomeHint}>Платено с пари, които вече си имал (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.</Text>
         )}
         {repeat && !isIncome && (
           <Text style={s.incomeHint}>Всеки месец на {dayOrdinal(day.getDate())} число се записва сам. Управлява се от „Планове“.</Text>

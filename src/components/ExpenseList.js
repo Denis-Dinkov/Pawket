@@ -4,7 +4,7 @@ import { Text } from './ui/AppText';
 import ExpenseRow from './ExpenseRow';
 import Pill from './ui/Pill';
 import { colors, BUCKETS, getCategories, categoryById, money } from '../theme';
-import { sortByDateDesc } from '../budget';
+import { sortByDateDesc, countsInBudget } from '../budget';
 import { dayLabel, plural } from '../format';
 import { themed } from '../themed';
 
@@ -30,7 +30,7 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
       if (!map.has(key)) map.set(key, { title: dayLabel(e.date), total: 0, items: [] });
       const g = map.get(key);
       g.items.push(e);
-      g.total += e.amount;
+      if (countsInBudget(e)) g.total += e.amount;
     }
     return [...map.values()];
   }, [expenses, filter]);

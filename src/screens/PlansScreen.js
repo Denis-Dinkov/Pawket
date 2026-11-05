@@ -194,9 +194,11 @@ function WishSheet({ visible, onClose, onSave }) {
   );
 }
 
-// Put money aside: it's booked as an expense in "Savings", so it counts towards the 20%
+// Put money aside: it's booked as an expense in "Savings", so it counts towards the 20%.
+// Money the user already had (another account, old savings) fills the goal without touching this month.
 function DepositSheet({ goal, visible, onClose, onSave, saved }) {
   const [amount, setAmount] = useState('');
+  const [from, setFrom] = useState('new');
   const left = goal ? Math.max(0, goal.target - saved) : 0;
   const v = parseMoney(amount);
   return (
@@ -204,13 +206,27 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
       visible={visible}
       onClose={onClose}
       footer={
-        <Touch haptic="success" disabled={!(v > 0)} style={[s.primaryBtn, s.savingsBtn, !(v > 0) && { opacity: 0.4 }]} onPress={() => onSave(v)}>
+        <Touch haptic="success" disabled={!(v > 0)} style={[s.primaryBtn, s.savingsBtn, !(v > 0) && { opacity: 0.4 }]} onPress={() => onSave(v, { existing: from === 'existing' })}>
           <Text style={s.primaryBtnText}>{v > 0 ? `Сложи ${money(v)}` : 'Въведи сума'}</Text>
         </Touch>
       }
     >
       <Text style={s.sheetTitle}>Към „{goal?.name}“</Text>
-      <Text style={[s.hint, { textAlign: 'center' }]}>Остават {money(left)}. Сумата се записва в „Спестявания“ и се брои към 20%.</Text>
+      <Segmented
+        options={[
+          { key: 'new', label: 'От този месец' },
+          { key: 'existing', label: 'Вече ги имам' },
+        ]}
+        value={from}
+        onChange={setFrom}
+        style={{ marginTop: 6, marginBottom: 10 }}
+      />
+      <Text style={[s.hint, { textAlign: 'center' }]}>
+        Остават {money(left)}.{' '}
+        {from === 'existing'
+          ? 'Пари от друга сметка или стари спестявания: пълнят целта, но не намаляват бюджета за месеца.'
+          : 'Сумата се записва в „Спестявания“ и се брои към 20% за месеца.'}
+      </Text>
       <AmountField value={amount} onChange={setAmount} label="Сума в евро" autoFocus />
       <View style={[s.chipRow, { justifyContent: 'center' }]}>
         {[20, 50, 100].map((n) => (
@@ -492,8 +508,8 @@ export default function PlansScreen({ onAdd }) {
         visible={!!deposit}
         saved={deposit ? goalProgress(deposit, expenses).saved : 0}
         onClose={() => setDeposit(null)}
-        onSave={(v) => {
-          contributeGoal(deposit, v);
+        onSave={(v, opts) => {
+          contributeGoal(deposit, v, opts);
           setDeposit(null);
         }}
       />

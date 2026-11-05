@@ -336,16 +336,28 @@ export function StoreProvider({ children }) {
       updateGoal: (id, patch) => setData((d) => ({ ...d, goals: d.goals.map((g) => (g.id === id ? { ...g, ...patch } : g)) })),
       // The money already put aside stays in "Savings"
       removeGoal: (id) => setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) })),
-      // A deposit is an expense in "Savings", so it counts towards the 20%
-      contributeGoal: (goal, amount) => {
+      // A deposit is an expense in "Savings", so it counts towards the 20%.
+      // existing: money the user already had (another account, old savings) — it fills the goal
+      // but stays out of this month's budget, and Charlie isn't fed for it (nothing new was saved).
+      contributeGoal: (goal, amount, { existing = false } = {}) => {
         const before = goalProgress(goal, dataRef.current.expenses);
         setData((d) => ({
           ...d,
           expenses: [
-            { id: newId(), amount, categoryId: 'saving', merchant: '', note: goal.name, goalId: goal.id, source: 'goal', date: new Date().toISOString() },
+            {
+              id: newId(),
+              amount,
+              categoryId: 'saving',
+              merchant: '',
+              note: goal.name,
+              goalId: goal.id,
+              source: 'goal',
+              date: new Date().toISOString(),
+              ...(existing && { offBudget: true }),
+            },
             ...d.expenses,
           ],
-          pet: feedPet(d.pet),
+          pet: existing ? d.pet : feedPet(d.pet),
         }));
         if (!before.done && before.saved + amount >= goal.target) {
           showToast({ text: `Целта „${goal.name}“ е постигната! 🎉`, icon: 'trophy', celebrate: true });
