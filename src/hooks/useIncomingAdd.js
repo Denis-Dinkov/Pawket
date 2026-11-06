@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
-import { parseAddUrl } from '../deeplink';
+import { parseAddUrl, parseSessionUrl } from '../deeplink';
 import { t } from '../i18n';
 
 
@@ -10,15 +10,20 @@ import { t } from '../i18n';
  * Opens "New expense" from:
  * - deep link pawket:// - the deep link pawket://add?... (Apple Pay automation, widget)
  * - the quick action on long-pressing the app icon
+ * and ends the running session from the Live Activity (pawket://session?action=end)
  */
-export default function useIncomingAdd(onAdd) {
+export default function useIncomingAdd(onAdd, onSessionEnd) {
   const cb = useRef(onAdd);
   cb.current = onAdd;
+  const endCb = useRef(onSessionEnd);
+  endCb.current = onSessionEnd;
 
   useEffect(() => {
     const handle = (url) => {
       const prefill = parseAddUrl(url);
       if (prefill) cb.current(prefill);
+      // The Live Activity's "End" button
+      else if (parseSessionUrl(url) === 'end') endCb.current?.();
     };
     Linking.getInitialURL().then(handle).catch(() => {});
     const sub = Linking.addEventListener('url', ({ url }) => handle(url));

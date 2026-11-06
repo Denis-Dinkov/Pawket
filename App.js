@@ -1,5 +1,5 @@
 import React, { Activity, memo, startTransition, useCallback, useEffect, useRef, useState } from 'react';
-import { View, Modal, ActivityIndicator, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
+import { View, Modal, ActivityIndicator, Alert, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,13 +26,18 @@ import useWidgetSync from './src/widget/useWidgetSync';
 import PetSnapshots from './src/widget/PetSnapshots';
 import { outfitOf } from './src/pet/outfit';
 import Touch from './src/components/ui/Touch';
-import { syncReminders, listenToReminders, ACTION_NO_SPEND } from './src/reminders';
+import { syncReminders, listenToReminders, notifySavingsEaten, ACTION_NO_SPEND } from './src/reminders';
+import { monthOverview, dailyLimit } from './src/budget';
+import { pendingSpend } from './src/plans';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncLiveActivity } from './src/widget/liveActivity';
 import { themed } from './src/themed';
 import { t, getLang } from './src/i18n';
 
 // Widget and Dynamic Island updates wait until the flying amount after saving (~1.3 s) is done
 const SYNC_DELAY = 1500;
+// The day the "eating your savings" alert was last shown
+const SAVINGS_ALERT_KEY = 'pawket:savingsAlert';
 
 // Memoized: switching tabs re-renders Main, and without memo every opened screen re-rendered with it
 // (all their budget and pet calculations), which stalled the switch for 3-6 frames
@@ -106,7 +111,7 @@ function TabBar({ tab, onTab, onAdd, petName }) {
 }
 
 function Main() {
-  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, pendingEvent, dismissEvent, checkInNoSpend } =
+  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, session, pendingEvent, dismissEvent, checkInNoSpend, endSession, showToast } =
     useStore();
   // The font ships in the bundle; if loading fails, the app falls back to the system font
   const [fontsLoaded, fontError] = useFonts({ Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold });
@@ -138,7 +143,29 @@ function Main() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   // The Apple Pay automation, the widget "+" and the quick action all open "New expense"
-  useIncomingAdd(setAdding);
+  // The Dynamic Island's "Stop": a no-spend day is a whole day's effort, so it asks first
+  // A cold start from the link can arrive before the saved data is loaded, so it waits for it
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const endWaiting = useRef(false);
+  const onSessionEnd = useCallback(() => {
+    if (!sessionRef.current) {
+      endWaiting.current = true;
+      return;
+    }
+    endWaiting.current = false;
+    Alert.alert(t('Да спра ли деня без разходи?'), t('Ще загубиш наградата за днес.'), [
+      { text: t('Продължавам'), style: 'cancel' },
+      { text: t('Спри'), style: 'destructive', onPress: endSession },
+    ]);
+  }, [endSession]);
+  useIncomingAdd(setAdding, onSessionEnd);
+  useEffect(() => {
+    if (ready && endWaiting.current) {
+      endWaiting.current = false;
+      if (session) onSessionEnd();
+    }
+  }, [ready, session, onSessionEnd]);
   const refreshWidget = useWidgetSync({ ready, expenses, incomes, incomeEntries, recurring, categories, pet });
   // New dog pictures (stage or outfit changed): refresh the widget and the Dynamic Island with them
   const [snapshotTick, setSnapshotTick] = useState(0);
@@ -154,22 +181,47 @@ function Main() {
     if (!ready || !pet) return;
     syncReminders({ ...settings.reminder, petName: pet.name, activeToday });
   }, [ready, pet?.name, pet?.lastFedAt, activeToday, settings.reminder]);
-  // Coming back to the app counts too: iOS ends a Live Activity after 8 hours and it goes stale at
-  // midnight, so returning (even with nothing changed) starts a fresh one when needed
+  // Coming back to the app counts too: a payment day or the last days of the month may have begun,
+  // so returning (even with nothing changed) starts the activity they need
   const [activeTick, setActiveTick] = useState(0);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => st === 'active' && setActiveTick((n) => n + 1));
     return () => sub.remove();
   }, []);
-  // Dynamic Island: refreshed (with a short delay) after every change and when the app comes back
+  // Dynamic Island: only while something is happening (a session, a payment due, the month's last days).
+  // Refreshed (with a short delay) after every change and when the app comes back
   useEffect(() => {
     if (!ready || !pet) return undefined;
     const timer = setTimeout(
-      () => syncLiveActivity({ enabled: settings.liveActivity !== false, data: { expenses, incomes, incomeEntries, recurring, pet } }),
+      () => syncLiveActivity({ enabled: settings.liveActivity !== false, data: { expenses, incomes, incomeEntries, recurring, pet, session } }),
       SYNC_DELAY
     );
     return () => clearTimeout(timer);
-  }, [ready, pet, expenses, incomes, incomeEntries, recurring, settings.liveActivity, snapshotTick, activeTick]);
+  }, [ready, pet, expenses, incomes, incomeEntries, recurring, session, settings.liveActivity, snapshotTick, activeTick]);
+
+  // The first time a day's spending eats into the savings (the 20% the daily limit keeps), say so right away:
+  // a notification, or a toast when notifications aren't allowed. Once a day; the Dynamic Island keeps the amount current.
+  useEffect(() => {
+    if (!ready || !pet || settings.savingsAlert === false) return undefined;
+    const timer = setTimeout(async () => {
+      const at = new Date();
+      const ov = monthOverview({ expenses, incomes, incomeEntries, year: at.getFullYear(), month: at.getMonth(), now: at });
+      const daily = dailyLimit(ov, at, pendingSpend(recurring, at));
+      if (!daily || daily.eatenToday <= 0) return;
+      const today = at.toDateString();
+      try {
+        if ((await AsyncStorage.getItem(SAVINGS_ALERT_KEY)) === today) return;
+        await AsyncStorage.setItem(SAVINGS_ALERT_KEY, today);
+      } catch {
+        // without storage it may repeat, which is better than staying silent
+      }
+      const shown = await notifySavingsEaten({ petName: pet.name, eaten: daily.eatenSavings, reserve: daily.reserve });
+      if (!shown) {
+        showToast({ text: t('Ядеш от спестяванията: {0} от {1}', { 0: money(daily.eatenSavings), 1: money(daily.reserve) }), icon: 'alert-circle' });
+      }
+    }, SYNC_DELAY);
+    return () => clearTimeout(timer);
+  }, [ready, expenses, incomes, incomeEntries, recurring, settings.savingsAlert]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onReminder = useCallback(
     (action) => (action === ACTION_NO_SPEND ? checkInNoSpend() : setAdding({ source: 'manual' })),

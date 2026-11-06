@@ -1,5 +1,5 @@
 // Recurring payments and savings goals. Pure logic, no RN imports.
-import { monthKey, shiftMonth, countsInBudget, spendRoom } from './budget';
+import { monthKey, shiftMonth, countsInBudget, spendRoom, savingsReserve } from './budget';
 import { categoryById } from './theme';
 import { t } from './i18n';
 
@@ -114,9 +114,9 @@ export const GOAL_ICONS = ['airplane', 'home', 'car', 'gift', 'laptop', 'school'
 export const VARIABLE_CATEGORIES = new Set(['groceries', 'transport', 'dining', 'fun']);
 
 /**
- * Where the spending budget (see freeToSpend) ends at today's pace: what's free now, minus the usual daily
+ * Where the spending budget (see freeToSpend) ends at today's pace: what's free now (the 20% for savings kept), minus the usual daily
  * spending in the everyday categories (food, transport, dining, fun) for the days left.
- * A negative end means the 80% for needs and wants runs out before the month does.
+ * A negative end means the money for needs and wants runs out before the month does, and the savings would pay for the rest.
  * Returns { end, perDayVariable, daysLeft } or null outside the current month.
  */
 export function monthForecast(ov, now = new Date(), pending = 0) {
@@ -130,7 +130,8 @@ export function monthForecast(ov, now = new Date(), pending = 0) {
     .reduce((a, e) => a + e.amount, 0);
   const perDayVariable = variable / elapsed;
   // Today is partly spent already, so it counts as half a day
-  const free = spendRoom(ov) - pending;
+  // The same money as freeToSpend: the savings still to be put aside aren't for spending
+  const free = spendRoom(ov) - pending - savingsReserve(ov);
   const end = free - perDayVariable * Math.max(0, daysLeft - 0.5);
   return { end, perDayVariable, daysLeft };
 }

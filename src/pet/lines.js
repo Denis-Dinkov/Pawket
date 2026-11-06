@@ -18,6 +18,9 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
   if (status.score == null) return { text: t('Спя… Кажи ми колко е месечният ти доход и се събуждам 💤'), tone: 'tip' };
   if (status.fullness < HUNGRY_AT) return { text: t('Гладен съм! Похарчи ли нещо днес? Запиши го и ме нахрани 🦴'), tone: 'warn' };
   if (warn?.id === 'over-income') return { text: t('Харчиш повече, отколкото печелиш 😢 До края на месеца — само най-нужното.'), tone: 'warn' };
+  if (daily?.eatenToday > 0) {
+    return { text: t('Бръкнахме в спестяванията 😟 Днес — само най-нужното.'), tone: 'warn' };
+  }
   if (daily?.over) {
     return {
       text: pick([t('Днес малко прекалихме. Утре ще сме по-внимателни? 🙏'), t('Ауу, скъп ден! Утре ден без желания? 🐾')], seed),

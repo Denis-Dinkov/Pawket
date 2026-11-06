@@ -55,6 +55,11 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
     setSettings({ reminder: { ...reminder, enabled: true } });
     return undefined;
   };
+  // The savings alert works without permission too (as a message inside the app), so it's never blocked
+  const toggleSavingsAlert = async (on) => {
+    setSettings({ savingsAlert: on });
+    if (on) await requestReminderPermission();
+  };
 
   const saveBackup = async () => {
     setBackupBusy(true);
@@ -227,7 +232,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             <IconBadge icon="phone-portrait-outline" color={colors.primary} size={40} />
             <View style={{ flex: 1 }}>
               <Text style={s.linkTitle}>{t('{0} в Dynamic Island', { 0: pet?.name })}</Text>
-              <Text style={s.hint}>{t('До камерата: кучето и колко можеш да харчиш днес. Задръж, за да видиш повече.')}</Text>
+              <Text style={s.hint}>{t('Само когато нещо се случва: ден без разходи, разход над лимита или от спестяванията, плащане днес и последните дни от месеца.')}</Text>
             </View>
             <Switch
               value={settings.liveActivity !== false}
@@ -258,6 +263,22 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           )}
         </Card>
       )}
+
+      <Card style={{ marginTop: 14 }}>
+        <View style={s.switchRow}>
+          <IconBadge icon="shield-outline" color={colors.savings} size={40} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.linkTitle}>{t('Предупреждение за спестяванията')}</Text>
+            <Text style={s.hint}>{t('Дневният лимит пази 20% за спестяване. Когато разход започне да яде от тях, {0} ще ти каже веднага.', { 0: pet?.name })}</Text>
+          </View>
+          <Switch
+            value={settings.savingsAlert !== false}
+            onValueChange={toggleSavingsAlert}
+            trackColor={{ true: colors.primary }}
+            accessibilityLabel={t('Предупреждение за спестяванията')}
+          />
+        </View>
+      </Card>
 
       {backupAvailable() && (
         <Card style={{ marginTop: 14, gap: 10 }}>

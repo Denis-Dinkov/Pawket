@@ -10,6 +10,7 @@ import { outfitOf, toggleItem } from './pet/outfit';
 import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
+import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -34,9 +35,13 @@ const EMPTY = {
   goals: [],
   // The 48-hour wishlist: { id, name, amount, categoryId, createdAt, decision?: 'bought' | 'skipped', decidedAt? }
   wishes: [],
+  // The running no-spend day (see sessions.js), or null
+  session: null,
   // theme: 'system' | 'light' | 'dark'; reminder: the evening notification
-  // liveActivity: Charlie and today's limit in the Dynamic Island
-  settings: { theme: 'system', language: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true },
+  // liveActivity: Charlie in the Dynamic Island for a no-spend day, spending over the limit or from the savings,
+  // payments due and the last days of the month
+  // savingsAlert: a notification when the day's spending starts eating the savings
+  settings: { theme: 'system', language: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true, savingsAlert: true },
   lastBackupAt: null,
 };
 // Older saves lack the newer keys; settings are merged one level deep
@@ -69,6 +74,8 @@ async function load() {
     if (saved && !saved.settings?.language) saved.settings = { ...(saved.settings || {}), language: 'bg' };
     const data = withDefaults(saved);
     if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME_BG };
+    // Only no-spend days are sessions now (an early build also had shopping trips)
+    if (data.session && data.session.kind !== 'nospend') data.session = null;
     return data;
   }
   const old = await AsyncStorage.getItem(KEY_V1);
@@ -188,6 +195,51 @@ export function StoreProvider({ children }) {
     });
     if (fresh.length) showToast({ text: t('Мисия изпълнена: {0} · +{1} XP', { 0: fresh[0].title, 1: MISSION_XP * fresh.length }), icon: 'trophy', celebrate: true });
   }, [ready, mExpenses, mIncomeEntries, mIncomes, mPet, showToast]);
+
+  // A no-spend day ends at midnight, when it's broken by an expense, or when the user stops it (manual).
+  // A kept day started in the morning gives XP.
+  const finishedId = useRef(null);
+  const finishSession = useCallback(
+    (manual = false) => {
+      const session = dataRef.current.session;
+      // Called from several places (timer, app coming back, data change): one end per session
+      if (!session || finishedId.current === session.id) return;
+      const now = new Date();
+      const st = sessionState(session, dataRef.current.expenses, now);
+      if (!manual && !st.finished) return;
+      finishedId.current = session.id;
+      let xp = 0;
+      let toastNext;
+      if (st.won) {
+        // Only a day started in the morning earns XP; a late start is still allowed, just for the habit
+        xp = new Date(session.startedAt).getHours() < NOSPEND_XP_BEFORE ? SESSION_XP.nospend : 0;
+        toastNext = { text: xp ? t('Ден без разходи! +{0} XP 🦴', { 0: xp }) : t('Ден без разходи! 🦴'), icon: 'trophy', celebrate: true };
+      } else if (st.spent > 0) {
+        toastNext = { text: t('Денят без разходи приключи — нищо, утре пак 🐾'), icon: 'paw-outline' };
+      } else {
+        toastNext = { text: t('Денят без разходи е спрян'), icon: 'paw-outline' };
+      }
+      setData((d) => {
+        if (d.session?.id !== session.id) return d;
+        return { ...d, session: null, pet: xp && d.pet ? { ...d.pet, xp: (d.pet.xp || 0) + xp } : d.pet };
+      });
+      showToast(toastNext);
+    },
+    [showToast]
+  );
+  const { session: sSession, expenses: sExpenses } = data;
+  useEffect(() => {
+    if (!ready || !sSession) return undefined;
+    finishSession();
+    // While the app stays open, end it right on time; coming back to the app checks again
+    const ms = new Date(sSession.endsAt) - Date.now();
+    const timer = ms > 0 && ms < 2 ** 31 - 1 ? setTimeout(() => finishSession(), ms + 500) : null;
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && finishSession());
+    return () => {
+      clearTimeout(timer);
+      sub.remove();
+    };
+  }, [ready, sSession, sExpenses, finishSession]);
 
   // Celebration on reaching a new growth stage
   useEffect(() => {
@@ -468,6 +520,11 @@ export function StoreProvider({ children }) {
           };
         }),
 
+      // One no-spend day at a time (the button is hidden while one runs)
+      // Choosing a no-spend day is today's check-in, like "Без разходи днес": it feeds Charlie and keeps the streak
+      startNoSpendDay: () => setData((d) => (d.session ? d : { ...d, session: startNoSpend(), pet: feedPet(d.pet) })),
+      endSession: () => finishSession(true),
+
       checkInNoSpend: () => setData((d) => ({ ...d, pet: feedPet(d.pet) })),
 
       // The income applies from this month on (later values are removed)
@@ -489,7 +546,7 @@ export function StoreProvider({ children }) {
         setData(EMPTY);
       },
     }),
-    [ready, data, pendingEvent, showToast, lang]
+    [ready, data, pendingEvent, showToast, finishSession, lang]
   );
   const toastValue = useMemo(() => ({ toast, dismissToast: () => setToast(null) }), [toast]);
 

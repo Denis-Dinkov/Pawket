@@ -37,12 +37,16 @@ import IncomeSheet from '../components/IncomeSheet';
 import PetStatSheet from '../components/PetStatSheet';
 import LayoutSheet from '../components/LayoutSheet';
 import { TodayCard, TopCategoriesCard } from '../components/HomeCards';
+import SessionCard from '../components/SessionCard';
+import LimitSheet from '../components/LimitSheet';
 import { normalizeLayout } from '../homeLayout';
 import { themed } from '../themed';
 import { outfitOf } from '../pet/outfit';
 import { t } from '../i18n';
 
 const RECENT = 3;
+// A small limit shows its cents ("от 6,08 €"): rounded to "6 €" it didn't add up to the month
+const limitText = (n) => (n < 100 ? money(Math.round(n * 100) / 100) : moneyShort(n));
 const ROOM = 268;
 const MONTH_EMOJI = { ecstatic: '🤩', happy: '🐶', worried: '😟', sad: '😢', crying: '😭' };
 
@@ -140,6 +144,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [statOpen, setStatOpen] = useState(null); // 'mood' | 'fullness' | 'growth'
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
 
   const ov = useMemo(() => monthOverview({ expenses, incomes, incomeEntries, year, month, now }), [expenses, incomes, incomeEntries, year, month, now]);
   const current = useMemo(
@@ -191,6 +196,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   // The main number: free to spend this month (current month), or what was left of a past one
   const free = isCurrent ? freeToSpend(ov, pending) : null;
   const heroValue = free ? free.free : ov.remaining;
+  // Past the savings too: the hero says how far over the whole income
+  const overIncome = !!free && free.free + free.reserve < 0;
   const bubble = isCurrent
     ? petLine({ status, daily, advice, activeToday: hasExpenseToday || pet.lastActiveDay === dayKey(now), goal: goal && { name: goal.g.name, done: goal.p.done }, now }).text
     : ov.score == null
@@ -387,13 +394,15 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 <Text style={s.label}>
                   {free
                     ? free.free < 0
-                      ? t('Над бюджета с')
+                      ? overIncome
+                        ? t('Над дохода с')
+                        : t('Изхарчени от спестяванията')
                       : t('Свободни до {0} {1}', { 0: ov.progress.daysInMonth, 1: monthLower(month) })
                     : ov.remaining < 0
                       ? t('Над дохода с')
                       : t('Остана от {0}', { 0: monthLower(month) })}
                 </Text>
-                <Money whole value={Math.abs(heroValue)} size={32} color={heroValue < 0 ? colors.danger : colors.text} />
+                <Money whole value={overIncome ? -(free.free + free.reserve) : Math.abs(heroValue)} size={32} color={heroValue < 0 ? colors.danger : colors.text} />
                 {ov.income > 0 && (
                   <Touch
                     style={s.incomeLine}
@@ -404,9 +413,11 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                   >
                     {/* With payments still due, say so: otherwise the number looks smaller than income − spent */}
                     <Text style={s.miniSub} numberOfLines={2}>
-                      {free && pending > 0
-                        ? t('от {0} доход, {1} предстоящи', { 0: moneyShort(ov.income), 1: moneyShort(pending) })
-                        : t('от {0} доход', { 0: moneyShort(ov.income) })}
+                      {[
+                        t('от {0} доход', { 0: moneyShort(ov.income) }),
+                        free && pending > 0 && t('{0} предстоящи', { 0: moneyShort(pending) }),
+                        free && free.reserve > 0 && t('{0} за спестяване', { 0: moneyShort(free.reserve) }),
+                      ].filter(Boolean).join(', ')}
                     </Text>
                     <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                   </Touch>
@@ -414,21 +425,31 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
               </View>
               {isCurrent && daily ? (
                 // Over the limit: "Днес 43 €" and "7 € над лимита 36 €"; otherwise "Днес остават 29 € от 36 €"
-                <View
+                // Tapping it opens how the limit is calculated, with the user's own numbers
+                <Touch
                   style={s.today}
-                  accessible
+                  onPress={() => setLimitOpen(true)}
+                  hitSlop={8}
+                  accessibilityHint={t('Показва как се смята дневният лимит')}
                   accessibilityLabel={
                     daily.over
                       ? t('Днес похарчени {0} от {1}, над лимита с {2}', { 0: moneyShort(daily.spentToday), 1: moneyShort(daily.limit), 2: moneyShort(-daily.left) })
                       : t('Днес остават {0} от {1}', { 0: moneyShort(daily.left), 1: moneyShort(daily.limit) })
                   }
                 >
-                  <Text style={s.label}>{daily.over ? t('Днес') : t('Днес остават')}</Text>
-                  <Money whole value={daily.over ? daily.spentToday : daily.left} size={22} color={daily.over ? colors.danger : colors.savings} />
+                  <View style={s.todayHead}>
+                    <Text style={s.label}>{daily.over ? t('Днес') : t('Днес остават')}</Text>
+                    <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
+                  </View>
+                  <Money whole={Math.abs(daily.over ? daily.spentToday : daily.left) >= 100} value={daily.over ? daily.spentToday : daily.left} size={22} color={daily.over ? colors.danger : colors.savings} />
                   <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]}>
-                    {daily.over ? t('{0} над лимита {1}', { 0: moneyShort(-daily.left), 1: moneyShort(daily.limit) }) : t('от {0}', { 0: moneyShort(daily.limit) })}
+                    {daily.eatenToday > 0
+                      ? t('{0} от спестяванията', { 0: moneyShort(daily.eatenToday) })
+                      : daily.over
+                        ? t('{0} над лимита {1}', { 0: moneyShort(-daily.left), 1: limitText(daily.limit) })
+                        : t('от {0}', { 0: limitText(daily.limit) })}
                   </Text>
-                </View>
+                </Touch>
               ) : !isCurrent && ov.score != null ? (
                 <View style={s.today}>
                   <Text style={s.label}>{t('Оценка')}</Text>
@@ -460,6 +481,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
               </View>
             )}
           </Card>
+
+          {/* A no-spend day: started here, followed here and in the Dynamic Island */}
+          {isCurrent && <SessionCard now={now} />}
 
           {!isCurrent && (
             <Pill
@@ -531,6 +555,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         onFeed={feed}
         now={now}
       />
+      <LimitSheet visible={limitOpen} onClose={() => setLimitOpen(false)} daily={daily} now={now} />
       <LayoutSheet visible={layoutOpen} onClose={() => setLayoutOpen(false)} layout={layout} onChange={setHomeLayout} />
       <AdviceSheet
         visible={adviceOpen}
@@ -554,6 +579,7 @@ const s = themed((c) => ({
   label: { color: c.muted, fontSize: 12.5, fontWeight: '600' },
   moneyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   today: { alignItems: 'flex-end' },
+  todayHead: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   todayValue: { fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
   split: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', gap: 2, backgroundColor: c.faint },
   legend: { flexDirection: 'row', gap: 8 },
