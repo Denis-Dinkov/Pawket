@@ -95,7 +95,7 @@ function Legend({ ov }) {
  * whether the bar takes touches), so crossing the threshold mid-scroll re-renders just this bar.
  */
 const DockHeader = memo(
-  forwardRef(function DockHeader({ opacity, onPress, topInset, pet, expression, stageKey, bubble, remaining, todayLeft }, ref) {
+  forwardRef(function DockHeader({ opacity, onPress, topInset, pet, expression, stageKey, bubble, remaining, perDay }, ref) {
     const [docked, setDocked] = useState(false);
     useImperativeHandle(ref, () => ({ setDocked }), []);
     return (
@@ -114,12 +114,7 @@ const DockHeader = memo(
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
-              {todayLeft != null &&
-                (todayLeft < 0 ? (
-                  <Text style={[s.dockSub, { color: colors.danger, fontWeight: '700' }]}>{t('днес {0} над лимита', { 0: money(Math.round(-todayLeft)) })}</Text>
-                ) : (
-                  <Text style={s.dockSub}>{t('днес {0}', { 0: money(Math.round(todayLeft)) })}</Text>
-                ))}
+              {perDay != null && <Text style={s.dockSub}>{t('{0} на ден', { 0: limitText(perDay) })}</Text>}
             </View>
           </LinearGradient>
         </Touch>
@@ -196,6 +191,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   // The main number: free to spend this month (current month), or what was left of a past one
   const free = isCurrent ? freeToSpend(ov, pending) : null;
   const heroValue = free ? free.free : ov.remaining;
+  // The amount in the "today" column: the limit per day, or how much came out of the savings once it's 0
+  const todayValue = !daily ? 0 : daily.eatenSavings > 0 ? daily.eatenSavings : daily.limit;
   // Past the savings too: the hero says how far over the whole income
   const overIncome = !!free && free.free + free.reserve < 0;
   const bubble = isCurrent
@@ -411,43 +408,53 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     accessibilityLabel={t('Доход {0}', { 0: moneyShort(ov.income) })}
                     accessibilityHint={t('Показва доходите за месеца')}
                   >
-                    {/* With payments still due, say so: otherwise the number looks smaller than income − spent */}
+                    {/* With payments still due, say so: otherwise the number looks smaller than income − spent.
+                        The chevron sits inside the text, so it follows the last word when the line wraps */}
                     <Text style={s.miniSub} numberOfLines={2}>
                       {[
                         t('от {0} доход', { 0: moneyShort(ov.income) }),
                         free && pending > 0 && t('{0} предстоящи', { 0: moneyShort(pending) }),
                         free && free.reserve > 0 && t('{0} за спестяване', { 0: moneyShort(free.reserve) }),
-                      ].filter(Boolean).join(', ')}
+                      ].filter(Boolean).join(', ')}{' '}
+                      <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                     </Text>
-                    <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                   </Touch>
                 )}
               </View>
               {isCurrent && daily ? (
-                // Over the limit: "Днес 43 €" and "7 € над лимита 36 €"; otherwise "Днес остават 29 € от 36 €"
-                // Tapping it opens how the limit is calculated, with the user's own numbers
+                // The limit per day, recalculated after every expense; or, once it's 0, how much came out of the savings.
+                // Tapping it opens the simple explanation
                 <Touch
                   style={s.today}
                   onPress={() => setLimitOpen(true)}
                   hitSlop={8}
                   accessibilityHint={t('Показва как се смята дневният лимит')}
                   accessibilityLabel={
-                    daily.over
-                      ? t('Днес похарчени {0} от {1}, над лимита с {2}', { 0: moneyShort(daily.spentToday), 1: moneyShort(daily.limit), 2: moneyShort(-daily.left) })
-                      : t('Днес остават {0} от {1}', { 0: moneyShort(daily.left), 1: moneyShort(daily.limit) })
+                    daily.eatenSavings > 0
+                      ? t('Изхарчени {0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
+                      : t('Лимит {0} на ден до {1} {2}', { 0: limitText(daily.limit), 1: ov.progress.daysInMonth, 2: monthLower(month) })
                   }
                 >
                   <View style={s.todayHead}>
-                    <Text style={s.label}>{daily.over ? t('Днес') : t('Днес остават')}</Text>
+                    <Text style={s.label} numberOfLines={1}>
+                      {daily.eatenSavings > 0 ? t('От спестяванията') : t('Лимит на ден')}
+                    </Text>
                     <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
                   </View>
-                  <Money whole={Math.abs(daily.over ? daily.spentToday : daily.left) >= 100} value={daily.over ? daily.spentToday : daily.left} size={22} color={daily.over ? colors.danger : colors.savings} />
-                  <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]}>
-                    {daily.eatenToday > 0
-                      ? t('{0} от спестяванията', { 0: moneyShort(daily.eatenToday) })
+                  <Money
+                    whole={todayValue >= 100}
+                    value={todayValue}
+                    size={22}
+                    color={daily.eatenSavings > 0 ? colors.danger : colors.savings}
+                  />
+                  <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
+                    {daily.eatenSavings > 0
+                      ? t('лимит 0 €')
                       : daily.over
-                        ? t('{0} над лимита {1}', { 0: moneyShort(-daily.left), 1: limitText(daily.limit) })
-                        : t('от {0}', { 0: limitText(daily.limit) })}
+                        ? t('падна от {0}', { 0: limitText(daily.morningLimit) })
+                        : daily.spentToday > 0
+                          ? t('днес похарчени {0}', { 0: limitText(daily.spentToday) })
+                          : t('до {0} {1}', { 0: ov.progress.daysInMonth, 1: monthLower(month) })}
                   </Text>
                 </Touch>
               ) : !isCurrent && ov.score != null ? (
@@ -516,7 +523,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         stageKey={status.stage.key}
         bubble={bubble}
         remaining={heroValue}
-        todayLeft={isCurrent && daily ? daily.left : null}
+        perDay={isCurrent && daily ? daily.limit : null}
       />
 
       <MonthPickerSheet visible={picker} onClose={() => setPicker(false)} expenses={expenses} year={year} month={month} onSelect={onMonthChange} />
@@ -578,7 +585,7 @@ const s = themed((c) => ({
   },
   label: { color: c.muted, fontSize: 12.5, fontWeight: '600' },
   moneyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
-  today: { alignItems: 'flex-end' },
+  today: { alignItems: 'flex-end', maxWidth: '46%' },
   todayHead: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   todayValue: { fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
   split: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', gap: 2, backgroundColor: c.faint },
@@ -588,7 +595,7 @@ const s = themed((c) => ({
   legendDot: { width: 9, height: 9, borderRadius: 3 },
   legendName: { color: c.text, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   legendValue: { color: c.muted, fontSize: 12 },
-  incomeLine: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginTop: 2 },
+  incomeLine: { alignSelf: 'flex-start', marginTop: 2 },
   forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   forecastText: { flex: 1, color: c.text, fontSize: 13, lineHeight: 18 },
   duo: { flexDirection: 'row', gap: 10 },

@@ -192,6 +192,10 @@ export function freeToSpend(ov, pending = 0) {
   return { free, budget, reserve, ratio: free / budget };
 }
 
+// Fixed costs: paid once a month whether recorded as recurring or by hand. Like recurring payments, they
+// lower the limit for the days left without counting as today's overspending
+export const FIXED_CATEGORIES = new Set(['rent', 'bills']);
+
 // The 50/30/20 savings share
 export const SAVINGS_SHARE = 0.2;
 
@@ -205,52 +209,57 @@ export function savingsReserve(ov) {
 }
 
 /**
- * Today's limit: what's left of the income after this month's spending, savings and the recurring
- * payments still due, minus the savings still to be put aside (savingsReserve), spread over the remaining days.
- * It's computed as of the start of the day, so it doesn't move with every expense; `left` is what remains of it today.
+ * The daily limit: what's free to spend (freeToSpend: the income minus what's spent and saved, the recurring
+ * payments still due and the rest of the 20% for savings) split evenly over the days left, today included.
+ * It's recalculated after every expense: spend more today and it drops for every day left, spend less and it
+ * grows. Spending exactly the limit every day leaves 20% of the income for savings at the end of the month.
  *
- * Going over the limit borrows from the next days (their limit drops). Once the money for needs and wants
- * is gone altogether, spending comes out of the savings reserve:
- * - eatenSavings: how much of the reserve is spent this month (0..reserve)
- * - eatenToday: how much of that happened today (what today's spending took from the savings)
- * - overIncome: spending beyond the whole income, after the reserve is gone
- * - tomorrowLimit: the limit tomorrow will start with if nothing else is spent today
+ * - limit: per day from now on (0 once the money for needs and wants is gone)
+ * - morningLimit: what it was before today's everyday spending; over = that spending went past it
+ * - eatenSavings: how much of the savings still to be put aside is spent this month; eatenToday: today's part
+ * - overIncome: spending beyond the whole income, after the savings are gone
+ * Recurring payments booked today and fixed costs (FIXED_CATEGORIES) lower the limit but never count as "over":
+ * they're planned, not everyday spending.
  */
 export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
   if (!ov.progress.isCurrent || !ov.income || !ov.progress.daysLeft) return null;
-  const today = ov.list.filter((e) => countsInBudget(e) && new Date(e.date).toDateString() === now.toDateString());
-  // Recurring payments aren't today's spending: until booked they're in pendingRecurring, so a rent day
-  // would otherwise count the rent twice and read as hundreds over the limit
-  const spentToday = today
-    .filter((e) => e.source !== 'recurring' && ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket))
-    .reduce((a, e) => a + e.amount, 0);
+  const days = ov.progress.daysLeft;
+  const todayNW = ov.list.filter(
+    (e) =>
+      countsInBudget(e) &&
+      new Date(e.date).toDateString() === now.toDateString() &&
+      ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket)
+  );
+  const sum = (list) => list.reduce((a, e) => a + e.amount, 0);
+  // Everyday spending today: what can push the limit down. Recurring payments and fixed costs (rent, bills)
+  // are planned, not today's choice, so they lower the limit without counting as "over"
+  const spentToday = sum(todayNW.filter((e) => e.source !== 'recurring' && !FIXED_CATEGORIES.has(e.categoryId)));
+  // All of today's needs and wants: what today took from the savings, whatever it was
+  const spentTodayAll = sum(todayNW.filter((e) => e.source !== 'recurring'));
   const reserve = savingsReserve(ov);
-  // What's left now, and what was left this morning (today's needs and wants added back)
+  // Left of the income now (after the payments still due), and before today's everyday spending
   const room = spendRoom(ov) - pendingRecurring;
-  const startRoom = room + spentToday;
+  const morningRoom = room + spentToday;
+  const free = room - reserve;
+  const limit = Math.max(0, free) / days;
+  const morningLimit = Math.max(0, morningRoom - reserve) / days;
   const eaten = (r) => Math.min(reserve, Math.max(0, reserve - r));
-  // What the limit spreads over the days left: the morning's room minus the savings still to be put aside
-  const base = startRoom - reserve;
-  const limit = Math.max(0, base) / ov.progress.daysLeft;
   const eatenSavings = eaten(room);
-  const daysAfter = ov.progress.daysLeft - 1;
   return {
-    // The steps of the calculation, for the explanation sheet: income − spent before today − saved
-    // − payments still due − savings still to put aside = base; base ÷ days = limit
+    // The calculation in four numbers, for the explanation: income − spent − savings (20%) − due = free; free ÷ days
     income: ov.income,
-    spentBefore: ov.byBucket.needs + ov.byBucket.wants - spentToday,
-    saved: ov.byBucket.savings,
+    spent: ov.byBucket.needs + ov.byBucket.wants,
+    savings: ov.byBucket.savings + reserve,
     pending: pendingRecurring,
-    base,
-    days: ov.progress.daysLeft,
+    free,
+    days,
     limit,
+    morningLimit,
     spentToday,
-    left: limit - spentToday,
-    over: spentToday > limit,
+    over: spentToday > morningLimit + 0.005,
     reserve,
     eatenSavings,
-    eatenToday: Math.max(0, eatenSavings - eaten(startRoom)),
+    eatenToday: Math.max(0, eatenSavings - eaten(room + spentTodayAll)),
     overIncome: Math.max(0, -room),
-    tomorrowLimit: daysAfter > 0 ? Math.max(0, room - reserve) / daysAfter : null,
   };
 }

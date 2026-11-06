@@ -91,7 +91,6 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
   const tip = getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet.lastFedAt })[0];
   const I = ov.income || 0;
   const share = (k, target) => (I ? `${Math.round((ov.byBucket[k] / I) * 100)}% / ${target}%` : '');
-  const left = daily ? Math.round(daily.left) : 0;
   // The next recurring payment, within two weeks
   const next = upcomingPayments(recurring, now).find((p) => p.date - now <= 14 * 86400000);
   return {
@@ -115,15 +114,13 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     perDayText: daily ? t('≈ {0}/ден', { 0: money(daily.limit) }) : '',
     over: free && free.free < 0 ? 1 : 0,
     // The same words as Home: what's left for today, or how much over the limit
-    // Spending that reached the savings is said as it is, not just "over the limit"
+    // The limit per day, as on Home; once spending has reached the savings, that's said as it is
     todayText: daily
-      ? daily.eatenToday > 0
-        ? t('Днес {0} от спестяванията', { 0: moneyShort(daily.eatenToday) })
-        : left < 0
-          ? t('Днес {0} над лимита', { 0: moneyShort(-left) })
-          : t('Днес остават {0}', { 0: moneyShort(left) })
+      ? daily.eatenSavings > 0
+        ? t('{0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
+        : t('{0} на ден', { 0: moneyShort(daily.limit) })
       : t('Задай доход в приложението'),
-    todayOver: daily && left < 0 ? 1 : 0,
+    todayOver: daily && (daily.eatenSavings > 0 || daily.over) ? 1 : 0,
     needsPct: share('needs', 50),
     wantsPct: share('wants', 30),
     savingsPct: share('savings', 20),
@@ -175,7 +172,7 @@ const TOMORROW_FROM_HOUR = 18;
  * What the Live Activity should show right now, or null when nothing is happening.
  * It appears only for something with a start and an end, most important first:
  * 1. a no-spend day (started by the user), 2. today's spending eating into the savings,
- * 3. today's spending over the daily limit, 4. a recurring payment due today (or tomorrow, in the evening),
+ * 3. today's spending pushing the daily limit down, 4. a recurring payment due today (or tomorrow, in the evening),
  * 5. the last days of the month.
  * Returns { key, props, staleDate }: the key names the event, so the same event is updated, not restarted.
  */
@@ -219,7 +216,8 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
     };
   }
 
-  // Spending today that came out of the savings (the 20% the daily limit keeps), or went over today's limit.
+  // Spending today that came out of the savings (the 20% the daily limit keeps), or that pushed the limit down
+  // (today's spending went past this morning's limit).
   // Both are about today: they end at midnight, and a new day starts clean.
   const daily = dailyLimit(ov, now, pending);
   if (daily && daily.eatenToday > 0) {
@@ -251,15 +249,13 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
         ...base,
         kind: 'overLimit',
         symbol: 'arrow.down.right.circle.fill',
-        title: t('Над лимита днес'),
-        value: Math.round(-daily.left),
-        valueText: `+${moneyShort(-daily.left)}`,
-        valueLabel: t('над {0}', { 0: moneyShort(daily.limit) }),
+        title: t('Лимитът падна'),
+        value: Math.round(daily.limit * 100),
+        valueText: money(Math.round(daily.limit * 100) / 100),
+        valueLabel: t('на ден, беше {0}', { 0: money(Math.round(daily.morningLimit * 100) / 100) }),
         color: WARN,
-        progress: 1,
-        detail: daily.tomorrowLimit != null
-          ? t('Утре лимитът пада на {0}', { 0: moneyShort(daily.tomorrowLimit) })
-          : t('Последен ден от месеца'),
+        progress: daily.morningLimit ? clamp01(daily.limit / daily.morningLimit) : 0,
+        detail: t('Днес похарчени {0}', { 0: moneyShort(daily.spentToday) }),
       },
     };
   }
@@ -315,7 +311,7 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
         valueLabel: over ? t('над бюджета') : t('свободни'),
         color: over ? BAD : GOOD,
         progress: clamp01(1 - free.ratio),
-        detail: daily ? (daily.left < 0 ? t('Днес {0} над лимита', { 0: moneyShort(-daily.left) }) : t('Днес остават {0}', { 0: moneyShort(daily.left) })) : '',
+        detail: daily ? t('Лимит {0} на ден', { 0: money(Math.round(daily.limit * 100) / 100) }) : '',
       },
     };
   }

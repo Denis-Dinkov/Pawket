@@ -29,7 +29,7 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
   }
   if (evening && !activeToday) return { text: t('Вечерта дойде 🌙 Запиши днешните разходи или ми кажи, че е бил ден без харчене.'), tone: 'tip' };
   if (warn) return { text: `${warn.title}`, tone: 'warn' };
-  if (activeToday && daily && daily.left > 0) {
+  if (activeToday && daily && daily.limit > 0 && !daily.over) {
     return {
       text: pick([t('Записа всичко — браво! Опашката ми не спира 🐶'), t('Днес вървим по план. Гордея се с теб! 🐾')], seed),
       tone: 'praise',
