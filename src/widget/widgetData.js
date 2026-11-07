@@ -1,5 +1,5 @@
 // Widget data — pure logic, used by the app and by the Android task handler.
-import { moneyShort, money, decimalSep, euroFirst, categoryById } from '../theme';
+import { moneyShort, money, limitMoney, decimalSep, euroFirst, categoryById } from '../theme';
 import { petStatus, EXPRESSIONS, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { dailyLimit, freeToSpend, SAVINGS_SHARE } from '../budget';
@@ -119,8 +119,8 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
       ? daily.eatenSavings > 0
         ? t('{0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
         : daily.overToday > 0
-          ? t('{0} над лимита', { 0: moneyShort(daily.overToday) })
-          : t('{0} за днес', { 0: moneyShort(daily.leftToday) })
+          ? t('{0} над лимита', { 0: limitMoney(daily.overToday) })
+          : t('{0} за днес', { 0: limitMoney(daily.leftToday) })
       : t('Задай доход в приложението'),
     todayOver: daily && (daily.eatenSavings > 0 || daily.over) ? 1 : 0,
     needsPct: share('needs', 50),
@@ -144,8 +144,16 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
  * Only entries in the current month carry them: a payment never changes next month's numbers.
  */
 function liveBudgetProps(ov, daily, now) {
-  if (!daily) return { budDays: 0 };
+  // The "pick a category" Live Activity and notification, for a payment from a shop Pawket can't place
+  const pick = {
+    tplPickTitle: t('Избери категория'),
+    tplPickDetail: t('Не познах магазина — докосни, за да избереш'),
+    tplPickAction: t('Избери'),
+    tplNotifPick: t('Не познах категорията — избери я в Pawket.'),
+  };
+  if (!daily) return { ...pick, budDays: 0 };
   return {
+    ...pick,
     budMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
     budDay: dayKey(now),
     budRoom: daily.free + daily.reserve,
@@ -205,10 +213,11 @@ const TOMORROW_FROM_HOUR = 18;
 /**
  * What the Live Activity should show right now, or null when nothing is happening.
  * It appears only for something with a start and an end, most important first:
- * 1. a no-spend day (started by the user), 2. today's spending eating into the savings,
+ * 0. Apple Pay payments waiting for a category, 1. a no-spend day (started by the user), 2. today's spending eating into the savings,
  * 3. today's spending pushing the daily limit down, 4. a recurring payment due today (or tomorrow, in the evening),
  * 5. the last days of the month.
- * Returns { key, props, staleDate }: the key names the event, so the same event is updated, not restarted.
+ * Returns { key, props, staleDate, url? }: the key names the event, so the same event is updated, not restarted;
+ * url is where tapping the activity goes (Home when there's none).
  */
 export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [], recurring = [], pet, session }, now = new Date()) {
   if (!pet) return null;
@@ -226,6 +235,33 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
     actionUrl: '',
     actionLabel: '',
   };
+
+  // Apple Pay payments from a shop Pawket couldn't place: they wait for a category, so they come first.
+  // Tapping opens the newest one for editing (pawket://review); picking a category ends the activity.
+  const unplaced = expenses.filter((e) => e.unreviewed && !categoryById(e.categoryId));
+  if (unplaced.length) {
+    const latest = unplaced.reduce((a, e) => (new Date(e.date) > new Date(a.date) ? e : a));
+    const total = unplaced.reduce((a, e) => a + e.amount, 0);
+    const url = `pawket://review?id=${encodeURIComponent(latest.paymentId || latest.id)}`;
+    return {
+      key: `pick-${unplaced.map((e) => e.id).sort().join(',')}`,
+      staleDate: new Date(now.getTime() + 8 * 3600000),
+      url,
+      props: {
+        ...base,
+        kind: 'pick',
+        symbol: 'questionmark.circle.fill',
+        title: t('Избери категория'),
+        value: Math.round(total * 100),
+        valueText: money(Math.round(total * 100) / 100),
+        valueLabel: unplaced.length === 1 ? latest.merchant : t('{0} плащания', { 0: unplaced.length }),
+        color: WARN,
+        detail: t('Не познах магазина — докосни, за да избереш'),
+        actionUrl: url,
+        actionLabel: t('Избери'),
+      },
+    };
+  }
 
   const state = sessionState(session, expenses, now);
   if (session?.kind === 'nospend' && state && !state.finished) {

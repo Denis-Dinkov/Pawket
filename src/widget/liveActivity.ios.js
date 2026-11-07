@@ -57,7 +57,7 @@ export async function syncLiveActivity({ enabled, data, now = new Date() }) {
     // Swiped away (or not allowed): leave it gone, unless the system ended it after its 8 hours
     if (same && now - new Date(last.startedAt) < RESTART_AFTER) return;
     await endAll(running);
-    Activity.start(props, 'pawket://home', event.staleDate);
+    Activity.start(props, event.url || 'pawket://home', event.staleDate);
     saveShown({ key: event.key, startedAt: now.toISOString() });
   } catch {
     // Live Activities may be turned off in Settings → Pawket; the app works without them

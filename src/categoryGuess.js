@@ -6,7 +6,7 @@
 
 // [category id, words]. A word matches at the start of any word in the name, so "kaufland" also
 // matches "KAUFLAND BG 1234". The first rule that matches wins, so the specific ones come first.
-const RULES = [
+export const RULES = [
   ['subscriptions', ['netflix', 'spotify', 'youtube premium', 'disney', 'hbo', 'max.com', 'apple.com', 'icloud', 'google one', 'chatgpt', 'openai', 'anthropic', 'claude.ai', 'patreon', 'dropbox', 'adobe', 'microsoft', 'xbox', 'playstation', 'psn', 'nintendo', 'duolingo', 'audible', 'kindle']],
   ['transport', ['omv', 'shell', 'lukoil', 'лукойл', 'petrol', 'петрол', 'eko', 'еко', 'rompetrol', 'gazprom', 'газпром', 'uber', 'bolt', 'yellow', 'taxi', 'такси', 'metro', 'метро', 'urban mobility', 'център за градска мобилност', 'бдж', 'bdz', 'parking', 'паркинг', 'vignette', 'винетка', 'bgtoll', 'автогара', 'avtogara', 'union ivkoni', 'юнион ивкони', 'flixbus', 'lime', 'hop on']],
   ['travel', ['booking', 'airbnb', 'ryanair', 'wizz', 'lufthansa', 'bulgaria air', 'airport', 'летище', 'hotel', 'хотел', 'hostel', 'expedia', 'trivago', 'kiwi.com']],
@@ -42,10 +42,15 @@ export function guessCategory(merchant) {
 // processor prefix ("LIDL SOFIA 1234", "LIDL 5678", "SumUp *Cafe Rio"). The category the user picked
 // once must still be found, so names are compared by a looser key, then by their first real word.
 
-const LEGAL = new Set(['eood', 'ood', 'ead', 'ad', 'et', 'ltd', 'llc', 'gmbh', 'inc', 'еоод', 'оод', 'еад', 'ад', 'ет']);
-const PROCESSORS = /^(sumup|sq|pp|paypal|izettle|zettle|sp|tst|mypos)\s*\*\s*/i;
+// The word lists are exported for the "Запиши плащане" action, which applies the same rules while the app
+// is closed (plugins/RecordPaymentIntent.swift, via writeCategorizer in src/pendingPayments.js)
+export const LEGAL_WORDS = ['eood', 'ood', 'ead', 'ad', 'et', 'ltd', 'llc', 'gmbh', 'inc', 'еоод', 'оод', 'еад', 'ад', 'ет'];
+export const PROCESSOR_PREFIXES = ['sumup', 'sq', 'pp', 'paypal', 'izettle', 'zettle', 'sp', 'tst', 'mypos'];
 // First words that say what a place is, not which one: never enough on their own
-const GENERIC = new Set(['магазин', 'супермаркет', 'shop', 'store', 'market', 'маркет', 'кафе', 'cafe', 'бар', 'bar', 'ресторант', 'restaurant', 'аптека', 'pharmacy', 'бензиностанция', 'хотел', 'hotel', 'the', 'мини', 'mini']);
+export const GENERIC_WORDS = ['магазин', 'супермаркет', 'shop', 'store', 'market', 'маркет', 'кафе', 'cafe', 'бар', 'bar', 'ресторант', 'restaurant', 'аптека', 'pharmacy', 'бензиностанция', 'хотел', 'hotel', 'the', 'мини', 'mini'];
+const LEGAL = new Set(LEGAL_WORDS);
+const PROCESSORS = new RegExp(`^(${PROCESSOR_PREFIXES.join('|')})\\s*\\*\\s*`, 'i');
+const GENERIC = new Set(GENERIC_WORDS);
 
 const exactKey = (m) => String(m || '').trim().toLowerCase();
 

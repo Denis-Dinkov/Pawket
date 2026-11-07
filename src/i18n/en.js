@@ -770,4 +770,8 @@ export default {
   "Лимитът ти за днес е {0}": "Your limit for today is {0}",
   "Всяка сутрин свободните пари{2} се делят на дните до края на месеца ({0}). Днес това са {1}. Всеки разход се вади от тях, а утре лимитът се смята наново. Лимитът пази 20% за спестяване — ако го спазваш, те остават.": "Every morning the free money{2} is split over the days left in the month ({0}). Today that's {1}. Every expense comes off it, and tomorrow the limit is worked out again. The limit keeps 20% for savings — stick to it and they stay.",
   " след предстоящите плащания ({0})": " after the payments due ({0})",
+  "Не познах магазина — докосни, за да избереш": "Unknown shop — tap to pick one",
+  "Избери": "Pick",
+  "Не познах категорията — избери я в Pawket.": "I couldn't tell the category — pick it in Pawket.",
+  "{0} плащания": "{0} payments",
 };

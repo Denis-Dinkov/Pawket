@@ -3,22 +3,57 @@
 // { id, amount: "8,83 €", merchant, date }. They are read and deleted when the app comes to the front.
 import { Platform } from 'react-native';
 import { parseAmount } from './deeplink';
+import { RULES, LEGAL_WORDS, PROCESSOR_PREFIXES, GENERIC_WORDS } from './categoryGuess';
+import { categoryById } from './theme';
+import { FIXED_CATEGORIES } from './budget';
 
 // Keep in sync with the Swift side
 const APP_GROUP = 'group.com.denis.pawket';
 const FOLDER = 'PendingPayments';
 
-function pendingFolder() {
+// The App Group container, or null (Expo Go and web have no native file system / no App Group)
+function sharedContainer() {
   if (Platform.OS !== 'ios') return null;
   try {
-    // Expo Go and web have no native file system / no App Group
-    const { Directory, Paths } = require('expo-file-system');
-    const container = Paths.appleSharedContainers?.[APP_GROUP];
-    if (!container) return null;
+    const { Paths } = require('expo-file-system');
+    return Paths.appleSharedContainers?.[APP_GROUP] || null;
+  } catch {
+    return null;
+  }
+}
+
+function pendingFolder() {
+  const container = sharedContainer();
+  if (!container) return null;
+  try {
+    const { Directory } = require('expo-file-system');
     const dir = new Directory(container, FOLDER);
     return dir.exists ? dir : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Hands the action what it needs to tell whether a payment has a category while the app is closed:
+ * the categories the user picked per merchant, the name rules of categoryGuess.js and the category names.
+ * Written to categorizer.json in the App Group whenever the merchant memory changes.
+ */
+export function writeCategorizer(merchants = {}) {
+  const container = sharedContainer();
+  if (!container) return;
+  try {
+    const { File } = require('expo-file-system');
+    const ids = new Set([...RULES.map(([id]) => id), ...Object.values(merchants)]);
+    const names = Object.fromEntries([...ids].map((id) => [id, categoryById(id)?.name]).filter(([, n]) => n));
+    const file = new File(container, 'categorizer.json');
+    if (!file.exists) file.create();
+    // buckets and fixed: how a payment counts in today's limit (dailyLimit in budget.js), so the widget and the
+    // notification show the same number as Home
+    const buckets = Object.fromEntries([...ids].map((id) => [id, categoryById(id)?.bucket]).filter(([, b]) => b));
+    file.write(JSON.stringify({ merchants, rules: RULES, legal: LEGAL_WORDS, processors: PROCESSOR_PREFIXES, generic: GENERIC_WORDS, names, buckets, fixed: [...FIXED_CATEGORIES] }));
+  } catch {
+    // without it the action simply can't tell, and treats new shops as unknown
   }
 }
 

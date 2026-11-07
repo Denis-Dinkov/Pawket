@@ -159,7 +159,17 @@ function Main() {
       { text: t('Спри'), style: 'destructive', onPress: endSession },
     ]);
   }, [endSession]);
-  useIncomingAdd(setAdding, onSessionEnd);
+  // The "pick a category" Live Activity opens that payment for editing. The payment may still be waiting in the
+  // App Group (the store imports it when the app comes to the front), so the id waits until the expense is there
+  const [reviewId, setReviewId] = useState(null);
+  useIncomingAdd(setAdding, onSessionEnd, setReviewId);
+  useEffect(() => {
+    if (!ready || !reviewId) return;
+    const expense = expenses.find((e) => e.paymentId === reviewId || e.id === reviewId);
+    if (!expense) return;
+    setReviewId(null);
+    setAdding({ edit: expense });
+  }, [ready, reviewId, expenses]);
   useEffect(() => {
     if (ready && endWaiting.current) {
       endWaiting.current = false;

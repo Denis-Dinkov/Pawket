@@ -216,6 +216,10 @@ export const moneyShort = (n) => {
   return euroFirst() ? `${sign}€${int}` : `${sign}${int}\u00A0€`;
 };
 
+// A daily-limit amount as Home shows it: with cents under 100 € ("13,78 €"), whole above ("124 €").
+// The widget, the Live Activity and the payment notification use it too, so they all show the same number.
+export const limitMoney = (n) => (Math.abs(n) < 100 ? money(Math.round(n * 100) / 100) : moneyShort(n));
+
 export const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
 
 

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, BUCKETS, MONTHS, money, moneyShort, pct, radius, categoryById, currentColorScheme, monthLower } from '../theme';
+import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, categoryById, currentColorScheme, monthLower } from '../theme';
 import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
@@ -46,7 +46,7 @@ import { t } from '../i18n';
 
 const RECENT = 3;
 // A small limit shows its cents ("от 6,08 €"): rounded to "6 €" it didn't add up to the month
-const limitText = (n) => (n < 100 ? money(Math.round(n * 100) / 100) : moneyShort(n));
+const limitText = limitMoney;
 const ROOM = 268;
 const MONTH_EMOJI = { ecstatic: '🤩', happy: '🐶', worried: '😟', sad: '😢', crying: '😭' };
 

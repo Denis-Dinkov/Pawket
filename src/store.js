@@ -11,7 +11,7 @@ import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
-import { takePendingPayments } from './pendingPayments';
+import { takePendingPayments, writeCategorizer } from './pendingPayments';
 import { guessCategory, rememberedCategory, sameMerchant } from './categoryGuess';
 
 export const KEY = 'spendlite:v2';
@@ -216,6 +216,12 @@ export function StoreProvider({ children }) {
       importing.current = false;
     }
   }, [showToast]);
+
+  // The action needs the merchant memory (and the category names, which follow the language) while the app is closed
+  const { merchants: mMerchants, categories: mCategories } = data;
+  useEffect(() => {
+    if (ready) writeCategorizer(mMerchants);
+  }, [ready, mMerchants, mCategories, lang]);
 
   useEffect(() => {
     if (!ready) return undefined;

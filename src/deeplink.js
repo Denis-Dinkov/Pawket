@@ -57,6 +57,13 @@ export function parseSessionUrl(url) {
   return /(^|\/)session$/.test(path) && params.action === 'end' ? 'end' : null;
 }
 
+// The "pick a category" Live Activity: pawket://review?id=<payment or expense id> → the id, anything else → null
+export function parseReviewUrl(url) {
+  if (!url) return null;
+  const { path, params } = splitUrl(url);
+  return /(^|\/)review$/.test(path) && params.id ? params.id : null;
+}
+
 /**
  * Returns the prefill for "New expense", or null if the link isn't an add link.
  * category: a category id, picked in advance (the widget's quick-add buttons).
