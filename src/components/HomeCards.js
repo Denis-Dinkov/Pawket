@@ -5,9 +5,9 @@ import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
 import Money from './ui/Money';
 import Bar from './Bar';
-import { colors, BUCKETS, categoryById, getCategories, money, pct } from '../theme';
+import { colors, BUCKETS, getCategories, money, pct } from '../theme';
 import { sameDay, plural } from '../format';
-import { dailyLimit, countsInBudget } from '../budget';
+import { dailyLimit, countsInBudget, bucketOf } from '../budget';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -24,10 +24,9 @@ export function TodayCard({ ov, now, pending = 0 }) {
   }
   // Needs and wants only, like the limit it's compared to (money put into savings isn't spending)
   const today = ov.list.filter(
-    (e) => countsInBudget(e) && sameDay(e.date, now) && ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket)
+    (e) => countsInBudget(e) && sameDay(e.date, now) && ['needs', 'wants'].includes(bucketOf(e))
   );
   const daily = dailyLimit(ov, now, pending);
-  const limit = daily?.limit || 0;
   const over = !!daily?.over;
   return (
     <Card style={{ gap: 10 }}>
@@ -39,12 +38,14 @@ export function TodayCard({ ov, now, pending = 0 }) {
         <Money value={daily?.spentToday ?? today.reduce((a, e) => a + e.amount, 0)} size={28} />
         {daily && (
           <Text style={[s.limit, { color: over ? colors.danger : colors.savings }]}>
-            {over ? t('лимитът падна на {0}', { 0: money(Math.round(limit * 100) / 100) }) : t('лимит {0} на ден', { 0: money(Math.round(limit * 100) / 100) })}
+            {over
+              ? t('{0} над лимита', { 0: money(Math.round(daily.overToday * 100) / 100) })
+              : t('остават {0}', { 0: money(Math.round(daily.leftToday * 100) / 100) })}
           </Text>
         )}
       </View>
       {daily ? (
-        // Today's spending against this morning's limit (the limit itself moves with every expense)
+        // Today's spending against today's limit (set in the morning; tomorrow gets a new one)
         <Bar value={daily.morningLimit ? daily.spentToday / daily.morningLimit : 1} color={over ? colors.danger : colors.primary} height={8} label={t('Днес {0} от {1}', { 0: money(daily.spentToday), 1: money(daily.morningLimit) })} />
       ) : (
         <Text style={s.muted}>{t('Задай доход, за да видиш дневния си лимит.')}</Text>

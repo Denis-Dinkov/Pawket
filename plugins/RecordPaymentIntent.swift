@@ -5,9 +5,9 @@
 // It does three things, all without starting React Native:
 //   1. drops one JSON file per payment into the App Group; the app books them when it next comes to the
 //      front (src/pendingPayments.js), with the category remembered for the merchant or guessed from it;
-//   2. subtracts the amount from the widget's budget numbers, so "Свободни" and the daily limit are right
-//      straight away (the inputs come from liveBudgetProps in src/widget/widgetData.js);
-//   3. posts a notification with the amount and what is left per day.
+//   2. subtracts the amount from the widget's budget numbers, so "Свободни" and what's left of today's limit
+//      are right straight away (the inputs come from liveBudgetProps in src/widget/widgetData.js);
+//   3. posts a notification with the amount and what is left for today.
 import AppIntents
 import Foundation
 import UserNotifications
@@ -78,6 +78,7 @@ struct RecordPaymentIntent: AppIntent {
     guard let defaults = UserDefaults(suiteName: appGroup),
           var entries = defaults.array(forKey: timelineKey) as? [[String: Any]] else { return nil }
     let month = monthKey(Date())
+    let today = dayKey(Date())
     let now = Date().timeIntervalSince1970
     var current: LiveBudget?
     for i in entries.indices {
@@ -85,18 +86,24 @@ struct RecordPaymentIntent: AppIntent {
             props["budMonth"] as? String == month,
             let room = number(props["budRoom"]), let reserve = number(props["budReserve"]),
             let total = number(props["budBudget"]), let days = number(props["budDays"]), days > 0 else { continue }
-      let b = LiveBudget(room: room - spent, reserve: reserve, budget: total, days: days, props: props)
+      // The payment is today's spending in the entries for today; later days start from the smaller room
+      let spentBefore = number(props["budSpentToday"]) ?? 0
+      let spentToday = props["budDay"] as? String == today ? spentBefore + spent : spentBefore
+      let b = LiveBudget(room: room - spent, reserve: reserve, budget: total, days: days, spentToday: spentToday, props: props)
       props["budRoom"] = b.room
+      props["budSpentToday"] = b.spentToday
       props["remainingLabel"] = b.free < 0 ? b.text("lblOver") : b.text("lblFree")
       props["remainingText"] = b.moneyShort(abs(b.free))
       props["remainingShort"] = b.shortAmount(b.free)
       props["leftRatio"] = max(0, min(1, b.free / max(b.budget, 1)))
       props["over"] = b.free < 0 ? 1 : 0
-      props["perDayText"] = b.fill("tplPerDay", b.money(b.limit))
+      props["perDayText"] = b.fill("tplPerDay", b.money(b.todayLimit))
       props["todayText"] = b.eatenSavings > 0
         ? b.fill("tplFromSavings", b.moneyShort(b.eatenSavings))
-        : b.fill("tplDay", b.moneyShort(b.limit))
-      if b.eatenSavings > 0 { props["todayOver"] = 1 }
+        : b.leftToday < 0
+          ? b.fill("tplOverToday", b.moneyShort(-b.leftToday))
+          : b.fill("tplToday", b.moneyShort(b.leftToday))
+      props["todayOver"] = b.eatenSavings > 0 || b.leftToday < -0.005 ? 1 : 0
       entries[i]["props"] = props
       // The entry on screen now: the last one that has started
       if current == nil || seconds(entries[i]["timestamp"]) <= now { current = b }
@@ -113,19 +120,27 @@ struct RecordPaymentIntent: AppIntent {
     let settings = await center.notificationSettings()
     guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
     // Without the widget's labels (no income set yet) the notification is in Bulgarian, like the action
-    let format = budget ?? LiveBudget(room: 0, reserve: 0, budget: 0, days: 0, props: [:])
+    let format = budget ?? LiveBudget(room: 0, reserve: 0, budget: 0, days: 0, spentToday: 0, props: [:])
     let content = UNMutableNotificationContent()
     let title = format.fill("tplNotifTitle", format.money(amount), fallback: "Записах {0}")
     content.title = merchant.isEmpty ? title : "\(title) · \(merchant)"
     if let b = budget {
       content.body = b.eatenSavings > 0
         ? b.fill("tplNotifSavings", b.moneyShort(b.eatenSavings))
-        : b.fill("tplNotifDay", b.moneyShort(b.limit))
+        : b.leftToday < 0
+          ? b.fill("tplNotifOver", b.moneyShort(-b.leftToday))
+          : b.fill("tplNotifToday", b.moneyShort(b.leftToday))
     }
     content.sound = nil
     content.threadIdentifier = "pawket-payments"
     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
     try? await center.add(request)
+  }
+
+  // Same as dayKey in src/pet/logic.js
+  private func dayKey(_ date: Date) -> String {
+    let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
   }
 
   private func monthKey(_ date: Date) -> String {
@@ -142,16 +157,20 @@ private enum RecordPaymentError: Error, CustomLocalizedStringResourceConvertible
   }
 }
 
-/// The daily-limit numbers after a payment, and the app's money format (src/theme.js money / moneyShort).
+/// The daily-limit numbers after a payment (dailyLimit in src/budget.js), and the app's money format
+/// (src/theme.js money / moneyShort).
 private struct LiveBudget {
   let room: Double
   let reserve: Double
   let budget: Double
   let days: Double
+  let spentToday: Double
   let props: [String: Any]
 
   var free: Double { room - reserve }
-  var limit: Double { days > 0 ? max(0, free) / days : 0 }
+  // Set before today's spending: the money free this morning over the days left, today included
+  var todayLimit: Double { days > 0 ? max(0, room + spentToday - reserve) / days : 0 }
+  var leftToday: Double { todayLimit - spentToday }
   var eatenSavings: Double { min(reserve, max(0, reserve - room)) }
   var english: Bool { (number(props["fmtEn"]) ?? 0) == 1 }
 

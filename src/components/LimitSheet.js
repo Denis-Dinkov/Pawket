@@ -21,8 +21,8 @@ function Row({ label, value, strong }) {
 }
 
 /**
- * The daily limit in plain words: free money ÷ days left, and where the free money comes from.
- * Opened from the limit on Home (see dailyLimit in budget.js).
+ * Today's limit in plain words: this morning's free money ÷ days left, minus what was spent today,
+ * and what tomorrow's limit will be. Opened from the limit on Home (see dailyLimit in budget.js).
  */
 export default function LimitSheet({ visible, onClose, daily, now }) {
   if (!daily) return null;
@@ -30,12 +30,18 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   // Saved more than 20%: the row shows what was saved, not the 20%
   const savingsTarget = daily.savings <= daily.income * SAVINGS_SHARE + 0.005;
+  const over = daily.overToday > 0;
 
   return (
     <Sheet visible={visible} onClose={onClose}>
-      <Text style={s.title}>{t('Дневен лимит')}</Text>
-      <Money value={daily.limit} size={40} color={daily.limit > 0 ? colors.savings : colors.danger} style={{ textAlign: 'center', marginTop: 6 }} />
-      <Text style={s.sub}>{t('на ден до {0} {1}', { 0: lastDay, 1: month })}</Text>
+      <Text style={s.title}>{over ? t('Над лимита днес') : t('Остават за днес')}</Text>
+      <Money
+        value={over ? daily.overToday : daily.leftToday}
+        size={40}
+        color={over || daily.eatenSavings > 0 ? colors.danger : colors.savings}
+        style={{ textAlign: 'center', marginTop: 6 }}
+      />
+      <Text style={s.sub}>{t('от {0} лимит за днес', { 0: exact(daily.todayLimit) })}</Text>
 
       {daily.eatenSavings > 0 && (
         <View style={s.alert}>
@@ -45,10 +51,18 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
       )}
 
       <View style={s.card}>
-        <Row label={t('Свободни')} value={exact(Math.max(0, daily.free))} strong />
+        <Row label={t('Лимит за днес')} value={exact(daily.todayLimit)} strong />
+        <Row label={t('− Похарчени днес')} value={exact(daily.spentToday)} />
+        <View style={s.sep} />
+        <Row label={over ? t('= Над лимита') : t('= Остават')} value={exact(over ? daily.overToday : daily.leftToday)} strong />
+      </View>
+
+      <Text style={s.section}>{t('Как се смята лимитът за днес')}</Text>
+      <View style={[s.card, { marginTop: 0 }]}>
+        <Row label={t('Свободни тази сутрин')} value={exact(daily.morningFree)} />
         <Row label={t('÷ дни до {0} {1} (с днес)', { 0: lastDay, 1: month })} value={String(daily.days)} />
         <View style={s.sep} />
-        <Row label={t('= на ден')} value={exact(daily.limit)} strong />
+        <Row label={t('= Лимит за днес')} value={exact(daily.todayLimit)} strong />
       </View>
 
       <Text style={s.section}>{t('Откъде са свободните')}</Text>
@@ -57,12 +71,21 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
         <Row label={t('− Похарчени')} value={exact(daily.spent)} />
         <Row label={savingsTarget ? t('− Спестяване (20%)') : t('− Спестени')} value={exact(daily.savings)} />
         {daily.pending > 0 && <Row label={t('− Предстоящи плащания')} value={exact(daily.pending)} />}
+        <View style={s.sep} />
+        <Row label={t('= Свободни сега')} value={exact(Math.max(0, daily.free))} strong />
       </View>
 
+      {daily.days > 1 && (
+        <Text style={s.tomorrow}>
+          {t('Утре: {0} на ден, ако днес не харчиш повече.', { 0: exact(daily.limitTomorrow) })}
+        </Text>
+      )}
+
       <View style={s.notes}>
-        <Text style={s.note}>• {t('Сменя се с всеки разход.')}</Text>
+        <Text style={s.note}>• {t('Всеки разход днес се вади изцяло от лимита за днес.')}</Text>
+        <Text style={s.note}>• {t('Всяка сутрин лимитът се смята наново от останалите пари: похарчиш ли по-малко, утре е по-голям; повече — по-малък.')}</Text>
+        <Text style={s.note}>• {t('Наемът, сметките и повтарящите се плащания намаляват лимита, но не се броят за превишение.')}</Text>
         <Text style={s.note}>• {t('Харчиш ли по лимита, в края на месеца остават 20% за спестяване.')}</Text>
-        <Text style={s.note}>• {t('Стигне ли 0, харчиш от спестяванията.')}</Text>
       </View>
     </Sheet>
   );
@@ -80,6 +103,7 @@ const s = themed((c) => ({
   rowValue: { color: c.text, fontSize: 15, fontVariant: ['tabular-nums'] },
   strong: { fontWeight: '800' },
   sep: { height: 1, backgroundColor: c.faint },
+  tomorrow: { color: c.text, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 16 },
   notes: { gap: 6, marginTop: 16 },
   note: { color: c.muted, fontSize: 14, lineHeight: 20 },
 }));

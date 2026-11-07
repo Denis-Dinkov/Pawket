@@ -114,7 +114,7 @@ const DockHeader = memo(
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
-              {perDay != null && <Text style={s.dockSub}>{t('{0} на ден', { 0: limitText(perDay) })}</Text>}
+              {perDay != null && <Text style={s.dockSub}>{perDay >= 0 ? t('{0} за днес', { 0: limitText(perDay) }) : t('{0} над лимита днес', { 0: limitText(-perDay) })}</Text>}
             </View>
           </LinearGradient>
         </Touch>
@@ -191,8 +191,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   // The main number: free to spend this month (current month), or what was left of a past one
   const free = isCurrent ? freeToSpend(ov, pending) : null;
   const heroValue = free ? free.free : ov.remaining;
-  // The amount in the "today" column: the limit per day, or how much came out of the savings once it's 0
-  const todayValue = !daily ? 0 : daily.eatenSavings > 0 ? daily.eatenSavings : daily.limit;
+  // The amount in the "today" column: what's left of today's limit, how far today went past it,
+  // or how much came out of the savings once the free money is gone
+  const todayValue = !daily ? 0 : daily.eatenSavings > 0 ? daily.eatenSavings : daily.overToday > 0 ? daily.overToday : daily.leftToday;
+  const todayBad = !!daily && (daily.eatenSavings > 0 || daily.overToday > 0);
   // Past the savings too: the hero says how far over the whole income
   const overIncome = !!free && free.free + free.reserve < 0;
   const bubble = isCurrent
@@ -422,7 +424,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                 )}
               </View>
               {isCurrent && daily ? (
-                // The limit per day, recalculated after every expense; or, once it's 0, how much came out of the savings.
+                // Today's limit minus today's spending; a new limit every morning from what's left.
                 // Tapping it opens the simple explanation
                 <Touch
                   style={s.today}
@@ -432,12 +434,14 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                   accessibilityLabel={
                     daily.eatenSavings > 0
                       ? t('Изхарчени {0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
-                      : t('Лимит {0} на ден до {1} {2}', { 0: limitText(daily.limit), 1: ov.progress.daysInMonth, 2: monthLower(month) })
+                      : daily.overToday > 0
+                        ? t('Над днешния лимит с {0}', { 0: limitText(daily.overToday) })
+                        : t('Остават {0} от {1} за днес', { 0: limitText(daily.leftToday), 1: limitText(daily.todayLimit) })
                   }
                 >
                   <View style={s.todayHead}>
                     <Text style={s.label} numberOfLines={1}>
-                      {daily.eatenSavings > 0 ? t('От спестяванията') : t('Лимит на ден')}
+                      {daily.eatenSavings > 0 ? t('От спестяванията') : daily.overToday > 0 ? t('Над лимита днес') : t('Остават за днес')}
                     </Text>
                     <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
                   </View>
@@ -445,16 +449,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     whole={todayValue >= 100}
                     value={todayValue}
                     size={22}
-                    color={daily.eatenSavings > 0 ? colors.danger : colors.savings}
+                    color={todayBad ? colors.danger : colors.savings}
                   />
-                  <Text style={[s.miniSub, daily.over && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
-                    {daily.eatenSavings > 0
-                      ? t('лимит 0 €')
-                      : daily.over
-                        ? t('падна от {0}', { 0: limitText(daily.morningLimit) })
-                        : daily.spentToday > 0
-                          ? t('днес похарчени {0}', { 0: limitText(daily.spentToday) })
-                          : t('до {0} {1}', { 0: ov.progress.daysInMonth, 1: monthLower(month) })}
+                  <Text style={[s.miniSub, todayBad && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
+                    {daily.eatenSavings > 0 ? t('лимит 0 €') : t('от {0} за днес', { 0: limitText(daily.todayLimit) })}
                   </Text>
                 </Touch>
               ) : !isCurrent && ov.score != null ? (
@@ -523,7 +521,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         stageKey={status.stage.key}
         bubble={bubble}
         remaining={heroValue}
-        perDay={isCurrent && daily ? daily.limit : null}
+        perDay={isCurrent && daily ? daily.leftToday : null}
       />
 
       <MonthPickerSheet visible={picker} onClose={() => setPicker(false)} expenses={expenses} year={year} month={month} onSelect={onMonthChange} />

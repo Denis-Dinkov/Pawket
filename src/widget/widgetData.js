@@ -111,14 +111,16 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     remainingText: free ? moneyShort(Math.abs(free.free)) : t('задай доход'),
     remainingShort: free ? shortAmount(free.free) : '—',
     leftRatio: free ? clamp01(free.ratio) : 0,
-    perDayText: daily ? t('≈ {0}/ден', { 0: money(daily.limit) }) : '',
+    perDayText: daily ? t('≈ {0}/ден', { 0: money(daily.todayLimit) }) : '',
     over: free && free.free < 0 ? 1 : 0,
-    // The same words as Home: what's left for today, or how much over the limit
-    // The limit per day, as on Home; once spending has reached the savings, that's said as it is
+    // The same words as Home: what's left of today's limit, or how far today went past it;
+    // once spending has reached the savings, that's said as it is
     todayText: daily
       ? daily.eatenSavings > 0
         ? t('{0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
-        : t('{0} на ден', { 0: moneyShort(daily.limit) })
+        : daily.overToday > 0
+          ? t('{0} над лимита', { 0: moneyShort(daily.overToday) })
+          : t('{0} за днес', { 0: moneyShort(daily.leftToday) })
       : t('Задай доход в приложението'),
     todayOver: daily && (daily.eatenSavings > 0 || daily.over) ? 1 : 0,
     needsPct: share('needs', 50),
@@ -137,14 +139,17 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
 /**
  * What the "Запиши плащане" action needs to update the widget and send its notification while the app is
  * closed (plugins/withRecordPaymentIntent.js): the daily-limit inputs as plain numbers, the labels and the
- * money format. It subtracts each payment from budRoom and recomputes the texts with dailyLimit's formula.
+ * money format. It subtracts each payment from budRoom (and, on the payment's day, adds it to budSpentToday)
+ * and recomputes the texts with dailyLimit's formula.
  * Only entries in the current month carry them: a payment never changes next month's numbers.
  */
 function liveBudgetProps(ov, daily, now) {
   if (!daily) return { budDays: 0 };
   return {
     budMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    budDay: dayKey(now),
     budRoom: daily.free + daily.reserve,
+    budSpentToday: daily.spentToday,
     budReserve: daily.reserve,
     budBudget: ov.income * (1 - SAVINGS_SHARE),
     budDays: daily.days,
@@ -152,10 +157,12 @@ function liveBudgetProps(ov, daily, now) {
     lblFree: t('Свободни'),
     lblOver: t('Над бюджета с'),
     tplPerDay: t('≈ {0}/ден', { 0: '{0}' }),
-    tplDay: t('{0} на ден', { 0: '{0}' }),
+    tplToday: t('{0} за днес', { 0: '{0}' }),
+    tplOverToday: t('{0} над лимита', { 0: '{0}' }),
     tplFromSavings: t('{0} от спестяванията', { 0: '{0}' }),
     tplNotifTitle: t('Записах {0}', { 0: '{0}' }),
-    tplNotifDay: t('Остават {0} на ден до края на месеца.', { 0: '{0}' }),
+    tplNotifToday: t('Остават {0} за днес.', { 0: '{0}' }),
+    tplNotifOver: t('Над днешния лимит с {0}.', { 0: '{0}' }),
     tplNotifSavings: t('Вече харчиш от спестяванията: {0}.', { 0: '{0}' }),
   };
 }
@@ -276,13 +283,13 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
         ...base,
         kind: 'overLimit',
         symbol: 'arrow.down.right.circle.fill',
-        title: t('Лимитът падна'),
-        value: Math.round(daily.limit * 100),
-        valueText: money(Math.round(daily.limit * 100) / 100),
-        valueLabel: t('на ден, беше {0}', { 0: money(Math.round(daily.morningLimit * 100) / 100) }),
+        title: t('Над лимита за днес'),
+        value: Math.round(daily.overToday * 100),
+        valueText: `−${money(Math.round(daily.overToday * 100) / 100)}`,
+        valueLabel: t('лимит {0} за днес', { 0: money(Math.round(daily.todayLimit * 100) / 100) }),
         color: WARN,
-        progress: daily.morningLimit ? clamp01(daily.limit / daily.morningLimit) : 0,
-        detail: t('Днес похарчени {0}', { 0: moneyShort(daily.spentToday) }),
+        progress: 1,
+        detail: daily.days > 1 ? t('Утре: {0} на ден', { 0: money(Math.round(daily.limitTomorrow * 100) / 100) }) : t('Днес похарчени {0}', { 0: moneyShort(daily.spentToday) }),
       },
     };
   }
@@ -338,7 +345,7 @@ export function activityEvent({ expenses = [], incomes = {}, incomeEntries = [],
         valueLabel: over ? t('над бюджета') : t('свободни'),
         color: over ? BAD : GOOD,
         progress: clamp01(1 - free.ratio),
-        detail: daily ? t('Лимит {0} на ден', { 0: money(Math.round(daily.limit * 100) / 100) }) : '',
+        detail: daily ? (daily.overToday > 0 ? t('{0} над лимита днес', { 0: money(Math.round(daily.overToday * 100) / 100) }) : t('Остават {0} за днес', { 0: money(Math.round(daily.leftToday * 100) / 100) })) : '',
       },
     };
   }

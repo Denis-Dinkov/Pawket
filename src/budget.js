@@ -69,16 +69,19 @@ export function filterMonth(expenses, year, month) {
   return indexByMonth(expenses).get(monthKey(year, month)) || EMPTY_LIST;
 }
 
+// The 50/30/20 part an expense counts in. One without a category yet (an Apple Pay payment from a shop
+// Pawket doesn't know) still is spending, so it counts as a want until the user picks one.
+export const bucketOf = (e) => categoryById(e.categoryId)?.bucket || 'wants';
+
 export function summarize(list) {
   const byCategory = {};
   const byBucket = { needs: 0, wants: 0, savings: 0 };
   let total = 0;
   for (const e of list) {
     if (!countsInBudget(e)) continue;
-    const cat = categoryById(e.categoryId);
     total += e.amount;
     byCategory[e.categoryId] = (byCategory[e.categoryId] || 0) + e.amount;
-    if (cat) byBucket[cat.bucket] += e.amount;
+    byBucket[bucketOf(e)] += e.amount;
   }
   return { total, byCategory, byBucket };
 }
@@ -209,13 +212,15 @@ export function savingsReserve(ov) {
 }
 
 /**
- * The daily limit: what's free to spend (freeToSpend: the income minus what's spent and saved, the recurring
- * payments still due and the rest of the 20% for savings) split evenly over the days left, today included.
- * It's recalculated after every expense: spend more today and it drops for every day left, spend less and it
- * grows. Spending exactly the limit every day leaves 20% of the income for savings at the end of the month.
+ * The daily limit. Each morning the money free to spend (freeToSpend: the income minus what's spent and saved,
+ * the recurring payments still due and the rest of the 20% for savings) is split evenly over the days left,
+ * today included: that's today's limit (todayLimit). Every expense today comes off it in full (leftToday), so
+ * it's a budget for the day. The next day starts from what's actually left: spend less today and tomorrow's
+ * limit grows, spend more and it drops. Spending exactly the limit every day leaves 20% for savings.
  *
- * - limit: per day from now on (0 once the money for needs and wants is gone)
- * - morningLimit: what it was before today's everyday spending; over = that spending went past it
+ * - todayLimit: today's limit, set before today's everyday spending (also morningLimit)
+ * - leftToday: what's left of it now; overToday: how far today's spending went past it; over = overToday > 0
+ * - limit: the average per day from now on, today's spending included (tomorrow's limit is limitTomorrow)
  * - eatenSavings: how much of the savings still to be put aside is spent this month; eatenToday: today's part
  * - overIncome: spending beyond the whole income, after the savings are gone
  * Recurring payments booked today and fixed costs (FIXED_CATEGORIES) lower the limit but never count as "over":
@@ -228,7 +233,7 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
     (e) =>
       countsInBudget(e) &&
       new Date(e.date).toDateString() === now.toDateString() &&
-      ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket)
+      ['needs', 'wants'].includes(bucketOf(e))
   );
   const sum = (list) => list.reduce((a, e) => a + e.amount, 0);
   // Everyday spending today: what can push the limit down. Recurring payments and fixed costs (rent, bills)
@@ -245,6 +250,7 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
   const morningLimit = Math.max(0, morningRoom - reserve) / days;
   const eaten = (r) => Math.min(reserve, Math.max(0, reserve - r));
   const eatenSavings = eaten(room);
+  const leftToday = morningLimit - spentToday;
   return {
     // The calculation in four numbers, for the explanation: income − spent − savings (20%) − due = free; free ÷ days
     income: ov.income,
@@ -255,6 +261,13 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
     days,
     limit,
     morningLimit,
+    todayLimit: morningLimit,
+    // The free money this morning, before today's everyday spending: what todayLimit is divided from
+    morningFree: Math.max(0, morningRoom - reserve),
+    leftToday,
+    overToday: Math.max(0, -leftToday),
+    // Tomorrow's limit if nothing more is spent today: what's free then, over one day less
+    limitTomorrow: days > 1 ? Math.max(0, free) / (days - 1) : 0,
     spentToday,
     over: spentToday > morningLimit + 0.005,
     reserve,

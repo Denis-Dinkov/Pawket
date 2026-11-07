@@ -204,11 +204,11 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
   // Daily limit — the same number as on Home, the recurring payments still due already taken out
   const pending = pendingSpend(recurring, now);
   const daily = dailyLimit(ov, now, pending);
-  if (daily && daily.limit > 0) {
+  if (daily && daily.todayLimit > 0) {
     add(20, {
       id: 'daily-limit', tone: 'tip', icon: 'calendar-outline',
-      title: t('Дневният ти лимит е {0}', { 0: money(daily.limit) }),
-      text: t('До края на месеца ({0} дни) можеш да харчиш средно до {1} на ден{2}. Лимитът вече пази 20% за спестяване — ако го спазваш, те остават.', { 0: daysLeft, 1: money(daily.limit), 2: pending > 0 ? t(' и след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
+      title: t('Лимитът ти за днес е {0}', { 0: money(daily.todayLimit) }),
+      text: t('Всяка сутрин свободните пари{2} се делят на дните до края на месеца ({0}). Днес това са {1}. Всеки разход се вади от тях, а утре лимитът се смята наново. Лимитът пази 20% за спестяване — ако го спазваш, те остават.', { 0: daysLeft, 1: money(daily.todayLimit), 2: pending > 0 ? t(' след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
     });
   }
 

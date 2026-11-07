@@ -1,8 +1,7 @@
 // A no-spend day: a challenge the user starts on purpose, kept until midnight or broken by an expense.
 // Like the other Live Activity events, it has a start and an end, not a standing status.
 // Pure logic, no RN imports.
-import { countsInBudget } from './budget';
-import { categoryById } from './theme';
+import { countsInBudget, bucketOf } from './budget';
 import { dayKey } from './pet/logic';
 
 export const SESSION_XP = { nospend: 20 };
@@ -15,7 +14,7 @@ const midnightAfter = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()
 // Spending that breaks a no-spend day: needs and wants actually paid (not recurring payments, savings, goals,
 // or entries outside the budget)
 const isSpending = (e) =>
-  e.type !== 'income' && countsInBudget(e) && e.source !== 'recurring' && !e.goalId && ['needs', 'wants'].includes(categoryById(e.categoryId)?.bucket);
+  e.type !== 'income' && countsInBudget(e) && e.source !== 'recurring' && !e.goalId && ['needs', 'wants'].includes(bucketOf(e));
 
 export function startNoSpend(now = new Date()) {
   return { id: newId(), kind: 'nospend', day: dayKey(now), startedAt: now.toISOString(), endsAt: midnightAfter(now).toISOString() };
