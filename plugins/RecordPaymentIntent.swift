@@ -55,7 +55,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
 /// transaction details and gives up when they come late, while the Wallet notification still arrives (even an
 /// hour later). An automation "When I receive a notification from Wallet" passes its title, subtitle and text
 /// here; the amount and the shop are read from them. When both automations see the same payment, it's
-/// recorded once (PaymentRecorder.claim).
+/// recorded once (PaymentRecorder.claim, within 2 minutes).
 @available(iOS 17.0, *)
 struct RecordNotificationIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Запиши от известие"
@@ -94,8 +94,9 @@ private enum PaymentRecorder {
 
   private static let lock = NSLock()
   private static let recentKey = "pawket.recentPayments"
-  // How far apart the two automations can see the same payment
-  private static let pairWindow: TimeInterval = 15 * 60
+  // How far apart the two automations can see the same payment: both fire on the same Wallet data,
+  // seconds apart, so a short window keeps two real payments of the same amount apart
+  private static let pairWindow: TimeInterval = 2 * 60
 
   static func record(amount value: Double, merchant raw: String, source: Source) async {
     guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup),
@@ -110,7 +111,7 @@ private enum PaymentRecorder {
   }
 
   /// false when this payment was already recorded by the other automation: the same amount from the other
-  /// source in the last 15 minutes that isn't paired yet. Each record pairs with one from the other source at
+  /// source in the last 2 minutes that isn't paired yet. Each record pairs with one from the other source at
   /// most, so two real payments of the same amount (two coffees) are both kept.
   static func claim(_ value: Double, _ source: Source) -> Bool {
     lock.lock()
