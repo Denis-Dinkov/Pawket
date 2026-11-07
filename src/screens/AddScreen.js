@@ -3,8 +3,8 @@ import { View, ScrollView, Keyboard, Platform, Switch } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStore, normalizeMerchant } from '../store';
-import { guessCategory } from '../categoryGuess';
+import { useStore } from '../store';
+import { guessCategory, rememberedCategory } from '../categoryGuess';
 import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep, euroFirst } from '../theme';
 import { getIncome } from '../budget';
 import { goalProgress, goalSaved } from '../plans';
@@ -89,7 +89,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
   const isIncome = mode === 'income';
   // A payment out of a goal or sinking fund: its money was already counted as savings
   const fromGoal = !isIncome && prefill.fromGoalId ? goals.find((g) => g.id === prefill.fromGoalId) : null;
-  const remembered = merchants[normalizeMerchant(merchant)];
+  // Also finds the shop under a slightly different name (branch number, city) — see rememberedCategory
+  const remembered = rememberedCategory(merchants, merchant);
   const rememberedOk = remembered && categoryById(remembered) && !categoryById(remembered).archived;
   // Not picked by hand: the category used for this shop before, else a guess from its name
   const categoryId = picked || (rememberedOk ? remembered : merchant.trim() ? guessCategory(merchant) : null);

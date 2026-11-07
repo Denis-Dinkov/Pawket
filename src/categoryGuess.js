@@ -36,3 +36,53 @@ export function guessCategory(merchant) {
   }
   return null;
 }
+
+// Merchant memory ---------------------------------------------------------------------------------
+// Wallet names the same shop differently from payment to payment: a branch number, a city, a card
+// processor prefix ("LIDL SOFIA 1234", "LIDL 5678", "SumUp *Cafe Rio"). The category the user picked
+// once must still be found, so names are compared by a looser key, then by their first real word.
+
+const LEGAL = new Set(['eood', 'ood', 'ead', 'ad', 'et', 'ltd', 'llc', 'gmbh', 'inc', 'еоод', 'оод', 'еад', 'ад', 'ет']);
+const PROCESSORS = /^(sumup|sq|pp|paypal|izettle|zettle|sp|tst|mypos)\s*\*\s*/i;
+// First words that say what a place is, not which one: never enough on their own
+const GENERIC = new Set(['магазин', 'супермаркет', 'shop', 'store', 'market', 'маркет', 'кафе', 'cafe', 'бар', 'bar', 'ресторант', 'restaurant', 'аптека', 'pharmacy', 'бензиностанция', 'хотел', 'hotel', 'the', 'мини', 'mini']);
+
+const exactKey = (m) => String(m || '').trim().toLowerCase();
+
+/** "LIDL BULGARIA EOOD*SOFIA 1234" → "lidl bulgaria sofia" */
+export function merchantKey(m) {
+  return exactKey(m)
+    .replace(PROCESSORS, '')
+    .replace(/[0-9]+/g, ' ')
+    .replace(/[*_/\\|,.;:()"'„“”#№-]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !LEGAL.has(w))
+    .join(' ');
+}
+
+const firstWord = (key) => {
+  const w = key.split(' ')[0] || '';
+  return w.length >= 3 && !GENERIC.has(w) ? w : '';
+};
+
+/**
+ * The category remembered for a merchant name (merchants: { "lidl sofia": "groceries", … }), or undefined.
+ * Exact name first, then the same name without numbers and legal forms, then the same distinctive first word.
+ */
+export function rememberedCategory(merchants = {}, merchant) {
+  const exact = exactKey(merchant);
+  if (!exact) return undefined;
+  if (merchants[exact]) return merchants[exact];
+  const key = merchantKey(merchant);
+  if (!key) return undefined;
+  const entries = Object.entries(merchants);
+  const same = entries.find(([name]) => merchantKey(name) === key);
+  if (same) return same[1];
+  const word = firstWord(key);
+  if (!word) return undefined;
+  const near = entries.find(([name]) => firstWord(merchantKey(name)) === word);
+  return near ? near[1] : undefined;
+}
+
+/** Whether two merchant names are the same shop by the rules above */
+export const sameMerchant = (a, b) => !!exactKey(a) && rememberedCategory({ [exactKey(a)]: 'x' }, b) === 'x';

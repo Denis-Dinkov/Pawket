@@ -12,7 +12,7 @@ import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
 import { takePendingPayments } from './pendingPayments';
-import { guessCategory } from './categoryGuess';
+import { guessCategory, rememberedCategory, sameMerchant } from './categoryGuess';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -185,7 +185,7 @@ export function StoreProvider({ children }) {
         const booked = fresh
           .map((p) => {
             // The user's own choice for this merchant first, then a guess from its name
-            const remembered = d.merchants[normalizeMerchant(p.merchant)];
+            const remembered = rememberedCategory(d.merchants, p.merchant);
             const cat = remembered && categoryById(remembered);
             return {
               id: newId(),
@@ -381,13 +381,20 @@ export function StoreProvider({ children }) {
       updateExpense: (id, patch) =>
         setData((d) => {
           const merchant = patch.merchant != null ? patch.merchant.trim() : undefined;
+          // A category picked for an automatic payment also goes to the other ones from that shop still
+          // waiting to be looked at: the user decided it once for this merchant
+          const others = merchant && patch.categoryId
+            ? new Set(d.expenses.filter((e) => e.id !== id && e.unreviewed && sameMerchant(merchant, e.merchant)).map((e) => e.id))
+            : null;
           return {
             ...d,
             // Saving an edit (it always carries the category) counts as having checked an automatic payment
             expenses: d.expenses.map((e) =>
               e.id === id
                 ? { ...e, ...patch, ...(merchant != null && { merchant }), ...(patch.categoryId && { unreviewed: undefined }) }
-                : e
+                : others?.has(e.id)
+                  ? { ...e, categoryId: patch.categoryId, unreviewed: undefined }
+                  : e
             ),
             merchants: merchant && patch.categoryId ? { ...d.merchants, [normalizeMerchant(merchant)]: patch.categoryId } : d.merchants,
           };
