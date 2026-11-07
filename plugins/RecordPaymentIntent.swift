@@ -45,13 +45,17 @@ struct RecordPaymentIntent: LiveActivityIntent {
   func perform() async throws -> some IntentResult {
     // Run by hand from Shortcuts there is no transaction, so the Wallet variables are empty: say so
     // instead of silently doing nothing
-    guard let value = parseAmount(amount), value > 0 else { throw RecordPaymentError.noAmount }
+    guard let value = paymentAmount(amount), value > 0 else { throw RecordPaymentError.noAmount }
     guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
       return .result()
     }
     let shop = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    // An Apple Pay payment with a Revolut card fires both the Wallet trigger and the Revolut notification
+    // trigger: the second one finds the same amount a moment ago and does nothing
+    if isDuplicate(value) { return .result() }
     let id = UUID().uuidString
-    try savePending(id: id, amount: amount, merchant: shop, in: container)
+    // The parsed amount, not the raw text: a notification's text also carries the balance
+    try savePending(id: id, amount: String(format: "%.2f", value), merchant: shop, in: container)
     let category = Categorizer.load(from: container)?.category(for: shop)
     let budget = updateWidget(spent: value, kind: category?.kind ?? .everyday)
     if category == nil { startPickActivity(paymentId: id, amount: value, merchant: shop, budget: budget) }
@@ -75,6 +79,18 @@ struct RecordPaymentIntent: LiveActivityIntent {
       to: folder.appendingPathComponent("\(id).json"),
       options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
     )
+  }
+
+  /// Same amount recorded in the last 3 minutes: the same payment reported by a second trigger.
+  /// Keeps the last few payments (amount, time) in the App Group.
+  private func isDuplicate(_ value: Double) -> Bool {
+    guard let defaults = UserDefaults(suiteName: appGroup) else { return false }
+    let key = "pawket.recentPayments"
+    let now = Date().timeIntervalSince1970
+    let recent = (defaults.array(forKey: key) as? [[Double]] ?? []).filter { $0.count == 2 && now - $0[1] < 180 }
+    if recent.contains(where: { abs($0[0] - value) < 0.005 }) { return true }
+    defaults.set(Array((recent + [[value, now]]).suffix(10)), forKey: key)
+    return false
   }
 
   // MARK: - Widget
@@ -308,6 +324,15 @@ private func number(_ v: Any?) -> Double? {
 private func seconds(_ v: Any?) -> Double {
   let t = number(v) ?? 0
   return t > 100_000_000_000 ? t / 1000 : t
+}
+
+/// The amount from what the trigger hands over: the Wallet amount ("€8.83", "8,83 €"), or a bank's notification
+/// text ("You spent €8.83 · EUR balance: €249.26"), where it's the first amount in the text.
+private func paymentAmount(_ raw: String) -> Double? {
+  guard raw.contains(where: { $0.isLetter && $0 != "€" && $0 != "$" && $0 != "£" }) else { return parseAmount(raw) }
+  let pattern = "\\d{1,3}(?:[ \u{00A0}.,]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?"
+  guard let range = raw.range(of: pattern, options: .regularExpression) else { return nil }
+  return parseAmount(String(raw[range]))
 }
 
 /// "€12.50", "12,50 €", "1 234,56", "1,234.56" → 12.5 … (parseAmount in src/deeplink.js)
