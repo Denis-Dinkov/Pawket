@@ -4,6 +4,7 @@ import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, normalizeMerchant } from '../store';
+import { guessCategory } from '../categoryGuess';
 import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep, euroFirst } from '../theme';
 import { getIncome } from '../budget';
 import { goalProgress, goalSaved } from '../plans';
@@ -90,7 +91,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
   const fromGoal = !isIncome && prefill.fromGoalId ? goals.find((g) => g.id === prefill.fromGoalId) : null;
   const remembered = merchants[normalizeMerchant(merchant)];
   const rememberedOk = remembered && categoryById(remembered) && !categoryById(remembered).archived;
-  const categoryId = picked || (rememberedOk ? remembered : null);
+  // Not picked by hand: the category used for this shop before, else a guess from its name
+  const categoryId = picked || (rememberedOk ? remembered : merchant.trim() ? guessCategory(merchant) : null);
   const value = parseFloat(amount.replace(',', '.'));
   const valid = value > 0 && (isIncome || !!categoryId);
   const now = new Date();
@@ -106,9 +108,9 @@ export default function AddScreen({ onDone, prefill = {} }) {
     const active = getCategories();
     const ranked = [...active].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
     // Only the remembered category jumps to the front; picking one doesn't reorder the row under the finger
-    const first = [rememberedOk ? remembered : null, editing?.categoryId, prefill.categoryId, ...ranked.map((c) => c.id)].filter(Boolean);
+    const first = [rememberedOk ? remembered : null, !picked && !rememberedOk ? categoryId : null, editing?.categoryId, prefill.categoryId, ...ranked.map((c) => c.id)].filter(Boolean);
     return [...new Set(first)].map(categoryById).filter((c) => c && !c.archived).slice(0, QUICK);
-  }, [expenses, rememberedOk, remembered]);
+  }, [expenses, rememberedOk, remembered, categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = () => {
     if (!valid) return;

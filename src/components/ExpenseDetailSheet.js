@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Switch } from 'react-native';
 import { Text } from './ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +32,7 @@ function Row({ icon, label, value }) {
 
 // Everything about one expense: where, what for, when and how it was paid
 export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
-  const { updateExpense } = useStore();
+  const { updateExpense, markReviewed } = useStore();
   const cat = categoryById(expense.categoryId);
   const bucket = cat && BUCKETS[cat.bucket];
   const source = SOURCES[expense.source] || SOURCES.manual;
@@ -43,14 +43,19 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
     setCounts(v);
     updateExpense(expense.id, { offBudget: !v || undefined });
   };
+  // Booked automatically after Apple Pay: opening it is the check, unless it still needs a category
+  const auto = !!expense.unreviewed;
+  useEffect(() => {
+    if (auto && cat) markReviewed(expense.id);
+  }, [auto, !!cat, expense.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <View>
       {onBack && <Pill small icon="chevron-back" label={t('Назад')} variant="outline" onPress={onBack} />}
       <View style={s.head}>
         <IconBadge icon={cat?.icon || 'help'} color={bucket?.color || colors.muted} size={64} />
-        <Text style={s.cat}>{cat?.name}</Text>
+        <Text style={s.cat}>{cat?.name || t('Без категория')}</Text>
         <Money value={expense.goalId ? expense.amount : -expense.amount} size={38} color={expense.goalId ? colors.savings : colors.text} />
-        <Pill small variant="soft" label={bucket?.label} style={{ alignSelf: 'center', marginTop: 8 }} />
+        {bucket && <Pill small variant="soft" label={bucket.label} style={{ alignSelf: 'center', marginTop: 8 }} />}
       </View>
       <View style={s.card}>
         <Row icon="storefront-outline" label={t('Къде')} value={expense.merchant || '—'} />
@@ -58,6 +63,13 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
         <Row icon="calendar-outline" label={t('Кога')} value={`${dayLabel(expense.date)}, ${timeLabel(expense.date)}`} />
         <Row icon={source.icon} label={t('Плащане')} value={source.label} />
       </View>
+      {auto && (
+        <Text style={[s.note, { marginBottom: 2 }]}>
+          {cat
+            ? t('Записано автоматично след Apple Pay. Категорията е по магазина — смени я с „Редактирай“, ако не е вярна.')
+            : t('Записано автоматично след Apple Pay. Не познавам този магазин — избери категория с „Редактирай“ и ще я помня.')}
+        </Text>
+      )}
       {/* A payment out of a goal is never counted in the month, so there's nothing to switch */}
       {expense.fromGoalId ? (
         <Text style={s.note}>{t('Платено от цел — не се брои в разходите за месеца.')}</Text>

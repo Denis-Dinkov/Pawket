@@ -1,8 +1,8 @@
 // Widget data — pure logic, used by the app and by the Android task handler.
-import { moneyShort, money, decimalSep, categoryById } from '../theme';
+import { moneyShort, money, decimalSep, euroFirst, categoryById } from '../theme';
 import { petStatus, EXPRESSIONS, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
-import { dailyLimit, freeToSpend } from '../budget';
+import { dailyLimit, freeToSpend, SAVINGS_SHARE } from '../budget';
 import { pendingSpend, upcomingPayments } from '../plans';
 import { sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from '../sessions';
 import { outfitOf, lookKey } from '../pet/outfit';
@@ -130,6 +130,33 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     tip: tip ? tip.title : '',
     nextPayment: next ? t('{0} · {1} · {2}', { 0: payeeOf(next.rule), 1: moneyShort(next.rule.amount), 2: whenLabel(next.date, now) }) : '',
     ...quickProps(quickCategories(expenses, now)),
+    ...liveBudgetProps(ov, daily, now),
+  };
+}
+
+/**
+ * What the "Запиши плащане" action needs to update the widget and send its notification while the app is
+ * closed (plugins/withRecordPaymentIntent.js): the daily-limit inputs as plain numbers, the labels and the
+ * money format. It subtracts each payment from budRoom and recomputes the texts with dailyLimit's formula.
+ * Only entries in the current month carry them: a payment never changes next month's numbers.
+ */
+function liveBudgetProps(ov, daily, now) {
+  if (!daily) return { budDays: 0 };
+  return {
+    budMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    budRoom: daily.free + daily.reserve,
+    budReserve: daily.reserve,
+    budBudget: ov.income * (1 - SAVINGS_SHARE),
+    budDays: daily.days,
+    fmtEn: euroFirst() ? 1 : 0,
+    lblFree: t('Свободни'),
+    lblOver: t('Над бюджета с'),
+    tplPerDay: t('≈ {0}/ден', { 0: '{0}' }),
+    tplDay: t('{0} на ден', { 0: '{0}' }),
+    tplFromSavings: t('{0} от спестяванията', { 0: '{0}' }),
+    tplNotifTitle: t('Записах {0}', { 0: '{0}' }),
+    tplNotifDay: t('Остават {0} на ден до края на месеца.', { 0: '{0}' }),
+    tplNotifSavings: t('Вече харчиш от спестяванията: {0}.', { 0: '{0}' }),
   };
 }
 

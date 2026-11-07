@@ -22,6 +22,7 @@
     "plugins": [
       "./plugins/withoutPushEntitlement",
       "./plugins/withSceneLifecycle",
+      "./plugins/withRecordPaymentIntent",
       "expo-quick-actions",
       "expo-sharing",
       [

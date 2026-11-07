@@ -307,7 +307,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             <IconBadge icon="logo-apple" color={colors.ink} size={40} />
             <View style={{ flex: 1 }}>
               <Text style={s.linkTitle}>{t('Запис след Apple Pay')}</Text>
-              <Text style={s.hint}>{t('Автоматично отваря „Нов разход“ след плащане')}</Text>
+              <Text style={s.hint}>{t('Записва всяко плащане сам, дори при заключен телефон')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Card>

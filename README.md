@@ -27,7 +27,7 @@ A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Char
 - **Evening reminder:** a local notification at 19–22 h, only on days without an entry, with "Без разходи днес" and "Запиши разход" buttons. Permission is asked when it's turned on.
 - **Backup:** "Запази архив" shares a JSON file (save it to Files → iCloud Drive or Google Drive); "Възстанови" reads it back.
 - **Accessibility:** all text has at least 4.5:1 contrast in both themes, the minimum font size is 11 pt, text follows the system size up to 200%, VoiceOver labels on bars, charts, rows and the dog, Reduce Motion stops the dog's animation.
-- **Apple Pay → entry:** a Shortcuts automation opens "New expense" with the amount and merchant filled in. A guide is in Settings.
+- **Apple Pay → entry:** a Shortcuts automation records every payment by itself, even on a locked phone, and Pawket highlights the new ones. A guide is in Settings.
 - **Widgets:** iOS home and lock screen, Android home screen. The medium one has quick-add buttons for the three most used categories (one tap opens "New expense" with the category picked) and the next recurring payment.
 - **No-spend day:** a challenge started on Home on a day with nothing spent yet. It runs until midnight; any needs or wants expense that day breaks it. Kept (and started before noon): +20 XP.
 - **Savings alert:** the first time in a day that spending eats into the savings the daily limit keeps, a notification says so right away (a message in the app when notifications aren't allowed). Can be turned off in Settings.
@@ -93,7 +93,17 @@ A free Apple ID signature lasts 7 days. Then run `npm run phone` again; your dat
 To go back to the version with widgets (paid account or simulator): `npx expo prebuild --platform ios --clean`.
 
 ## Apple Pay automation
-Settings → "Entry after Apple Pay" shows the steps and the template:
+Settings → "Entry after Apple Pay" shows the steps. The Wallet "Transaction" automation runs Pawket's
+**„Запиши плащане“** action (an App Intent, `plugins/RecordPaymentIntent.swift`, added by `plugins/withRecordPaymentIntent.js`) with the trigger's Amount and
+Merchant. It doesn't open the app, so it also works while the iPhone is locked (iOS refuses "Open URLs" then).
+Each payment lands as a JSON file in the App Group (`group.com.denis.pawket/PendingPayments`); the next time
+Pawket comes to the front it books them (`src/pendingPayments.js`), with the category remembered for the
+merchant or guessed from its name (`src/categoryGuess.js`: Lidl → groceries, OMV → transport…), and
+highlights them until they are opened. Merchants nothing matches are booked without a category.
+The action also subtracts the payment from the widget's budget straight away (the inputs come from
+`liveBudgetProps` in `src/widget/widgetData.js`) and posts a notification with what's left per day.
+
+The older way still works on an unlocked phone — "Open URLs" with:
 ```
 pawket://add?source=applepay&amount=[Сума]&merchant=[Търговец]
 ```

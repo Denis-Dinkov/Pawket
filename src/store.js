@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { monthKey, monthIncome } from './budget';
-import { setCustomCategories, CUSTOM_SHADES, money } from './theme';
+import { setCustomCategories, CUSTOM_SHADES, money, categoryById } from './theme';
 import { evaluateClosedMonths, feedPet, stageFor } from './pet/logic';
 import { dueRecurring, goalProgress, resumedLastKey, WISH_HOURS } from './plans';
 import { weekMissions, weekKey, activityDays, streak, MISSION_XP } from './pet/missions';
@@ -11,6 +11,8 @@ import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
+import { takePendingPayments } from './pendingPayments';
+import { guessCategory } from './categoryGuess';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -165,6 +167,62 @@ export function StoreProvider({ children }) {
     const sub = AppState.addEventListener('change', (st) => st === 'active' && closeMonths());
     return () => sub.remove();
   }, [ready, closeMonths]);
+
+  // Payments the "Запиши плащане" Shortcuts action recorded while Pawket was closed (even on a locked phone):
+  // booked straight away, with the category remembered for the merchant (or guessed from its name), and marked `unreviewed`
+  // so the list highlights them until the user has looked at them
+  const importing = useRef(false);
+  const importPayments = useCallback(async () => {
+    if (importing.current) return;
+    importing.current = true;
+    try {
+      const payments = await takePendingPayments();
+      if (!payments.length) return;
+      setData((d) => {
+        const known = new Set(d.expenses.map((e) => e.paymentId).filter(Boolean));
+        const fresh = payments.filter((p) => !known.has(p.id));
+        if (!fresh.length) return d;
+        const booked = fresh
+          .map((p) => {
+            // The user's own choice for this merchant first, then a guess from its name
+            const remembered = d.merchants[normalizeMerchant(p.merchant)];
+            const cat = remembered && categoryById(remembered);
+            return {
+              id: newId(),
+              amount: p.amount,
+              categoryId: cat && !cat.archived ? remembered : guessCategory(p.merchant),
+              merchant: p.merchant,
+              note: '',
+              source: 'applepay',
+              date: p.date,
+              loggedAt: p.date,
+              paymentId: p.id,
+              unreviewed: true,
+            };
+          })
+          .reverse();
+        return { ...d, expenses: [...booked, ...d.expenses], pet: feedPet(d.pet) };
+      });
+      showToast({
+        text:
+          payments.length === 1
+            ? t('Записах {0} от Apple Pay 🐾', { 0: money(payments[0].amount) })
+            : t('Записах {0} плащания от Apple Pay 🐾', { 0: payments.length }),
+        icon: 'logo-apple',
+      });
+    } catch {
+      // nothing to import this time
+    } finally {
+      importing.current = false;
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (!ready) return undefined;
+    importPayments();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && importPayments());
+    return () => sub.remove();
+  }, [ready, importPayments]);
 
   // Weekly missions: a finished mission gives XP once. The best streak is remembered for the rewards.
   // Runs only when the fields the missions read change, not on every settings or layout change
@@ -325,10 +383,23 @@ export function StoreProvider({ children }) {
           const merchant = patch.merchant != null ? patch.merchant.trim() : undefined;
           return {
             ...d,
-            expenses: d.expenses.map((e) => (e.id === id ? { ...e, ...patch, ...(merchant != null && { merchant }) } : e)),
+            // Saving an edit (it always carries the category) counts as having checked an automatic payment
+            expenses: d.expenses.map((e) =>
+              e.id === id
+                ? { ...e, ...patch, ...(merchant != null && { merchant }), ...(patch.categoryId && { unreviewed: undefined }) }
+                : e
+            ),
             merchants: merchant && patch.categoryId ? { ...d.merchants, [normalizeMerchant(merchant)]: patch.categoryId } : d.merchants,
           };
         }),
+
+      // An automatic Apple Pay payment the user has looked at: no longer highlighted
+      markReviewed: (id) =>
+        setData((d) =>
+          d.expenses.some((e) => e.id === id && e.unreviewed)
+            ? { ...d, expenses: d.expenses.map((e) => (e.id === id ? { ...e, unreviewed: undefined } : e)) }
+            : d
+        ),
 
       // Deletes right away; the toast offers "Undo" for a few seconds
       removeExpense: (id) => {

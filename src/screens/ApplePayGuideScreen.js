@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,18 +11,24 @@ import Pill from '../components/ui/Pill';
 import Touch from '../components/ui/Touch';
 import { themed } from '../themed';
 import { t, tList } from '../i18n';
+import { requestReminderPermission } from '../reminders';
 
 const STEPS = [
   tList(['Отвори „Команди“', 'Приложението Shortcuts → раздел „Автоматизация“ → бутон „+“.']),
   tList(['Избери „Транзакция“', 'Отбележи картите си от Wallet. Избери „Изпълни веднага“ и натисни „Напред“.']),
-  tList(['Кодирай търговеца', 'Нова празна автоматизация → действие „URL кодиране“ → в него сложи „Търговец“ от входа на командата.']),
-  tList(['Отвори Pawket', 'Добави „Отвори URL адреси“ и постави шаблона отдолу. Замени [Сума] със „Сума“, а [Търговец] — с резултата от „URL кодиране“.']),
-  tList(['Готово!', 'След следващото плащане Pawket ще се отвори с попълнени сума и магазин. Избираш категория и „Запази“.']),
+  tList(['Добави „Запиши плащане“', 'Нова празна автоматизация → потърси „Pawket“ → действие „Запиши плащане“.']),
+  tList(['Свържи сумата и магазина', 'Докосни „Сума“ и избери променливата „Сума“, после „Търговец“ → „Търговец“.']),
+  tList(['Готово!', 'След всяко плащане Pawket записва разхода сам — дори при заключен телефон — обновява бюджета и ти изпраща известие. Новите плащания са оцветени, докато не ги погледнеш.']),
 ];
 
-// Guide for the Shortcuts automation that opens "New expense" after Apple Pay
+// Guide for the Shortcuts automation that records every Apple Pay payment ("Запиши плащане", works while locked).
+// The older "Open URLs" automation stays as an option for people who want to fill in the expense themselves.
 export default function ApplePayGuideScreen({ onClose, onTry }) {
   const [copied, setCopied] = useState(false);
+  // The action sends a notification for every payment it records, so setting it up is the moment to ask
+  useEffect(() => {
+    requestReminderPermission().catch(() => {});
+  }, []);
   const copy = async () => {
     await Clipboard.setStringAsync(APPLE_PAY_TEMPLATE);
     setCopied(true);
@@ -42,7 +48,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
         <IconBadge icon="logo-apple" color={colors.ink} size={64} solid />
         <Text style={s.h1}>{t('Запис след Apple Pay')}</Text>
         <Text style={s.sub}>
-          {t('След всяко плащане iPhone отваря Pawket с попълнени сума и магазин. Категорията я помня по магазина — често стига едно „Запази“.')}
+          {t('След всяко плащане Pawket записва разхода сам, без да го отваряш. Категорията я помня по магазина.')}
         </Text>
       </View>
 
@@ -60,7 +66,10 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
         ))}
       </Card>
 
-      <Text style={s.section}>{t('Шаблон за „Отвори URL адреси“')}</Text>
+      <Text style={s.section}>{t('Или: да се отваря „Нов разход“')}</Text>
+      <Text style={[s.note, { marginBottom: 10 }]}>
+        {t('Вместо „Запиши плащане“ добави „URL кодиране“ на „Търговец“ и „Отвори URL адреси“ с шаблона отдолу ([Сума] → „Сума“, [Търговец] → резултата от „URL кодиране“). Тогава сам избираш категорията, но iOS не отваря приложения при заключен телефон и такова плащане се губи.')}
+      </Text>
       <Touch onPress={copy} style={s.template}>
         <Text style={s.code} selectable>
           {APPLE_PAY_TEMPLATE}
@@ -81,6 +90,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
 
       <View style={s.notes}>
         <Text style={s.note}>{t('• Изисква iOS 17 или по-нов.')}</Text>
+        <Text style={s.note}>{t('• Не виждаш „Запиши плащане“? Отвори Pawket веднъж след обновяването.')}</Text>
         <Text style={s.note}>{t('• Работи за плащания с картите в Apple Wallet (телефон или часовник).')}</Text>
         <Text style={s.note}>{t('• Някои банки подават плащането със закъснение от няколко секунди.')}</Text>
       </View>
