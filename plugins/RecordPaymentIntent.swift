@@ -46,20 +46,93 @@ struct RecordPaymentIntent: LiveActivityIntent {
     // Run by hand from Shortcuts there is no transaction, so the Wallet variables are empty: say so
     // instead of silently doing nothing
     guard let value = parseAmount(amount), value > 0 else { throw RecordPaymentError.noAmount }
-    guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
+    await PaymentRecorder.record(amount: value, merchant: merchant ?? "", source: .wallet)
+    return .result()
+  }
+}
+
+/// "Запиши от известие": the safety net for the Wallet trigger. That trigger waits for the bank to send the
+/// transaction details and gives up when they come late, while the Wallet notification still arrives (even an
+/// hour later). An automation "When I receive a notification from Wallet" passes its title, subtitle and text
+/// here; the amount and the shop are read from them. When both automations see the same payment, it's
+/// recorded once (PaymentRecorder.claim).
+@available(iOS 17.0, *)
+struct RecordNotificationIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "Запиши от известие"
+  static var description = IntentDescription("Записва плащане от известие на Wallet в Pawket — резерва, ако автоматизацията за транзакции пропусне плащане.")
+  static var openAppWhenRun: Bool = false
+  static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+
+  @Parameter(title: "Заглавие")
+  var notificationTitle: String?
+
+  @Parameter(title: "Подзаглавие")
+  var notificationSubtitle: String?
+
+  @Parameter(title: "Текст")
+  var notificationBody: String?
+
+  static var parameterSummary: some ParameterSummary {
+    Summary("Запиши от известие \(\.$notificationTitle) \(\.$notificationSubtitle) \(\.$notificationBody)")
+  }
+
+  func perform() async throws -> some IntentResult {
+    // Not a payment (a card added, a refund, a pass): nothing to record, and nothing to say
+    guard let payment = notificationPayment(title: notificationTitle, subtitle: notificationSubtitle, body: notificationBody) else {
       return .result()
     }
-    let shop = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    await PaymentRecorder.record(amount: payment.amount, merchant: payment.merchant, source: .notification)
+    return .result()
+  }
+}
+
+/// Records one payment: the file the app imports, the widget, the notification and, for an unknown shop,
+/// the "pick a category" Live Activity. Shared by both actions.
+@available(iOS 17.0, *)
+private enum PaymentRecorder {
+  enum Source: String { case wallet, notification }
+
+  private static let lock = NSLock()
+  private static let recentKey = "pawket.recentPayments"
+  // How far apart the two automations can see the same payment
+  private static let pairWindow: TimeInterval = 15 * 60
+
+  static func record(amount value: Double, merchant raw: String, source: Source) async {
+    guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup),
+          claim(value, source) else { return }
+    let shop = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     let id = UUID().uuidString
-    try savePending(id: id, amount: amount, merchant: shop, in: container)
+    guard (try? savePending(id: id, amount: String(format: "%.2f", value), merchant: shop, in: container)) != nil else { return }
     let category = Categorizer.load(from: container)?.category(for: shop)
     let budget = updateWidget(spent: value, kind: category?.kind ?? .everyday)
     if category == nil { startPickActivity(paymentId: id, amount: value, merchant: shop, budget: budget) }
     await notify(amount: value, merchant: shop, categoryName: category?.name, placed: category != nil, budget: budget)
-    return .result()
   }
 
-  private func savePending(id: String, amount: String, merchant: String, in container: URL) throws {
+  /// false when this payment was already recorded by the other automation: the same amount from the other
+  /// source in the last 15 minutes that isn't paired yet. Each record pairs with one from the other source at
+  /// most, so two real payments of the same amount (two coffees) are both kept.
+  static func claim(_ value: Double, _ source: Source) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    guard let defaults = UserDefaults(suiteName: appGroup) else { return true }
+    let now = Date().timeIntervalSince1970
+    var recent = (defaults.array(forKey: recentKey) as? [[String: Any]] ?? []).filter {
+      now - (number($0["time"]) ?? 0) < pairWindow
+    }
+    if let i = recent.firstIndex(where: {
+      abs((number($0["amount"]) ?? -1) - value) < 0.005 && $0["source"] as? String != source.rawValue && $0["paired"] as? Bool != true
+    }) {
+      recent[i]["paired"] = true
+      defaults.set(recent, forKey: recentKey)
+      return false
+    }
+    recent.append(["amount": value, "time": now, "source": source.rawValue, "paired": false])
+    defaults.set(Array(recent.suffix(20)), forKey: recentKey)
+    return true
+  }
+
+  static func savePending(id: String, amount: String, merchant: String, in container: URL) throws {
     let folder = container.appendingPathComponent(folderName, isDirectory: true)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     let payment: [String: String] = [
@@ -81,7 +154,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
 
   /// Subtracts the payment from every widget entry of this month and recomputes the budget texts with the
   /// same formula as dailyLimit in src/budget.js. Returns the numbers of the entry shown now, for the notification.
-  private func updateWidget(spent: Double, kind: SpendKind) -> LiveBudget? {
+  static func updateWidget(spent: Double, kind: SpendKind) -> LiveBudget? {
     guard let defaults = UserDefaults(suiteName: appGroup),
           var entries = defaults.array(forKey: timelineKey) as? [[String: Any]] else { return nil }
     let month = monthKey(Date())
@@ -135,7 +208,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
   /// Ванко in the Dynamic Island: "Избери категория · 8,83 € · Магазин Мазалам", tapping opens that payment
   /// (pawket://review). Same layout and props as the app's activities (PawketActivity, activityEvent in
   /// src/widget/widgetData.js); the app takes it over, and ends it, once the payment has a category.
-  private func startPickActivity(paymentId: String, amount: Double, merchant: String, budget: LiveBudget?) {
+  static func startPickActivity(paymentId: String, amount: Double, merchant: String, budget: LiveBudget?) {
     guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
     let format = budget ?? LiveBudget(room: 0, reserve: 0, budget: 0, days: 0, spentToday: 0, props: [:])
     let p = format.props
@@ -177,7 +250,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
 
   // MARK: - Notification
 
-  private func notify(amount: Double, merchant: String, categoryName: String?, placed: Bool, budget: LiveBudget?) async {
+  static func notify(amount: Double, merchant: String, categoryName: String?, placed: Bool, budget: LiveBudget?) async {
     let center = UNUserNotificationCenter.current()
     let settings = await center.notificationSettings()
     guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
@@ -208,12 +281,12 @@ struct RecordPaymentIntent: LiveActivityIntent {
   }
 
   // Same as dayKey in src/pet/logic.js
-  private func dayKey(_ date: Date) -> String {
+  static func dayKey(_ date: Date) -> String {
     let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
     return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
   }
 
-  private func monthKey(_ date: Date) -> String {
+  static func monthKey(_ date: Date) -> String {
     let c = Calendar.current.dateComponents([.year, .month], from: date)
     return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 0)
   }
@@ -308,6 +381,27 @@ private func number(_ v: Any?) -> Double? {
 private func seconds(_ v: Any?) -> Double {
   let t = number(v) ?? 0
   return t > 100_000_000_000 ? t / 1000 : t
+}
+
+/// Amount and shop from a Wallet transaction notification. Its title is the card ("Revolut"); the shop and
+/// the amount come in the other lines ("Cbs Ood, Kazanlyk, Stara Zagora" / "€5.33"). The amount is the line
+/// that is only an amount, so digits in a shop's name ("Storm 19 Ood") are never taken for it. Refunds and
+/// declined payments return nil.
+func notificationPayment(title: String?, subtitle: String?, body: String?) -> (amount: Double, merchant: String)? {
+  let lines = [subtitle, body].compactMap { $0 }
+    .flatMap { $0.components(separatedBy: .newlines) }
+    .map { $0.trimmingCharacters(in: .whitespaces) }
+    .filter { !$0.isEmpty }
+  let all = ([title ?? ""] + lines).joined(separator: " ").lowercased()
+  let skip = ["refund", "returned", "declined", "reversed", "върнат", "възстанов", "отказ", "+€", "+ €"]
+  if skip.contains(where: { all.contains($0) }) { return nil }
+  let money = "^[-−]?\\s*(?:€|eur|bgn|лв\\.?|\\$|£|usd|gbp)?\\s*\\d[\\d \u{00A0}.,]*\\s*(?:€|eur|bgn|лв\\.?|\\$|£|usd|gbp)?$"
+  guard let amountLine = lines.first(where: { $0.lowercased().range(of: money, options: .regularExpression) != nil }),
+        let amount = parseAmount(amountLine), amount > 0 else { return nil }
+  // "Cbs Ood, Kazanlyk, Stara Zagora" → "Cbs Ood": the shop without the town, like the Wallet trigger gives it
+  let shopLine = lines.first(where: { $0 != amountLine }) ?? ""
+  let merchant = shopLine.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? ""
+  return (amount, merchant)
 }
 
 /// "€12.50", "12,50 €", "1 234,56", "1,234.56" → 12.5 … (parseAmount in src/deeplink.js)
