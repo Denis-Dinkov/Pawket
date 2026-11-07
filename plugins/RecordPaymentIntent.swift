@@ -38,8 +38,10 @@ struct RecordPaymentIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    guard let value = parseAmount(amount), value > 0,
-          let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
+    // Run by hand from Shortcuts there is no transaction, so the Wallet variables are empty: say so
+    // instead of silently doing nothing
+    guard let value = parseAmount(amount), value > 0 else { throw RecordPaymentError.noAmount }
+    guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
       return .result()
     }
     let shop = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,6 +131,14 @@ struct RecordPaymentIntent: AppIntent {
   private func monthKey(_ date: Date) -> String {
     let c = Calendar.current.dateComponents([.year, .month], from: date)
     return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 0)
+  }
+}
+
+private enum RecordPaymentError: Error, CustomLocalizedStringResourceConvertible {
+  case noAmount
+
+  var localizedStringResource: LocalizedStringResource {
+    "Няма сума за записване. Автоматизацията получава сумата и магазина сама след плащане с Apple Pay — при ръчно пускане няма транзакция. За проба въведи сума на ръка."
   }
 }
 
