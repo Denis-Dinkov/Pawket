@@ -3,6 +3,7 @@
 // and rescheduled whenever the app opens or something is recorded.
 import { Platform } from 'react-native';
 import { t, getLang } from './i18n';
+import { money } from './theme';
 
 let Notifications = null;
 try {
@@ -127,4 +128,28 @@ export function listenToReminders(onAction) {
   }).catch(() => {});
   const sub = Notifications.addNotificationResponseReceivedListener(handle);
   return () => sub.remove();
+}
+
+/**
+ * Shown right away when today's spending starts eating the savings (the 20% the daily limit keeps).
+ * Returns false when it couldn't be shown (no permission), so the app can say it in a toast instead.
+ */
+export async function notifySavingsEaten({ petName, eaten, reserve }) {
+  if (!Notifications) return false;
+  try {
+    await setUpOnce();
+    const { granted } = await Notifications.getPermissionsAsync();
+    if (!granted) return false;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: t('{0}: ядеш от спестяванията 😟', { 0: petName }),
+        body: t('Похарчени са {0} от {1}, които трябваше да останат за спестяване. До края на деня — само най-нужното.', { 0: money(eaten), 1: money(reserve) }),
+        data: { kind: 'savings' },
+      },
+      trigger: null,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

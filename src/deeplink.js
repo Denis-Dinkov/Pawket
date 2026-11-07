@@ -37,27 +37,41 @@ const decode = (v) => {
   }
 };
 
-/**
- * Returns the prefill for "New expense", or null if the link isn't an add link.
- * Also works with Expo Go URLs (exp://host/--/add?...).
- */
-export function parseAddUrl(url) {
-  if (!url) return null;
+// Path and query of a pawket:// link (also Expo Go URLs: exp://host/--/add?...)
+function splitUrl(url) {
   const [base, query = ''] = String(url).split('?');
   const path = base.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^.*\/--\//, '').replace(/\/+$/, '');
-  if (!/(^|\/)add$/.test(path)) return null;
-
   const params = {};
   for (const pair of query.split('#')[0].split('&')) {
     if (!pair) continue;
     const [k, v = ''] = pair.split('=');
     params[decode(k)] = decode(v);
   }
+  return { path, params };
+}
+
+// The Live Activity's "End" button: pawket://session?action=end → 'end', anything else → null
+export function parseSessionUrl(url) {
+  if (!url) return null;
+  const { path, params } = splitUrl(url);
+  return /(^|\/)session$/.test(path) && params.action === 'end' ? 'end' : null;
+}
+
+/**
+ * Returns the prefill for "New expense", or null if the link isn't an add link.
+ * category: a category id, picked in advance (the widget's quick-add buttons).
+ * Also works with Expo Go URLs (exp://host/--/add?...).
+ */
+export function parseAddUrl(url) {
+  if (!url) return null;
+  const { path, params } = splitUrl(url);
+  if (!/(^|\/)add$/.test(path)) return null;
   const amount = parseAmount(params.amount);
   const merchant = (params.merchant || '').trim();
   return {
     amount: amount > 0 ? amount : undefined,
     merchant: merchant || undefined,
+    categoryId: params.category || undefined,
     source: ['applepay', 'widget'].includes(params.source) ? params.source : amount > 0 ? 'applepay' : 'manual',
   };
 }

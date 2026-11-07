@@ -1,7 +1,7 @@
 import { HStack, VStack, Text, Image, Spacer, ProgressView, Link, Gauge } from '@expo/ui/swift-ui';
 import {
   font, foregroundStyle, frame, containerBackground, widgetURL, tint, lineLimit, minimumScaleFactor, opacity, gaugeStyle,
-  resizable, aspectRatio, monospacedDigit,
+  resizable, aspectRatio, monospacedDigit, padding, background, shapes,
 } from '@expo/ui/swift-ui/modifiers';
 import { createWidget } from 'expo-widgets';
 
@@ -58,6 +58,7 @@ const BudgetWidget = (props, environment) => {
   const accent = dark ? '#F0A066' : '#A3531F';
   const good = dark ? '#3FD9A2' : '#0A7550';
   const bad = dark ? '#FF7A7E' : '#C8323A';
+  const chip = dark ? '#FFFFFF1A' : '#FFFFFF8C';
 
   const pet = (size) =>
     props.petImage ? (
@@ -90,35 +91,43 @@ const BudgetWidget = (props, environment) => {
   );
 
   if (family === 'systemMedium') {
-    const bar = (label, pct, value, color) => (
-      <VStack alignment="leading" spacing={2}>
-        <HStack>
-          <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(muted)]}>{label}</Text>
-          <Spacer />
-          <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(muted), monospacedDigit()]}>{pct}</Text>
-        </HStack>
-        <ProgressView value={value} modifiers={[tint(color)]} />
-      </VStack>
-    );
+    // Quick add: one tap opens "New expense" with the category already picked
+    const quick = (id, symbol, name) =>
+      id ? (
+        <Link destination={`pawket://add?source=widget&category=${id}`}>
+          <VStack spacing={3} modifiers={[frame({ maxWidth: 1000 }), padding({ vertical: 7 }), background(chip, shapes.roundedRectangle({ cornerRadius: 12 }))]}>
+            <Image systemName={symbol} size={16} color={accent} />
+            <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.7)]}>{name}</Text>
+          </VStack>
+        </Link>
+      ) : null;
     return (
-      <HStack spacing={14} modifiers={[containerBackground(room, 'widget'), widgetURL('pawket://home')]}>
-        <VStack alignment="center" spacing={2} modifiers={[frame({ width: 88 })]}>
-          {pet(80)}
+      <HStack spacing={12} modifiers={[containerBackground(room, 'widget'), widgetURL('pawket://home')]}>
+        <VStack alignment="center" spacing={2} modifiers={[frame({ width: 84 })]}>
+          {pet(76)}
           <Text modifiers={[font({ size: 13, weight: 'bold' }), foregroundStyle(ink), lineLimit(1)]}>{props.petName}</Text>
           <Text modifiers={[font({ size: 11 }), foregroundStyle(muted), lineLimit(1), minimumScaleFactor(0.8)]}>{props.moodLabel}</Text>
         </VStack>
-        <VStack alignment="leading" spacing={4}>
+        <VStack alignment="leading" spacing={5}>
           <HStack alignment="top">
-            {money(24)}
+            {money(22)}
             <Spacer />
             <Link destination="pawket://add?source=widget">
-              <Image systemName="plus.circle.fill" size={28} color={accent} />
+              <Image systemName="plus.circle.fill" size={26} color={accent} />
             </Link>
           </HStack>
           {today}
-          {bar(props.needsLabel, props.needsPct, props.needs, dark ? '#7EA6FF' : '#1F5AD8')}
-          {bar(props.wantsLabel, props.wantsPct, props.wants, dark ? '#F07BC0' : '#B8297F')}
-          {bar(props.savingsLabel, props.savingsPct, props.savings, good)}
+          <HStack spacing={6}>
+            {quick(props.q1Id, props.q1Symbol, props.q1Name)}
+            {quick(props.q2Id, props.q2Symbol, props.q2Name)}
+            {quick(props.q3Id, props.q3Symbol, props.q3Name)}
+          </HStack>
+          {props.nextPayment ? (
+            <HStack spacing={4}>
+              <Image systemName="calendar" size={10} color={muted} />
+              <Text modifiers={[font({ size: 10, weight: 'medium' }), foregroundStyle(muted), lineLimit(1), minimumScaleFactor(0.8)]}>{props.nextPayment}</Text>
+            </HStack>
+          ) : null}
         </VStack>
       </HStack>
     );

@@ -208,7 +208,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     add(20, {
       id: 'daily-limit', tone: 'tip', icon: 'calendar-outline',
       title: t('Дневният ти лимит е {0}', { 0: money(daily.limit) }),
-      text: t('До края на месеца ({0} дни) можеш да харчиш средно до {1} на ден{2}. За 50/30/20 задели и 20% за спестяване.', { 0: daysLeft, 1: money(daily.limit), 2: pending > 0 ? t(' и след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
+      text: t('До края на месеца ({0} дни) можеш да харчиш средно до {1} на ден{2}. Лимитът вече пази 20% за спестяване — ако го спазваш, те остават.', { 0: daysLeft, 1: money(daily.limit), 2: pending > 0 ? t(' и след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
     });
   }
 

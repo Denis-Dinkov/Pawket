@@ -28,8 +28,7 @@ export function TodayCard({ ov, now, pending = 0 }) {
   );
   const daily = dailyLimit(ov, now, pending);
   const limit = daily?.limit || 0;
-  const spentNW = daily?.spentToday || 0;
-  const over = limit > 0 && spentNW > limit;
+  const over = !!daily?.over;
   return (
     <Card style={{ gap: 10 }}>
       <View style={s.head}>
@@ -38,17 +37,15 @@ export function TodayCard({ ov, now, pending = 0 }) {
       </View>
       <View style={s.head}>
         <Money value={daily?.spentToday ?? today.reduce((a, e) => a + e.amount, 0)} size={28} />
-        {limit > 0 && (
+        {daily && (
           <Text style={[s.limit, { color: over ? colors.danger : colors.savings }]}>
-            {over ? t('над лимита с {0}', { 0: money(spentNW - limit) }) : t('остават {0}', { 0: money(limit - spentNW) })}
+            {over ? t('лимитът падна на {0}', { 0: money(Math.round(limit * 100) / 100) }) : t('лимит {0} на ден', { 0: money(Math.round(limit * 100) / 100) })}
           </Text>
         )}
       </View>
-      {limit > 0 ? (
-        <>
-          <Bar value={spentNW / limit} color={over ? colors.danger : colors.primary} height={8} label={t('Днес {0} от {1}', { 0: money(spentNW), 1: money(limit) })} />
-          <Text style={s.muted}>{t('Дневен лимит ≈ {0} за нужди и желания', { 0: money(limit) })}</Text>
-        </>
+      {daily ? (
+        // Today's spending against this morning's limit (the limit itself moves with every expense)
+        <Bar value={daily.morningLimit ? daily.spentToday / daily.morningLimit : 1} color={over ? colors.danger : colors.primary} height={8} label={t('Днес {0} от {1}', { 0: money(daily.spentToday), 1: money(daily.morningLimit) })} />
       ) : (
         <Text style={s.muted}>{t('Задай доход, за да видиш дневния си лимит.')}</Text>
       )}

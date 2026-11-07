@@ -18,6 +18,9 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
   if (status.score == null) return { text: t('Спя… Кажи ми колко е месечният ти доход и се събуждам 💤'), tone: 'tip' };
   if (status.fullness < HUNGRY_AT) return { text: t('Гладен съм! Похарчи ли нещо днес? Запиши го и ме нахрани 🦴'), tone: 'warn' };
   if (warn?.id === 'over-income') return { text: t('Харчиш повече, отколкото печелиш 😢 До края на месеца — само най-нужното.'), tone: 'warn' };
+  if (daily?.eatenToday > 0) {
+    return { text: t('Бръкнахме в спестяванията 😟 Днес — само най-нужното.'), tone: 'warn' };
+  }
   if (daily?.over) {
     return {
       text: pick([t('Днес малко прекалихме. Утре ще сме по-внимателни? 🙏'), t('Ауу, скъп ден! Утре ден без желания? 🐾')], seed),
@@ -26,7 +29,7 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
   }
   if (evening && !activeToday) return { text: t('Вечерта дойде 🌙 Запиши днешните разходи или ми кажи, че е бил ден без харчене.'), tone: 'tip' };
   if (warn) return { text: `${warn.title}`, tone: 'warn' };
-  if (activeToday && daily && daily.left > 0) {
+  if (activeToday && daily && daily.limit > 0 && !daily.over) {
     return {
       text: pick([t('Записа всичко — браво! Опашката ми не спира 🐶'), t('Днес вървим по план. Гордея се с теб! 🐾')], seed),
       tone: 'praise',

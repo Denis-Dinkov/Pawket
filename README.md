@@ -5,7 +5,7 @@ A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Char
 ## Features
 - **Home**
   - Charlie's room on top: the dog, a speech bubble with the most important advice, and chips for mood, fullness and level. The room shows his state too: an empty bowl when he's hungry, a dark window at night.
-  - One money card without scrolling: what's left this month, **today's limit** (the 80% for needs and wants spread over the remaining days, minus the recurring payments still due), one 50/30/20 bar with "X of Y €" per part, income and spent.
+  - One money card without scrolling: what's free to spend this month (income minus spending, savings, recurring payments still due and the part of the 20% not saved yet — the same money the daily limit spreads over the days left), **the limit per day** (what's free ÷ the days left, today included; recalculated after every expense, so a big purchase lowers it for every day left; rent and bills lower it too but never count as going over it). Spending by the limit leaves 20% of the income for savings at the end of the month. Tapping the limit opens a short explanation with the user's own numbers, one 50/30/20 bar with "X of Y €" per part, income and spent.
   - Below it: the next recurring payment and a goal, this week's missions, the latest expenses. The order and visibility are set with "Подреди началото".
   - When scrolling, the room shrinks into a header bar with the dog, so he's always visible.
   - Month picker, defaulting to the current month.
@@ -28,8 +28,10 @@ A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Char
 - **Backup:** "Запази архив" shares a JSON file (save it to Files → iCloud Drive or Google Drive); "Възстанови" reads it back.
 - **Accessibility:** all text has at least 4.5:1 contrast in both themes, the minimum font size is 11 pt, text follows the system size up to 200%, VoiceOver labels on bars, charts, rows and the dog, Reduce Motion stops the dog's animation.
 - **Apple Pay → entry:** a Shortcuts automation opens "New expense" with the amount and merchant filled in. A guide is in Settings.
-- **Widgets:** iOS home and lock screen, Android home screen.
-- **Dynamic Island (Live Activity):** Charlie next to the camera and what's left for today; the amount rolls to the new value after every entry. Long press shows his mood, a bar of today's spending and what's left of the month. Also on the Lock Screen. A new one starts each day when the app opens; it can be turned off in Settings.
+- **Widgets:** iOS home and lock screen, Android home screen. The medium one has quick-add buttons for the three most used categories (one tap opens "New expense" with the category picked) and the next recurring payment.
+- **No-spend day:** a challenge started on Home on a day with nothing spent yet. It runs until midnight; any needs or wants expense that day breaks it. Kept (and started before noon): +20 XP.
+- **Savings alert:** the first time in a day that spending eats into the savings the daily limit keeps, a notification says so right away (a message in the app when notifications aren't allowed). Can be turned off in Settings.
+- **Dynamic Island (Live Activity):** Charlie appears only while something is happening, most important first: a no-spend day (countdown to midnight, "Stop"), spending from the savings today, spending that pushed the limit down (today's spending past this morning's limit), a recurring payment due today (or tomorrow, from 18:00), the last 3 days of the month. Nothing happening, no activity. iOS lets an app start one only while it's open, so the automatic ones appear after the app is opened that day. A swiped-away one doesn't come back for the same event. It can be turned off in Settings.
 - **Quick action:** long-press the app icon → "New expense".
 - **Data:** stored locally (AsyncStorage). Old data is migrated automatically.
 
@@ -104,15 +106,16 @@ index.js                      entry point + Android widget task handler
 src/theme.js                  light/dark palettes, categories, money formatting
 src/themed.js                 style sheets that follow the live palette
 src/motion.js                 shared animation timings, rolling numbers, Reduce Motion
-src/budget.js                 monthly summaries, 50/30/20 score, today's limit
+src/budget.js                 monthly summaries, 50/30/20 score, today's limit (keeps the savings)
+src/sessions.js               the no-spend day
 src/plans.js                  recurring payments, goals, sinking funds, emergency fund, wishlist, forecast
 src/store.js                  saved data + migration, actions, undo, weekly missions
-src/reminders.js, backup.js   evening notification, backup file
+src/reminders.js, backup.js   evening notification, savings alert, backup file
 src/yearReview.js             the year in review
 src/pet/                      the dog: logic, advice, speech lines, missions and rewards, SVG shapes
 src/screens/                  Home, Reports, Plans, Charlie, New expense, Settings, Onboarding, Apple Pay guide
 src/components/               the room, sheets, lists, toast, charts, UI primitives (ui/)
-src/widget/                   widget data, iOS widget + Live Activity (expo-widgets), Android widget
+src/widget/                   widget data, the Live Activity's events, iOS widget + Live Activity (expo-widgets), Android widget
 plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the push entitlement)
 ```
 
