@@ -86,11 +86,39 @@ struct RecordNotificationIntent: LiveActivityIntent {
   }
 }
 
+/// "Запиши от Revolut": the last safety net. Sometimes Revolut never sends an Apple Pay payment to Wallet, so
+/// neither Wallet automation fires, while Revolut's own notification ("BILLA" / "You spent €4.86 · EUR balance:
+/// €142.43") always comes. An automation "When I get a notification from Revolut" passes its title (the shop)
+/// and text here. Only spending is recorded; the amount is the one spent, not the balance.
+@available(iOS 17.0, *)
+struct RecordBankNotificationIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "Запиши от Revolut"
+  static var description = IntentDescription("Записва плащане от известие на Revolut в Pawket — резерва за плащания, които не стигат до Wallet.")
+  static var openAppWhenRun: Bool = false
+  static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+
+  @Parameter(title: "Заглавие")
+  var notificationTitle: String?
+
+  @Parameter(title: "Текст")
+  var notificationBody: String?
+
+  static var parameterSummary: some ParameterSummary {
+    Summary("Запиши от Revolut \(\.$notificationTitle) \(\.$notificationBody)")
+  }
+
+  func perform() async throws -> some IntentResult {
+    guard let payment = bankNotificationPayment(title: notificationTitle, body: notificationBody) else { return .result() }
+    await PaymentRecorder.record(amount: payment.amount, merchant: payment.merchant, source: .bank)
+    return .result()
+  }
+}
+
 /// Records one payment: the file the app imports, the widget, the notification and, for an unknown shop,
 /// the "pick a category" Live Activity. Shared by both actions.
 @available(iOS 17.0, *)
 private enum PaymentRecorder {
-  enum Source: String { case wallet, notification }
+  enum Source: String { case wallet, notification, bank }
 
   private static let lock = NSLock()
   private static let recentKey = "pawket.recentPayments"
@@ -110,9 +138,11 @@ private enum PaymentRecorder {
     await notify(amount: value, merchant: shop, categoryName: category?.name, placed: category != nil, budget: budget)
   }
 
-  /// false when this payment was already recorded by the other automation: the same amount from the other
-  /// source in the last 2 minutes that isn't paired yet. Each record pairs with one from the other source at
-  /// most, so two real payments of the same amount (two coffees) are both kept.
+  /// false when this payment was already recorded by another automation. Each recorded payment is a group
+  /// that takes at most one report from each source (the Wallet trigger, the Wallet notification, the bank's
+  /// notification): a report joins a group of the same amount from the last 2 minutes that doesn't have its
+  /// source yet, else it starts a new group and the payment is recorded. So the three reports of one payment
+  /// make one expense, and two real payments of the same amount (two coffees) make two.
   static func claim(_ value: Double, _ source: Source) -> Bool {
     lock.lock()
     defer { lock.unlock() }
@@ -122,14 +152,14 @@ private enum PaymentRecorder {
       now - (number($0["time"]) ?? 0) < pairWindow
     }
     if let i = recent.firstIndex(where: {
-      abs((number($0["amount"]) ?? -1) - value) < 0.005 && $0["source"] as? String != source.rawValue && $0["paired"] as? Bool != true
+      abs((number($0["amount"]) ?? -1) - value) < 0.005 && !(($0["sources"] as? [String]) ?? []).contains(source.rawValue)
     }) {
-      recent[i]["paired"] = true
+      recent[i]["sources"] = ((recent[i]["sources"] as? [String]) ?? []) + [source.rawValue]
       defaults.set(recent, forKey: recentKey)
       return false
     }
-    recent.append(["amount": value, "time": now, "source": source.rawValue, "paired": false])
-    defaults.set(Array(recent.suffix(20)), forKey: recentKey)
+    recent.append(["amount": value, "time": now, "sources": [source.rawValue]])
+    defaults.set(Array(recent.suffix(30)), forKey: recentKey)
     return true
   }
 
@@ -402,6 +432,25 @@ func notificationPayment(title: String?, subtitle: String?, body: String?) -> (a
   // "Cbs Ood, Kazanlyk, Stara Zagora" → "Cbs Ood": the shop without the town, like the Wallet trigger gives it
   let shopLine = lines.first(where: { $0 != amountLine }) ?? ""
   let merchant = shopLine.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? ""
+  return (amount, merchant)
+}
+
+/// Amount and shop from a bank's own notification: Revolut's title is the shop ("BILLA"), the text says what
+/// was spent and the balance ("🛒 You spent €4.86 · EUR balance: €142.43"). Only spending counts (top-ups,
+/// transfers, refunds and declined payments return nil), and the amount is the one after "spent".
+func bankNotificationPayment(title: String?, body: String?) -> (amount: Double, merchant: String)? {
+  let text = (body ?? "").replacingOccurrences(of: "\n", with: " ")
+  let lower = text.lowercased()
+  let spend = ["spent", "похарч", "плати"]
+  let skip = ["refund", "declined", "reverted", "върнат", "отказ", "възстанов"]
+  guard spend.contains(where: { lower.contains($0) }), !skip.contains(where: { lower.contains($0) }) else { return nil }
+  // The first amount after the spending word, so the balance that follows is never taken
+  let start = spend.compactMap { lower.range(of: $0)?.upperBound }.min() ?? lower.startIndex
+  let rest = String(text[start...])
+  let number = "\\d{1,3}(?:[ \u{00A0}.,]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?"
+  guard let r = rest.range(of: number, options: .regularExpression),
+        let amount = parseAmount(String(rest[r])), amount > 0 else { return nil }
+  let merchant = (title ?? "").components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? ""
   return (amount, merchant)
 }
 
