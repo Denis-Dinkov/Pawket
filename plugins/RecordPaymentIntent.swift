@@ -59,7 +59,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
 @available(iOS 17.0, *)
 struct RecordNotificationIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Запиши от известие"
-  static var description = IntentDescription("Записва плащане от известие на Wallet в Pawket — резерва, ако автоматизацията за транзакции пропусне плащане.")
+  static var description = IntentDescription("Записва плащане от известие на Wallet или Revolut в Pawket — резерва, ако автоматизацията за транзакции пропусне плащане.")
   static var openAppWhenRun: Bool = false
   static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -77,6 +77,14 @@ struct RecordNotificationIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
+    // The same action serves the Revolut automation too: Revolut's own text says "You spent €4.86 · balance…",
+    // the Wallet one has a line with just the amount. (Shortcuts on a phone can keep an old list of actions
+    // for a long time, so one action that knows both is the one that's sure to be there.)
+    let text = [notificationSubtitle, notificationBody].compactMap { $0 }.joined(separator: "\n")
+    if let bank = bankNotificationPayment(title: notificationTitle, body: text) {
+      await PaymentRecorder.record(amount: bank.amount, merchant: bank.merchant, source: .bank)
+      return .result()
+    }
     // Not a payment (a card added, a refund, a pass): nothing to record, and nothing to say
     guard let payment = notificationPayment(title: notificationTitle, subtitle: notificationSubtitle, body: notificationBody) else {
       return .result()
