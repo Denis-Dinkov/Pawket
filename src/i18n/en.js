@@ -774,4 +774,8 @@ export default {
   "Избери": "Pick",
   "Не познах категорията — избери я в Pawket.": "I couldn't tell the category — pick it in Pawket.",
   "{0} плащания": "{0} payments",
+  "Може би дубликат, ": "Possible duplicate, ",
+  "ДУБЛИКАТ?": "DUPLICATE?",
+  "Може да е записано два пъти: днес има и друг разход със същата сума. Ако е същото плащане, изтрий този.": "This may be recorded twice: there's another expense of the same amount today. If it's the same payment, delete this one.",
+  "Запази и двата": "Keep both",
 };

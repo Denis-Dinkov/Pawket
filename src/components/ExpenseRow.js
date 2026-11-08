@@ -25,24 +25,30 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
   // Booked by the Apple Pay automation while the app was closed, and not looked at yet
   const fresh = !!expense.unreviewed;
   const needsCategory = fresh && !cat;
+  // Same amount as another expense in the same day: the user decides whether it's the same payment
+  const dupe = !!expense.possibleDuplicate;
 
   return (
     <Touch
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [s.row, fresh && s.fresh, pressed && { opacity: 0.6 }]}
-      accessibilityLabel={`${fresh ? t('Ново от Apple Pay, ') : ''}${cat?.name || t('Без категория')}, ${money(expense.amount)}${deposit ? t(' заделени') : ''}${outside ? t(', не се брои в месеца') : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
+      style={({ pressed }) => [s.row, fresh && s.fresh, dupe && s.dupe, pressed && { opacity: 0.6 }]}
+      accessibilityLabel={`${dupe ? t('Може би дубликат, ') : fresh ? t('Ново от Apple Pay, ') : ''}${cat?.name || t('Без категория')}, ${money(expense.amount)}${deposit ? t(' заделени') : ''}${outside ? t(', не се брои в месеца') : ''}${where ? `, ${where}` : ''}${what ? `, ${what}` : ''}, ${dayLabel(expense.date)}`}
       accessibilityHint={t('Отваря подробности. Задръж, за да изтриеш.')}
     >
       <IconBadge icon={cat?.icon || 'help'} color={color} size={44} />
       <View style={{ flex: 1 }}>
         <View style={s.nameLine}>
           <Text style={[s.name, { flexShrink: 1 }]} numberOfLines={1}>{needsCategory ? t('Избери категория') : cat?.name || t('Без категория')}</Text>
-          {fresh && (
+          {dupe ? (
+            <View style={[s.badge, s.dupeBadge]}>
+              <Text style={s.badgeText}>{t('ДУБЛИКАТ?')}</Text>
+            </View>
+          ) : fresh ? (
             <View style={s.badge}>
               <Text style={s.badgeText}>{t('НОВО')}</Text>
             </View>
-          )}
+          ) : null}
         </View>
         <Text style={s.sub} numberOfLines={1}>{subtitle}</Text>
       </View>
@@ -66,6 +72,8 @@ const s = themed((colors) => ({
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   badge: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
+  dupe: { backgroundColor: colors.dangerSoft, borderRadius: 16, marginHorizontal: -10, paddingHorizontal: 10 },
+  dupeBadge: { backgroundColor: colors.danger },
   badgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.4 },
   sub: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
   amount: { color: colors.text, fontSize: 15, fontWeight: '700' },

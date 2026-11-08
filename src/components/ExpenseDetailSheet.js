@@ -32,7 +32,8 @@ function Row({ icon, label, value }) {
 
 // Everything about one expense: where, what for, when and how it was paid
 export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
-  const { updateExpense, markReviewed } = useStore();
+  const { updateExpense, markReviewed, keepDuplicate } = useStore();
+  const [dupe, setDupe] = useState(!!expense.possibleDuplicate);
   const cat = categoryById(expense.categoryId);
   const bucket = cat && BUCKETS[cat.bucket];
   const source = SOURCES[expense.source] || SOURCES.manual;
@@ -63,6 +64,27 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
         <Row icon="calendar-outline" label={t('Кога')} value={`${dayLabel(expense.date)}, ${timeLabel(expense.date)}`} />
         <Row icon={source.icon} label={t('Плащане')} value={source.label} />
       </View>
+      {dupe && (
+        <View style={s.dupeCard}>
+          <Text style={s.dupeText}>
+            {t('Може да е записано два пъти: днес има и друг разход със същата сума. Ако е същото плащане, изтрий този.')}
+          </Text>
+          <View style={s.dupeActions}>
+            <Pill small icon="trash-outline" label={t('Изтрий')} variant="ink" onPress={() => confirmDelete(expense, onDelete)} />
+            <Pill
+              small
+              icon="checkmark"
+              label={t('Запази и двата')}
+              variant="outline"
+              onPress={() => {
+                feedback('select');
+                keepDuplicate(expense.id);
+                setDupe(false);
+              }}
+            />
+          </View>
+        </View>
+      )}
       {auto && (
         <Text style={[s.note, { marginBottom: 2 }]}>
           {cat
@@ -133,4 +155,7 @@ const s = themed((colors) => ({
   switchLabel: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600' },
   note: { color: colors.muted, fontSize: 12.5, lineHeight: 17, marginTop: 8, paddingHorizontal: 6 },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 18 },
+  dupeCard: { backgroundColor: colors.dangerSoft, borderRadius: 18, padding: 14, gap: 10, marginTop: 10 },
+  dupeText: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  dupeActions: { flexDirection: 'row', gap: 8 },
 }));

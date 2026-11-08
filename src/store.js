@@ -11,7 +11,7 @@ import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
-import { takePendingPayments, writeCategorizer } from './pendingPayments';
+import { takePendingPayments, writeCategorizer, matchManual } from './pendingPayments';
 import { guessCategory, rememberedCategory, sameMerchant } from './categoryGuess';
 
 export const KEY = 'spendlite:v2';
@@ -178,10 +178,26 @@ export function StoreProvider({ children }) {
     try {
       const payments = await takePendingPayments();
       if (!payments.length) return;
+      // A payment already entered by hand (same amount and shop within 24 hours) isn't booked again: that
+      // expense is matched to it instead. Same amount but nothing to compare: booked, marked "Дубликат?"
+      const known = new Set(dataRef.current.expenses.map((e) => e.paymentId).filter(Boolean));
+      let pool = dataRef.current.expenses;
+      const matched = {};
+      const fresh = [];
+      for (const p of payments) {
+        if (known.has(p.id)) continue;
+        const m = matchManual(p, pool, sameMerchant);
+        if (m.skip) {
+          matched[m.skip] = p.id;
+          pool = pool.map((e) => (e.id === m.skip ? { ...e, matchedPayment: p.id } : e));
+          continue;
+        }
+        fresh.push({ ...p, maybeDuplicate: p.maybeDuplicate || m.flag });
+      }
+      if (!fresh.length && !Object.keys(matched).length) return;
       setData((d) => {
-        const known = new Set(d.expenses.map((e) => e.paymentId).filter(Boolean));
-        const fresh = payments.filter((p) => !known.has(p.id));
-        if (!fresh.length) return d;
+        const expenses = d.expenses.map((e) => (matched[e.id] ? { ...e, matchedPayment: matched[e.id] } : e));
+        if (!fresh.length) return { ...d, expenses };
         const booked = fresh
           .map((p) => {
             // The user's own choice for this merchant first, then a guess from its name
@@ -198,16 +214,18 @@ export function StoreProvider({ children }) {
               loggedAt: p.date,
               paymentId: p.id,
               unreviewed: true,
+              ...(p.maybeDuplicate && { possibleDuplicate: true }),
             };
           })
           .reverse();
-        return { ...d, expenses: [...booked, ...d.expenses], pet: feedPet(d.pet) };
+        return { ...d, expenses: [...booked, ...expenses], pet: feedPet(d.pet) };
       });
+      if (!fresh.length) return;
       showToast({
         text:
-          payments.length === 1
-            ? t('Записах {0} от Apple Pay 🐾', { 0: money(payments[0].amount) })
-            : t('Записах {0} плащания от Apple Pay 🐾', { 0: payments.length }),
+          fresh.length === 1
+            ? t('Записах {0} от Apple Pay 🐾', { 0: money(fresh[0].amount) })
+            : t('Записах {0} плащания от Apple Pay 🐾', { 0: fresh.length }),
         icon: 'logo-apple',
       });
     } catch {
@@ -405,6 +423,10 @@ export function StoreProvider({ children }) {
             merchants: merchant && patch.categoryId ? { ...d.merchants, [normalizeMerchant(merchant)]: patch.categoryId } : d.merchants,
           };
         }),
+
+      // "Дубликат?" answered with "Запази": both expenses are real
+      keepDuplicate: (id) =>
+        setData((d) => ({ ...d, expenses: d.expenses.map((e) => (e.id === id ? { ...e, possibleDuplicate: undefined } : e)) })),
 
       // An automatic Apple Pay payment the user has looked at: no longer highlighted
       markReviewed: (id) =>

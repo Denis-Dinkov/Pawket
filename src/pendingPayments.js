@@ -88,5 +88,29 @@ export function toPayment(raw) {
   const amount = parseAmount(raw?.amount);
   if (!(amount > 0)) return null;
   const date = raw.date && !Number.isNaN(Date.parse(raw.date)) ? new Date(raw.date).toISOString() : new Date().toISOString();
-  return { id: String(raw.id || date), amount, merchant: String(raw.merchant || '').trim(), date };
+  return { id: String(raw.id || date), amount, merchant: String(raw.merchant || '').trim(), date, maybeDuplicate: !!raw.maybeDuplicate };
+}
+
+const DAY = 24 * 3600000;
+
+/**
+ * Checks an incoming payment against the expenses entered by hand in the 24 hours around it (the automations
+ * check each other in the action itself). Returns { skip: id } when a hand-entered expense of the same amount
+ * names the same shop — the payment is already there, and that expense is matched to it — or { flag: true }
+ * when one of the same amount can't be compared (no shop, another name), so the payment comes in marked as a
+ * possible duplicate. A hand-entered expense is matched to one payment at most.
+ */
+export function matchManual(payment, expenses, sameMerchant) {
+  const t = new Date(payment.date).getTime();
+  const near = expenses.filter(
+    (e) =>
+      e.source !== 'applepay' &&
+      !e.goalId &&
+      !e.matchedPayment &&
+      Math.abs(e.amount - payment.amount) < 0.005 &&
+      Math.abs(new Date(e.date).getTime() - t) < DAY
+  );
+  const same = near.find((e) => e.merchant && payment.merchant && sameMerchant(e.merchant, payment.merchant));
+  if (same) return { skip: same.id };
+  return { flag: near.length > 0 };
 }

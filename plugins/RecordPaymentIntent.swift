@@ -55,7 +55,7 @@ struct RecordPaymentIntent: LiveActivityIntent {
 /// transaction details and gives up when they come late, while the Wallet notification still arrives (even an
 /// hour later). An automation "When I receive a notification from Wallet" passes its title, subtitle and text
 /// here; the amount and the shop are read from them. When both automations see the same payment, it's
-/// recorded once (PaymentRecorder.claim, within 2 minutes).
+/// recorded once (PaymentRecorder.claim).
 @available(iOS 17.0, *)
 struct RecordNotificationIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Запиши от известие"
@@ -122,16 +122,18 @@ private enum PaymentRecorder {
 
   private static let lock = NSLock()
   private static let recentKey = "pawket.recentPayments"
-  // How far apart the two automations can see the same payment: both fire on the same Wallet data,
-  // seconds apart, so a short window keeps two real payments of the same amount apart
-  private static let pairWindow: TimeInterval = 2 * 60
+  // Reports this close are the same payment whatever the shop is called; later ones must name the same shop
+  private static let sameMoment: TimeInterval = 2 * 60
+  // A Wallet notification can arrive hours after the payment
+  private static let keepFor: TimeInterval = 24 * 3600
 
   static func record(amount value: Double, merchant raw: String, source: Source) async {
-    guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup),
-          claim(value, source) else { return }
     let shop = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return }
+    let claimed = claim(value, merchant: shop, source)
+    if claimed == .duplicate { return }
     let id = UUID().uuidString
-    guard (try? savePending(id: id, amount: String(format: "%.2f", value), merchant: shop, in: container)) != nil else { return }
+    guard (try? savePending(id: id, amount: String(format: "%.2f", value), merchant: shop, maybeDuplicate: claimed == .maybeDuplicate, in: container)) != nil else { return }
     let category = Categorizer.load(from: container)?.category(for: shop)
     let budget = updateWidget(spent: value, kind: category?.kind ?? .everyday)
     if category == nil { startPickActivity(paymentId: id, amount: value, merchant: shop, budget: budget) }
@@ -143,27 +145,41 @@ private enum PaymentRecorder {
   /// notification): a report joins a group of the same amount from the last 2 minutes that doesn't have its
   /// source yet, else it starts a new group and the payment is recorded. So the three reports of one payment
   /// make one expense, and two real payments of the same amount (two coffees) make two.
-  static func claim(_ value: Double, _ source: Source) -> Bool {
+  enum Claim { case new, duplicate, maybeDuplicate }
+
+  /// Whether this report is a payment already recorded by another automation, within 24 hours (a Wallet
+  /// notification can come hours after the payment). Each recorded payment is a group that takes at most one
+  /// report per source (the Wallet trigger, the Wallet notification, the bank's notification). A report of the
+  /// same amount from a source the group doesn't have yet:
+  /// - within 2 minutes joins it whatever the shop is called (Revolut "M N Mazalat", Wallet "Магазин Мазалам");
+  /// - later joins it only when the shops match (sameShop);
+  /// - later with a different shop name is recorded, but flagged as a possible duplicate for the user to check.
+  /// So the three reports of one payment make one expense, and two coffees of the same price make two.
+  static func claim(_ value: Double, merchant: String, _ source: Source) -> Claim {
     lock.lock()
     defer { lock.unlock() }
-    guard let defaults = UserDefaults(suiteName: appGroup) else { return true }
+    guard let defaults = UserDefaults(suiteName: appGroup) else { return .new }
     let now = Date().timeIntervalSince1970
     var recent = (defaults.array(forKey: recentKey) as? [[String: Any]] ?? []).filter {
-      now - (number($0["time"]) ?? 0) < pairWindow
+      now - (number($0["time"]) ?? 0) < keepFor
     }
-    if let i = recent.firstIndex(where: {
-      abs((number($0["amount"]) ?? -1) - value) < 0.005 && !(($0["sources"] as? [String]) ?? []).contains(source.rawValue)
-    }) {
+    let candidates = recent.indices.filter {
+      abs((number(recent[$0]["amount"]) ?? -1) - value) < 0.005
+        && !((recent[$0]["sources"] as? [String]) ?? []).contains(source.rawValue)
+    }
+    let soon = candidates.first { now - (number(recent[$0]["time"]) ?? 0) < sameMoment }
+    let sameName = candidates.first { sameShop(recent[$0]["merchant"] as? String ?? "", merchant) }
+    if let i = soon ?? sameName {
       recent[i]["sources"] = ((recent[i]["sources"] as? [String]) ?? []) + [source.rawValue]
       defaults.set(recent, forKey: recentKey)
-      return false
+      return .duplicate
     }
-    recent.append(["amount": value, "time": now, "sources": [source.rawValue]])
-    defaults.set(Array(recent.suffix(30)), forKey: recentKey)
-    return true
+    recent.append(["amount": value, "merchant": merchant, "time": now, "sources": [source.rawValue]])
+    defaults.set(Array(recent.suffix(60)), forKey: recentKey)
+    return candidates.isEmpty ? .new : .maybeDuplicate
   }
 
-  static func savePending(id: String, amount: String, merchant: String, in container: URL) throws {
+  static func savePending(id: String, amount: String, merchant: String, maybeDuplicate: Bool, in container: URL) throws {
     let folder = container.appendingPathComponent(folderName, isDirectory: true)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     let payment: [String: String] = [
@@ -171,6 +187,8 @@ private enum PaymentRecorder {
       "amount": amount,
       "merchant": merchant,
       "date": ISO8601DateFormatter().string(from: Date()),
+      // The app flags it ("Дубликат?") for the user to keep or delete
+      "maybeDuplicate": maybeDuplicate ? "1" : "",
     ]
     let json = try JSONSerialization.data(withJSONObject: payment)
     // One file per payment: the app deletes the files it has read, so two writers never touch the same file.
@@ -452,6 +470,20 @@ func bankNotificationPayment(title: String?, body: String?) -> (amount: Double, 
         let amount = parseAmount(String(rest[r])), amount > 0 else { return nil }
   let merchant = (title ?? "").components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? ""
   return (amount, merchant)
+}
+
+/// Whether two shop names are the same shop, for the duplicate check: "BILLA" / "Billa Bulgaria Eood",
+/// "Cbs Ood" / "CBS OOD Kazanlyk". Without numbers, punctuation and legal forms they're equal, or share their
+/// first word (at least 3 letters). An empty name never matches.
+func sameShop(_ a: String, _ b: String) -> Bool {
+  let legal: Set<String> = ["eood", "ood", "ead", "ad", "et", "ltd", "llc", "gmbh", "inc", "еоод", "оод", "еад", "ад", "ет"]
+  func words(_ s: String) -> [String] {
+    let cleaned = String(s.lowercased().map { $0.isLetter ? $0 : " " })
+    return cleaned.split(separator: " ").map(String.init).filter { !legal.contains($0) }
+  }
+  let x = words(a), y = words(b)
+  guard let fx = x.first, let fy = y.first else { return false }
+  return x == y || (fx == fy && fx.count >= 3)
 }
 
 /// "€12.50", "12,50 €", "1 234,56", "1,234.56" → 12.5 … (parseAmount in src/deeplink.js)
