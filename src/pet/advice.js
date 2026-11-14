@@ -57,13 +57,14 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     add(100, {
       id: 'no-income', tone: 'tip', icon: 'cash-outline',
       title: t('Кажи ми колко е месечният ти доход 💤'),
-      text: t('Без доход не мога да сметна 50/30/20. Задай го от настройките (⚙︎) и се събуждам.'),
+      text: t('Без доход не мога да сметна {rule}. Задай го от настройките (⚙︎) и се събуждам.'),
     });
     return finish(tips);
   }
 
-  const wantsCap = 0.3 * I;
-  const needsCap = 0.5 * I;
+  const { split } = ov;
+  const wantsCap = split.wants * I;
+  const needsCap = split.needs * I;
   const topIn = (bucket) =>
     CATEGORIES.filter((c) => c.bucket === bucket && byCategory[c.id])
       .map((c) => ({ ...c, value: byCategory[c.id] }))
@@ -75,7 +76,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     add(100, {
       id: 'over-income', tone: 'warn', icon: 'alert-circle',
       title: t('Харчиш повече, отколкото печелиш 😢'),
-      text: t('Разходите са {0} при доход {1} — с {2} отгоре. {3}', { 0: money(spent), 1: money(I), 2: money(spent - I), 3: isCurrent ? t('До края на месеца купувай само най-необходимото.') : t('Следващия месец започни с план за всяка част от 50/30/20.') }),
+      text: t('Разходите са {0} при доход {1} — с {2} отгоре. {3}', { 0: money(spent), 1: money(I), 2: money(spent - I), 3: isCurrent ? t('До края на месеца купувай само най-необходимото.') : t('Следващия месец започни с план за всяка част от {rule}.') }),
     });
   }
 
@@ -94,7 +95,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
         : t('Бюджетът за желания е изчерпан — опитай до края на месеца без тях. ');
     add(80, {
       id: 'wants-pace', tone: 'warn', icon: 'sparkles',
-      title: isCurrent ? t('Желанията изпреварват месеца 😟') : t('Желанията надхвърлиха 30%'),
+      title: isCurrent ? t('Желанията изпреварват месеца 😟') : t('Желанията надхвърлиха {w}%'),
       text: pace + rest + (top ? t('Най-много отива за {0} ({1}). {2}', { 0: top.name.toLowerCase(), 1: money(top.value), 2: HINTS[top.id] || '' }) : ''),
       saving: Math.max(0, byBucket.wants - (isCurrent ? wantsAllowed : wantsCap)),
     });
@@ -105,25 +106,25 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     const top = topIn('needs');
     add(70, {
       id: 'needs-over', tone: 'warn', icon: 'home',
-      title: t('Нуждите надхвърлят 50% 🏠'),
-      text: t('Нуждите са {0} от дохода при цел 50% — трябва да паднат с {1}. {2}', { 0: pct(byBucket.needs / I), 1: money(byBucket.needs - needsCap), 2: top ? t('Най-голямата е {0} ({1}). {2}', { 0: top.name.toLowerCase(), 1: money(top.value), 2: HINTS[top.id] || '' }) : '' }),
+      title: t('Нуждите надхвърлят {n}% 🏠'),
+      text: t('Нуждите са {0} от дохода при цел {n}% — трябва да паднат с {1}. {2}', { 0: pct(byBucket.needs / I), 1: money(byBucket.needs - needsCap), 2: top ? t('Най-голямата е {0} ({1}). {2}', { 0: top.name.toLowerCase(), 1: money(top.value), 2: HINTS[top.id] || '' }) : '' }),
       saving: byBucket.needs - needsCap,
     });
   }
 
   // Savings
   const room = I - byBucket.needs - byBucket.wants;
-  if (total <= I && room < 0.2 * I) {
+  if (total <= I && room < split.savings * I) {
     add(60, {
       id: 'savings-short', tone: 'warn', icon: 'wallet',
-      title: t('Спестяванията падат под 20% 🐷'),
-      text: t('{0} ще останат най-много {1} ({2}) вместо {3}. Следващия месец задели спестяванията още в деня на заплатата — каквото остане, лесно се харчи.', { 0: isCurrent ? t('Дори без нови разходи') : t('Този месец'), 1: money(Math.max(0, room)), 2: pct(Math.max(0, room) / I), 3: money(0.2 * I) }),
+      title: t('Спестяванията падат под {s}% 🐷'),
+      text: t('{0} ще останат най-много {1} ({2}) вместо {3}. Следващия месец задели спестяванията още в деня на заплатата — каквото остане, лесно се харчи.', { 0: isCurrent ? t('Дори без нови разходи') : t('Този месец'), 1: money(Math.max(0, room)), 2: pct(Math.max(0, room) / I), 3: money(split.savings * I) }),
     });
   } else if (isCurrent && dayFrac > 0.5 && byBucket.savings === 0) {
     add(30, {
       id: 'savings-now', tone: 'tip', icon: 'wallet',
       title: t('Задели спестяванията сега 💰'),
-      text: t('Още няма нищо отделено за спестявания. Прехвърли {0} в спестовна сметка и го запиши в категория „Спестявания“.', { 0: money(0.2 * I) }),
+      text: t('Още няма нищо отделено за спестявания. Прехвърли {0} в спестовна сметка и го запиши в категория „Спестявания“.', { 0: money(split.savings * I) }),
     });
   }
 
@@ -208,7 +209,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     add(20, {
       id: 'daily-limit', tone: 'tip', icon: 'calendar-outline',
       title: t('Лимитът ти за днес е {0}', { 0: money(daily.todayLimit) }),
-      text: t('Всяка сутрин свободните пари{2} се делят на дните до края на месеца ({0}). Днес това са {1}. Всеки разход се вади от тях, а утре лимитът се смята наново. Лимитът пази 20% за спестяване — ако го спазваш, те остават.', { 0: daysLeft, 1: money(daily.todayLimit), 2: pending > 0 ? t(' след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
+      text: t('Всяка сутрин свободните пари{2} се делят на дните до края на месеца ({0}). Днес това са {1}. Всеки разход се вади от тях, а утре лимитът се смята наново. Лимитът пази {s}% за спестяване — ако го спазваш, те остават.', { 0: daysLeft, 1: money(daily.todayLimit), 2: pending > 0 ? t(' след предстоящите плащания ({0})', { 0: money(pending) }) : '' }),
     });
   }
 
@@ -216,7 +217,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
   if (ov.score >= 85 && (dayFrac >= 0.25 || !isCurrent) && !tips.some((item) => item.tone === 'warn')) {
     add(15, {
       id: 'rule-ok', tone: 'praise', icon: 'trophy',
-      title: t('Спазваш 50/30/20 отлично 🤩'),
+      title: t('Спазваш {rule} отлично 🤩'),
       text: t('Нужди {0}, желания {1}, спестявания до {2}. Продължавай така и ще порасна!', { 0: pct(byBucket.needs / I), 1: pct(byBucket.wants / I), 2: pct(Math.max(0, room) / I) }),
     });
   }

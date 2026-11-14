@@ -36,6 +36,6 @@ export function petLine({ status, daily, advice = [], activeToday, goal, now = n
     };
   }
   if (goal && !goal.done) return { text: t('Мисля си за „{0}“ ✨ Всяко евро ни доближава.', { 0: goal.name }), tone: 'tip' };
-  if (status.score >= 85) return { text: pick([t('Спазваш 50/30/20 отлично! Ще порасна голям 🤩'), t('Най-добрият стопанин! 🏆')], seed), tone: 'praise' };
+  if (status.score >= 85) return { text: pick([t('Спазваш {rule} отлично! Ще порасна голям 🤩'), t('Най-добрият стопанин! 🏆')], seed), tone: 'praise' };
   return { text: pick([t('Добър ден за малко спестяване 🐾'), t('Ще ме погалиш ли? 🐶'), t('Да видим какво ще запишем днес 📝')], seed), tone: 'tip' };
 }

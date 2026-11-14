@@ -130,7 +130,7 @@ function DailyBars({ ov, stats, year, month }) {
         <Text style={s.axisText}>15</Text>
         <Text style={s.axisText}>{ov.progress.daysInMonth}</Text>
       </View>
-      {lineAt != null && <Text style={s.legend}>{t('— — дневен бюджет по 50/30/20 ≈ {0}', { 0: money(dailyBudget) })}</Text>}
+      {lineAt != null && <Text style={s.legend}>{t('— — дневен бюджет по {rule} ≈ {0}', { 0: money(dailyBudget) })}</Text>}
     </View>
   );
 }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Alert, Platform, Switch, Linking } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, Alert, Platform, Switch, Linking, AppState } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
@@ -13,12 +13,15 @@ import Pet from '../pet/Pet';
 import ApplePayGuideScreen from './ApplePayGuideScreen';
 import Touch from '../components/ui/Touch';
 import NewCategorySheet from '../components/NewCategorySheet';
+import SplitSheet from '../components/SplitSheet';
+import { splitPercents, splitFor } from '../split';
 import Segmented from '../components/ui/Segmented';
 import Pill from '../components/ui/Pill';
 import { remindersAvailable, requestReminderPermission } from '../reminders';
 import { liveActivityAvailable } from '../widget/liveActivity';
 import { backupAvailable, shareBackup, pickBackup } from '../backup';
-import { dayLabel, plural } from '../format';
+import { dayLabel, plural, timeLabel } from '../format';
+import { notificationReaderAvailable, notificationAccessEnabled, openNotificationAccess, unreadNotifications } from '../androidPayments';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -36,7 +39,7 @@ function confirm(title, msg, onYes, yes = t('Изтрий')) {
 }
 
 export default function SettingsScreen({ onClose, onTryApplePay }) {
-  const { incomes, pet, categories, settings, lastBackupAt, setIncomeFrom, setPetName, addCategory, removeCategory, resetAll, setSettings, exportData, restoreData, showToast } =
+  const { incomes, pet, categories, settings, lastBackupAt, setIncomeFrom, setSplitFrom, setPetName, addCategory, removeCategory, resetAll, setSettings, exportData, restoreData, showToast } =
     useStore();
   const reminder = settings.reminder;
   const [backupBusy, setBackupBusy] = useState(false);
@@ -98,9 +101,22 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
   const { stage, next } = stageFor(pet?.xp || 0);
 
   const [guide, setGuide] = useState(false);
+  // The part whose percent was tapped (the split sheet opens on it), or null
+  const [splitFocus, setSplitFocus] = useState(null);
+  const split = splitPercents(splitFor(y, m));
 
   const saveIncome = () => setIncomeFrom(y, m, parseMoney(incomeText));
   const income = parseMoney(incomeText);
+
+  // Android: whether Pawket may read the payment notifications; checked again on coming back from the system screen
+  const [access, setAccess] = useState(notificationAccessEnabled);
+  const [unread, setUnread] = useState([]);
+  useEffect(() => {
+    if (!notificationReaderAvailable()) return undefined;
+    unreadNotifications().then(setUnread);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setAccess(notificationAccessEnabled()));
+    return () => sub.remove();
+  }, []);
 
   if (guide) return <ApplePayGuideScreen onClose={() => setGuide(false)} onTry={onTryApplePay} />;
 
@@ -140,14 +156,38 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
         <Text style={s.hint}>
           {t('Важи от {0} {1} нататък — миналите месеци пазят своя доход.', { 0: monthLower(m), 1: y })}
         </Text>
-        {income > 0 && (
-          <View style={s.split}>
-            <Text style={[s.splitItem, { color: colors.needs }]}>50% · {money(income * 0.5)}</Text>
-            <Text style={[s.splitItem, { color: colors.wants }]}>30% · {money(income * 0.3)}</Text>
-            <Text style={[s.splitItem, { color: colors.savings }]}>20% · {money(income * 0.2)}</Text>
-          </View>
-        )}
+        {/* The split: tap a percent to change it */}
+        <View style={s.split}>
+          {['needs', 'wants', 'savings'].map((k) => (
+            <Touch
+              key={k}
+              haptic="select"
+              onPress={() => setSplitFocus(k)}
+              style={[s.splitPill, { borderColor: BUCKETS[k].color }]}
+              accessibilityLabel={t('{0} {1}%. Промени', { 0: BUCKETS[k].label, 1: split[k] })}
+            >
+              <Text style={[s.splitItemText, { color: BUCKETS[k].color }]}>
+                {split[k]}%{income > 0 ? ` · ${money((income * split[k]) / 100)}` : ''}
+              </Text>
+              <Ionicons name="pencil" size={11} color={BUCKETS[k].color} />
+            </Touch>
+          ))}
+        </View>
       </Card>
+
+      <SplitSheet
+        visible={!!splitFocus}
+        focus={splitFocus}
+        onClose={() => setSplitFocus(null)}
+        current={split}
+        income={income}
+        month={m}
+        year={y}
+        onSave={(p) => {
+          setSplitFrom(y, m, p);
+          setSplitFocus(null);
+        }}
+      />
 
       <Card style={{ marginTop: 14 }}>
         <View style={s.petRow}>
@@ -177,7 +217,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           </Touch>
         </View>
         {mine.length === 0 ? (
-          <Text style={s.hint}>{t('Добави свои категории — появяват се при „Нов разход“ в избраната част от 50/30/20.')}</Text>
+          <Text style={s.hint}>{t('Добави свои категории — появяват се при „Нов разход“ в избраната част от {rule}.')}</Text>
         ) : (
           mine.map((c) => (
             <View key={c.id} style={s.catRow}>
@@ -252,7 +292,8 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
               <Text style={s.linkTitle}>{t('Вечерно напомняне')}</Text>
               <Text style={s.hint}>{t('Само в дните без запис: „{0} е гладен — похарчи ли нещо днес?“', { 0: pet?.name })}</Text>
             </View>
-            <Switch value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel={t('Вечерно напомняне')} />
+            <Switch
+              thumbColor={colors.white} value={reminder.enabled} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} accessibilityLabel={t('Вечерно напомняне')} />
           </View>
           {reminder.enabled && (
             <Segmented
@@ -269,9 +310,10 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <IconBadge icon="shield-outline" color={colors.savings} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={s.linkTitle}>{t('Предупреждение за спестяванията')}</Text>
-            <Text style={s.hint}>{t('Дневният лимит пази 20% за спестяване. Когато разход започне да яде от тях, {0} ще ти каже веднага.', { 0: pet?.name })}</Text>
+            <Text style={s.hint}>{t('Дневният лимит пази {s}% за спестяване. Когато разход започне да яде от тях, {0} ще ти каже веднага.', { 0: pet?.name })}</Text>
           </View>
           <Switch
+              thumbColor={colors.white}
             value={settings.savingsAlert !== false}
             onValueChange={toggleSavingsAlert}
             trackColor={{ true: colors.primary }}
@@ -298,6 +340,37 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             <Pill icon="share-outline" label={backupBusy ? t('Подготвям…') : t('Запази архив')} variant="ink" onPress={backupBusy ? undefined : saveBackup} />
             <Pill icon="download-outline" label={t('Възстанови')} variant="outline" onPress={loadBackup} />
           </View>
+        </Card>
+      )}
+
+      {notificationReaderAvailable() && (
+        <Card style={{ marginTop: 14, gap: 10 }}>
+          <View style={s.linkRow}>
+            <IconBadge icon="notifications" color={access ? colors.savings : colors.ink} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.linkTitle}>{t('Запис от известия')}</Text>
+              <Text style={s.hint}>{access ? t('Включено: плащанията от Google Wallet и Revolut се записват сами.') : t('Изключено. Разреши достъп до известията, за да записвам плащанията сам.')}</Text>
+            </View>
+          </View>
+          <Text style={s.hint}>
+            {t('Чета само известията на Google Wallet и Revolut, и само за да намеря сумата и магазина. Нищо не излиза от телефона.')}
+          </Text>
+          <Pill
+            icon={access ? 'settings-outline' : 'key-outline'}
+            label={access ? t('Настройки за достъп') : t('Разреши достъп')}
+            variant={access ? 'outline' : 'ink'}
+            onPress={openNotificationAccess}
+          />
+          {unread.length > 0 && (
+            <View style={{ gap: 6 }}>
+              <Text style={s.label}>{t('Известия, които не разпознах')}</Text>
+              {unread.map((n, i) => (
+                <Text key={i} style={s.hint} selectable>
+                  {timeLabel(new Date(n.time).toISOString())} · {[n.title, n.text].filter(Boolean).join(' — ')}
+                </Text>
+              ))}
+            </View>
+          )}
         </Card>
       )}
 
@@ -350,6 +423,8 @@ const s = themed((colors) => ({
   currency: { fontSize: 22, color: colors.muted, fontWeight: '700' },
   hint: { color: colors.muted, fontSize: 12.5, marginTop: 6, lineHeight: 17 },
   split: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
+  splitPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.bg },
+  splitItemText: { fontSize: 12.5, fontWeight: '700' },
   splitItem: { fontSize: 12, fontWeight: '700', backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, overflow: 'hidden' },
   petRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   catHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },

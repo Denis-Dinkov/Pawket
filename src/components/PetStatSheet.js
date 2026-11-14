@@ -49,20 +49,20 @@ function Mood({ status, advice }) {
   if (status.score == null) {
     return (
       <Text style={s.text}>
-        {t('Спя, защото не знам колко е месечният ти доход. Задай го от настройките (⚙︎) и ще започна да следя 50/30/20.')}
+        {t('Спя, защото не знам колко е месечният ти доход. Задай го от настройките (⚙︎) и ще започна да следя {rule}.')}
       </Text>
     );
   }
-  const { parts, overIncome } = budgetScoreParts({ income: ov.income, byBucket: ov.byBucket, dayFrac: ov.progress.dayFrac });
+  const { parts, overIncome } = budgetScoreParts({ income: ov.income, byBucket: ov.byBucket, dayFrac: ov.progress.dayFrac, split: ov.split });
   const p = Object.fromEntries(parts.map((x) => [x.key, x]));
   const minus = (x) => (x.penalty >= 0.5 ? `−${Math.round(x.penalty)}` : '✓');
   const hungry = status.fullness < HUNGRY_AT;
-  const wantsLeft = 0.3 * ov.income - ov.byBucket.wants;
+  const wantsLeft = ov.split.wants * ov.income - ov.byBucket.wants;
 
   return (
     <>
       <Text style={s.text}>
-        {t('Настроението ми е оценката ти по 50/30/20 за текущия месец (0–100). Започвам от 100 и губя точки за всяко отклонение.')}
+        {t('Настроението ми е оценката ти по {rule} за текущия месец (0–100). Започвам от 100 и губя точки за всяко отклонение.')}
       </Text>
 
       <View style={s.scale}>
@@ -83,7 +83,7 @@ function Mood({ status, advice }) {
       <View style={s.card}>
         <Row
           ok={p.needs.penalty < 0.5}
-          title={t('Нужди до 50% от дохода')}
+          title={t('Нужди до {n}% от дохода')}
           detail={t('Сега: {0} ({1})', { 0: pct(p.needs.value), 1: money(ov.byBucket.needs) })}
           badge={minus(p.needs)}
         />
@@ -95,13 +95,13 @@ function Mood({ status, advice }) {
         />
         <Row
           ok={p.wantsCap.penalty < 0.5}
-          title={t('Желания до 30% от дохода')}
+          title={t('Желания до {w}% от дохода')}
           detail={t('Сега: {0} ({1})', { 0: pct(p.wantsCap.value), 1: money(ov.byBucket.wants) })}
           badge={minus(p.wantsCap)}
         />
         <Row
           ok={p.savings.penalty < 0.5}
-          title={t('Поне 20% за спестяване')}
+          title={t('Поне {s}% за спестяване')}
           detail={t('Ако не харчиш повече, можеш да спестиш {0} от дохода', { 0: pct(p.savings.value) })}
           badge={minus(p.savings)}
         />
@@ -121,7 +121,7 @@ function Mood({ status, advice }) {
         {ov.progress.isCurrent && wantsLeft > 0 && (
           <Tip icon="sparkles" text={t('За желания остават {0} — около {1} на ден.', { 0: money(wantsLeft), 1: money(wantsLeft / Math.max(1, ov.progress.daysLeft)) })} />
         )}
-        <Tip icon="wallet" text={t('Задели 20% за спестяване още в деня на заплатата.')} />
+        <Tip icon="wallet" text={t('Задели {s}% за спестяване още в деня на заплатата.')} />
         <Tip icon="restaurant" text={t('Записвай всеки ден, за да не огладнявам.')} />
       </View>
     </>

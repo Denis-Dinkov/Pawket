@@ -7,6 +7,7 @@
 // The language is applied before the app renders (see Themed in App.js) and the screens are remounted
 // on a change, the same way as the light / dark palette, so t() can be a plain function.
 import en from './i18n/en';
+import { splitPercents, splitLabel } from './split';
 
 export const LANGUAGES = ['bg', 'en'];
 let lang = 'bg';
@@ -31,9 +32,15 @@ export const resolveLang = (pref) => (pref === 'bg' || pref === 'en' ? pref : sy
 
 const fill = (text, params) => (params ? text.replace(/\{(\w+)\}/g, (m, k) => (params[k] != null ? String(params[k]) : m)) : text);
 
+// Texts about the budget rule name the user's own split: {rule} → "60/20/20", {n} {w} {s} → its percents
+function splitParams() {
+  const p = splitPercents();
+  return { rule: splitLabel(), n: p.needs, w: p.wants, s: p.savings };
+}
+
 export function t(text, params) {
   const out = lang === 'en' ? en[text] ?? text : text;
-  return fill(out, params);
+  return fill(out, /\{(rule|n|w|s)\}/.test(out) ? { ...splitParams(), ...params } : params);
 }
 
 /**

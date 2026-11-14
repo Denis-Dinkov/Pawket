@@ -1,5 +1,5 @@
 import React, { Activity, memo, startTransition, useCallback, useEffect, useRef, useState } from 'react';
-import { View, Modal, ActivityIndicator, Alert, Animated, Appearance, AppState, StyleSheet, useColorScheme } from 'react-native';
+import { View, Modal, ActivityIndicator, Alert, Animated, Appearance, AppState, Platform, StatusBar as RNStatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { Text } from './src/components/ui/AppText';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import PlansScreen from './src/screens/PlansScreen';
 import PetScreen from './src/screens/PetScreen';
 import AddScreen from './src/screens/AddScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import PetEventModal from './src/components/PetEventModal';
 import Toast from './src/components/Toast';
@@ -53,6 +54,11 @@ const TABS = [
   { key: 'plans', icon: 'flag', get label() { return t('Планове'); } },
   { key: 'pet', icon: 'paw', get label() { return t('Чарли'); } },
 ];
+
+// iOS shows these pages as sheets that start below the status bar; on Android a modal covers the whole
+// screen, so its content is pushed below the status bar here
+const ModalFrame = ({ children }) =>
+  Platform.OS === 'android' ? <View style={{ flex: 1, paddingTop: RNStatusBar.currentHeight || 24, backgroundColor: colors.bg }}>{children}</View> : children;
 
 // Only this re-renders when a toast comes and goes, not the whole screen behind it
 function ToastLayer() {
@@ -141,6 +147,9 @@ function Main() {
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const onMonthChange = useCallback((year, month) => setPeriod({ year, month }), []);
   const openSettings = useCallback(() => setSettingsOpen(true), []);
+  // "Advice with <the dog>": the chat about the user's budget
+  const [chatOpen, setChatOpen] = useState(false);
+  const openChat = useCallback(() => setChatOpen(true), []);
 
   // The Apple Pay automation, the widget "+" and the quick action all open "New expense"
   // The Dynamic Island's "Stop": a no-spend day is a whole day's effort, so it asks first
@@ -261,6 +270,7 @@ function Main() {
                 {...period}
                 onMonthChange={onMonthChange}
                 onOpenSettings={openSettings}
+                onOpenChat={openChat}
                 onAdd={setAdding}
                 onTab={setTab}
               />
@@ -273,6 +283,7 @@ function Main() {
       <ToastLayer />
 
       <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)}>
+        <ModalFrame>
         <AddScreen
           prefill={adding || {}}
           onDone={(expense) => {
@@ -286,6 +297,7 @@ function Main() {
             }
           }}
         />
+        </ModalFrame>
       </Modal>
 
       <Modal
@@ -300,6 +312,7 @@ function Main() {
           if (next) setAdding(next);
         }}
       >
+        <ModalFrame>
         <SettingsScreen
           onClose={() => setSettingsOpen(false)}
           onTryApplePay={(prefill) => {
@@ -307,6 +320,13 @@ function Main() {
             setSettingsOpen(false);
           }}
         />
+        </ModalFrame>
+      </Modal>
+
+      <Modal visible={chatOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setChatOpen(false)}>
+        <ModalFrame>
+        <ChatScreen onClose={() => setChatOpen(false)} />
+        </ModalFrame>
       </Modal>
 
       <PetEventModal event={pendingEvent} pet={pet} stage={stageFor(pet.xp).stage} onClose={dismissEvent} />

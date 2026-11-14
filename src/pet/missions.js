@@ -3,6 +3,7 @@ import { categoryById } from '../theme';
 import { dayKey } from './logic';
 import { countsInBudget } from '../budget';
 import { t } from '../i18n';
+import { currentSplit } from '../split';
 
 export const MISSION_XP = 25;
 
@@ -121,7 +122,7 @@ export function weekMissions({ expenses = [], incomeEntries = [], pet, income = 
     week: weekDays(now),
     days,
     expenses,
-    wantsPerDay: (0.3 * income) / daysInMonth,
+    wantsPerDay: (currentSplit(now).wants * income) / daysInMonth,
     currentStreak: streak(days, now),
   };
   const claimed = pet?.missionsDone?.[dayKey(start)] || [];

@@ -15,3 +15,7 @@ web-build/
 .DS_Store
 *.log
 .claude/
+
+# Gradle output of the local native modules
+modules/*/android/build/
+modules/*/android/.cxx/

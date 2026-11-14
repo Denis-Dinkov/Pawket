@@ -36,7 +36,7 @@ export default function OnboardingScreen() {
           <Pet expression={income > 0 ? 'ecstatic' : 'sleeping'} stage="kitten" size={190} />
           <Text style={s.h1}>{income > 0 ? t('Бау! Събудих се 🐾') : t('Здравей! Аз съм твоето кученце')}</Text>
           <Text style={s.sub}>
-            {t('Ще следя бюджета ти по правилото 50/30/20. Колкото по-добре се справяш, толкова по-щастлив съм — и раста.')}
+            {t('Ще следя бюджета ти по правилото {rule}. Колкото по-добре се справяш, толкова по-щастлив съм — и раста.')}
           </Text>
 
           <View style={s.card}>

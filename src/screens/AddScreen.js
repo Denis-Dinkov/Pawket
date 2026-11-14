@@ -4,6 +4,7 @@ import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
+import { currentSplit } from '../split';
 import { guessCategory, rememberedCategory } from '../categoryGuess';
 import { colors, getCategories, BUCKETS, categoryById, INCOME_KINDS, money, radius, tint, decimalSep, euroFirst } from '../theme';
 import { getIncome } from '../budget';
@@ -156,9 +157,9 @@ export default function AddScreen({ onDone, prefill = {} }) {
   const payYourselfFirst = (salary) => {
     const open = goals.filter((g) => !goalProgress(g, expenses).done);
     const goal = open.find((g) => g.kind === 'emergency') || open[0];
-    const part = Math.round(salary * 0.2);
+    const part = Math.round(salary * currentSplit().savings);
     if (!goal) {
-      setTimeout(() => showToast({ text: t('Заплатата е записана. Създай цел в „Планове“ и заделяй 20% ({0}) веднага.', { 0: money(part) }), icon: 'flag-outline' }), 500);
+      setTimeout(() => showToast({ text: t('Заплатата е записана. Създай цел в „Планове“ и заделяй {s}% ({0}) веднага.', { 0: money(part) }), icon: 'flag-outline' }), 500);
       return;
     }
     setTimeout(
@@ -319,7 +320,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
               <Ionicons name="repeat" size={18} color={colors.muted} />
               <Text style={[s.input, { color: colors.text }]}>{t('Всеки месец')}</Text>
               <View pointerEvents="none">
-                <Switch value={repeat} trackColor={{ true: colors.primary }} />
+                <Switch
+              thumbColor={colors.white} value={repeat} trackColor={{ true: colors.primary }} />
               </View>
             </Touch>
           )}
@@ -335,7 +337,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
               <Ionicons name="calculator-outline" size={18} color={colors.muted} />
               <Text style={[s.input, { color: colors.text }]}>{t('Брои се в месеца')}</Text>
               <View pointerEvents="none">
-                <Switch value={!offBudget} trackColor={{ true: colors.primary }} />
+                <Switch
+              thumbColor={colors.white} value={!offBudget} trackColor={{ true: colors.primary }} />
               </View>
             </Touch>
           )}
@@ -374,7 +377,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
             <Text style={s.incomeHint}>
               {kind === 'salary'
                 ? t('Заплатата замества месечния доход от настройките{0} за този месец — не се брои двойно.', { 0: baseIncome ? ` (${money(baseIncome)})` : '' })
-                : t('Добавя се към месечния доход и увеличава бюджета за месеца по 50/30/20.')}
+                : t('Добавя се към месечния доход и увеличава бюджета за месеца по {rule}.')}
             </Text>
           </>
         ) : allCats ? (
@@ -384,7 +387,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
                 <View style={s.bucketRow}>
                   <View style={[s.dot, { backgroundColor: b.color }]} />
                   <Text style={s.bucketLabel}>
-                    {b.label} · {b.target * 100}%
+                    {b.label} · {Math.round(b.target * 100)}%
                   </Text>
                 </View>
                 <View style={s.grid}>

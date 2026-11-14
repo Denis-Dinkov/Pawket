@@ -109,7 +109,8 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
             <Ionicons name="calculator-outline" size={18} color={colors.muted} />
             <Text style={s.switchLabel}>{t('Брои се в месеца')}</Text>
             <View pointerEvents="none">
-              <Switch value={counts} trackColor={{ true: colors.primary }} />
+              <Switch
+              thumbColor={colors.white} value={counts} trackColor={{ true: colors.primary }} />
             </View>
           </Touch>
           <Text style={s.note}>

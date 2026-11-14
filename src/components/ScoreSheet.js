@@ -25,7 +25,7 @@ function Row({ ok, title, detail, badge }) {
 
 // How the 50/30/20 score was calculated for the selected month
 export default function ScoreSheet({ visible, onClose, ov, month, year }) {
-  const result = ov && ov.income ? budgetScoreParts({ income: ov.income, byBucket: ov.byBucket, dayFrac: ov.progress.dayFrac }) : null;
+  const result = ov && ov.income ? budgetScoreParts({ income: ov.income, byBucket: ov.byBucket, dayFrac: ov.progress.dayFrac, split: ov.split }) : null;
   if (!result) return null;
   const p = Object.fromEntries(result.parts.map((x) => [x.key, x]));
   const minus = (x) => (x.penalty >= 0.5 ? `−${Math.round(x.penalty)}` : '✓');
@@ -38,14 +38,14 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
           <Text style={s.score}>{result.score}</Text>
         </ProgressRing>
         <Text style={s.title}>
-          {t('Оценка 50/30/20 · {0} {1}', { 0: MONTHS[month], 1: year })}
+          {t('Оценка {rule} · {0} {1}', { 0: MONTHS[month], 1: year })}
         </Text>
         <Text style={s.text}>
-          {t('Започва от 100 и губи точки за всяко отклонение от правилото: 50% от дохода за нужди, 30% за желания и поне 20% спестявания.')}
+          {t('Започва от 100 и губи точки за всяко отклонение от правилото: {n}% от дохода за нужди, {w}% за желания и поне {s}% спестявания.')}
         </Text>
       </View>
       <View style={s.card}>
-        <Row ok={p.needs.penalty < 0.5} title={t('Нужди до 50%')} detail={t('{0} от дохода ({1})', { 0: pct(p.needs.value), 1: money(ov.byBucket.needs) })} badge={minus(p.needs)} />
+        <Row ok={p.needs.penalty < 0.5} title={t('Нужди до {n}%')} detail={t('{0} от дохода ({1})', { 0: pct(p.needs.value), 1: money(ov.byBucket.needs) })} badge={minus(p.needs)} />
         <Row
           ok={p.wantsPace.penalty < 0.5}
           title={t('Темпо на желанията')}
@@ -56,8 +56,8 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
           }
           badge={minus(p.wantsPace)}
         />
-        <Row ok={p.wantsCap.penalty < 0.5} title={t('Желания до 30%')} detail={t('{0} от дохода ({1})', { 0: pct(p.wantsCap.value), 1: money(ov.byBucket.wants) })} badge={minus(p.wantsCap)} />
-        <Row ok={p.savings.penalty < 0.5} title={t('Поне 20% за спестяване')} detail={t('Заделени {0} · ако не харчиш повече, можеш да спестиш {1} от дохода', { 0: money(ov.byBucket.savings), 1: pct(p.savings.value) })} badge={minus(p.savings)} />
+        <Row ok={p.wantsCap.penalty < 0.5} title={t('Желания до {w}%')} detail={t('{0} от дохода ({1})', { 0: pct(p.wantsCap.value), 1: money(ov.byBucket.wants) })} badge={minus(p.wantsCap)} />
+        <Row ok={p.savings.penalty < 0.5} title={t('Поне {s}% за спестяване')} detail={t('Заделени {0} · ако не харчиш повече, можеш да спестиш {1} от дохода', { 0: money(ov.byBucket.savings), 1: pct(p.savings.value) })} badge={minus(p.savings)} />
         {result.overIncome && <Row ok={false} title={t('Разходи над дохода')} detail={t('Докато е така, оценката е най-много 15')} badge="≤15" />}
       </View>
       <Text style={s.foot}>{t('85+ отлично · 65+ добре · 45+ внимавай · под 45 — време за промяна')}</Text>

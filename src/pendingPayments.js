@@ -105,6 +105,7 @@ export function matchManual(payment, expenses, sameMerchant) {
   const near = expenses.filter(
     (e) =>
       e.source !== 'applepay' &&
+      e.source !== 'gpay' &&
       !e.goalId &&
       !e.matchedPayment &&
       Math.abs(e.amount - payment.amount) < 0.005 &&

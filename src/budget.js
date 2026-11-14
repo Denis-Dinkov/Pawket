@@ -1,6 +1,7 @@
 // Pure budget logic (no RN) — used by the screens, the dog and the widgets.
 import { categoryById } from './theme';
 import { t } from './i18n';
+import { splitFor, DEFAULT_SPLIT } from './split';
 
 export const monthKey = (year, month) => `${year}-${String(month + 1).padStart(2, '0')}`;
 
@@ -124,24 +125,24 @@ export function scoreVerdict(score) {
 }
 
 // The same score broken into parts — for the "Why is the dog like this" explanation
-export function budgetScoreParts({ income, byBucket, dayFrac = 1 }) {
+export function budgetScoreParts({ income, byBucket, dayFrac = 1, split = DEFAULT_SPLIT }) {
   if (!income) return null;
   const I = income;
   const { needs, wants } = byBucket;
-  const wantsCap = 0.3 * I;
+  const wantsCap = split.wants * I;
   const wantsAllowed = wantsCap * Math.max(dayFrac, 0.15);
   const room = I - needs - wants;
 
   const parts = [
-    { key: 'needs', penalty: Math.min(45, (Math.max(0, needs - 0.5 * I) / I) * 150), value: needs / I, target: 0.5 },
+    { key: 'needs', penalty: Math.min(45, (Math.max(0, needs - split.needs * I) / I) * 150), value: needs / I, target: split.needs },
     {
       key: 'wantsPace',
       penalty: wants > wantsAllowed ? Math.min(35, (wants / wantsAllowed - 1) * 30) : 0,
       value: wants / wantsCap,
       target: Math.max(dayFrac, 0.15),
     },
-    { key: 'wantsCap', penalty: Math.min(20, (Math.max(0, wants - wantsCap) / I) * 80), value: wants / I, target: 0.3 },
-    { key: 'savings', penalty: Math.min(40, (Math.max(0, 0.2 * I - room) / I) * 150), value: Math.max(0, room) / I, target: 0.2 },
+    { key: 'wantsCap', penalty: Math.min(20, (Math.max(0, wants - wantsCap) / I) * 80), value: wants / I, target: split.wants },
+    { key: 'savings', penalty: Math.min(40, (Math.max(0, split.savings * I - room) / I) * 150), value: Math.max(0, room) / I, target: split.savings },
   ];
   let s = 100 - parts.reduce((a, p) => a + p.penalty, 0);
   // Only spending over income caps the score. Savings above the leftover come from money saved earlier
@@ -159,6 +160,7 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
   const income = incomeInfo.total;
   const progress = monthProgress(year, month, now);
   const remaining = income - sum.total;
+  const split = splitFor(year, month);
   return {
     list,
     ...sum,
@@ -166,7 +168,8 @@ export function monthOverview({ expenses, incomes, incomeEntries = [], year, mon
     incomeInfo,
     progress,
     remaining,
-    score: budgetScore({ income, byBucket: sum.byBucket, dayFrac: progress.dayFrac }),
+    split,
+    score: budgetScore({ income, byBucket: sum.byBucket, dayFrac: progress.dayFrac, split }),
   };
 }
 
@@ -190,7 +193,7 @@ export function spendRoom(ov) {
 export function freeToSpend(ov, pending = 0) {
   if (!ov.income) return null;
   const reserve = savingsReserve(ov);
-  const budget = ov.income * (1 - SAVINGS_SHARE);
+  const budget = ov.income * (1 - ov.split.savings);
   const free = spendRoom(ov) - pending - reserve;
   return { free, budget, reserve, ratio: free / budget };
 }
@@ -199,8 +202,6 @@ export function freeToSpend(ov, pending = 0) {
 // lower the limit for the days left without counting as today's overspending
 export const FIXED_CATEGORIES = new Set(['rent', 'bills']);
 
-// The 50/30/20 savings share
-export const SAVINGS_SHARE = 0.2;
 
 /**
  * The part of this month's savings target (20% of income) not put aside yet. The daily limit keeps it
@@ -208,7 +209,7 @@ export const SAVINGS_SHARE = 0.2;
  */
 export function savingsReserve(ov) {
   if (!ov.income) return 0;
-  return Math.max(0, SAVINGS_SHARE * ov.income - ov.byBucket.savings);
+  return Math.max(0, ov.split.savings * ov.income - ov.byBucket.savings);
 }
 
 /**
@@ -254,6 +255,7 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
   return {
     // The calculation in four numbers, for the explanation: income − spent − savings (20%) − due = free; free ÷ days
     income: ov.income,
+    savingsShare: ov.split.savings,
     spent: ov.byBucket.needs + ov.byBucket.wants,
     savings: ov.byBucket.savings + reserve,
     pending: pendingRecurring,

@@ -6,7 +6,7 @@ export const HOME_SECTIONS = [
   { key: 'missions', get name() { return t('Мисии'); }, icon: 'trophy-outline' },
   { key: 'expenses', get name() { return t('Разходи'); }, icon: 'list' },
   { key: 'today', get name() { return t('Днес'); }, icon: 'today-outline' },
-  { key: 'rule', get name() { return t('Правило 50/30/20'); }, icon: 'pie-chart' },
+  { key: 'rule', get name() { return t('Правило {rule}'); }, icon: 'pie-chart' },
   { key: 'topCats', get name() { return t('Топ категории'); }, icon: 'podium-outline' },
 ];
 

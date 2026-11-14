@@ -5,7 +5,6 @@ import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import Money from './ui/Money';
 import { colors, money, monthLower } from '../theme';
-import { SAVINGS_SHARE } from '../budget';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -29,7 +28,7 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
   const month = monthLower(now.getMonth());
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   // Saved more than 20%: the row shows what was saved, not the 20%
-  const savingsTarget = daily.savings <= daily.income * SAVINGS_SHARE + 0.005;
+  const savingsTarget = daily.savings <= daily.income * daily.savingsShare + 0.005;
   const over = daily.overToday > 0;
 
   return (
@@ -69,7 +68,7 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
       <View style={[s.card, { marginTop: 0 }]}>
         <Row label={t('Доход')} value={exact(daily.income)} />
         <Row label={t('− Похарчени')} value={exact(daily.spent)} />
-        <Row label={savingsTarget ? t('− Спестяване (20%)') : t('− Спестени')} value={exact(daily.savings)} />
+        <Row label={savingsTarget ? t('− Спестяване ({s}%)') : t('− Спестени')} value={exact(daily.savings)} />
         {daily.pending > 0 && <Row label={t('− Предстоящи плащания')} value={exact(daily.pending)} />}
         <View style={s.sep} />
         <Row label={t('= Свободни сега')} value={exact(Math.max(0, daily.free))} strong />
@@ -85,7 +84,7 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
         <Text style={s.note}>• {t('Всеки разход днес се вади изцяло от лимита за днес.')}</Text>
         <Text style={s.note}>• {t('Всяка сутрин лимитът се смята наново от останалите пари: похарчиш ли по-малко, утре е по-голям; повече — по-малък.')}</Text>
         <Text style={s.note}>• {t('Наемът, сметките и повтарящите се плащания намаляват лимита, но не се броят за превишение.')}</Text>
-        <Text style={s.note}>• {t('Харчиш ли по лимита, в края на месеца остават 20% за спестяване.')}</Text>
+        <Text style={s.note}>• {t('Харчиш ли по лимита, в края на месеца остават {s}% за спестяване.')}</Text>
       </View>
     </Sheet>
   );

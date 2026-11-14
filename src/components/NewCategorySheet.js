@@ -58,7 +58,7 @@ export default function NewCategorySheet({ visible, initialBucket = 'wants', onC
         />
       </View>
 
-      <Text style={s.label}>{t('Към коя част от 50/30/20?')}</Text>
+      <Text style={s.label}>{t('Към коя част от {rule}?')}</Text>
       <Segmented options={BUCKET_OPTIONS} value={bucket} onChange={setBucket} />
 
       <Text style={s.label}>{t('Икона')}</Text>

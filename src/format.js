@@ -21,6 +21,7 @@ export const timeLabel = (iso) => {
 export const SOURCES = {
   manual: { get label() { return t('Ръчно'); }, icon: 'create-outline' },
   applepay: { label: 'Apple Pay', icon: 'logo-apple' },
+  gpay: { get label() { return t('От известие'); }, icon: 'notifications-outline' },
   widget: { get label() { return t('Уиджет'); }, icon: 'apps-outline' },
   recurring: { get label() { return t('Повтарящо се'); }, icon: 'repeat' },
   goal: { get label() { return t('Към цел'); }, icon: 'flag-outline' },

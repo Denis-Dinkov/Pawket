@@ -1,4 +1,5 @@
 // Tamagotchi logic for the dog: mood, fullness, growth. No RN imports.
+import { splitFor } from '../split';
 import { monthKey, shiftMonth, filterMonth, summarize, monthIncome, budgetScore, monthOverview, countsInBudget } from '../budget';
 import { colors } from '../theme';
 import { t } from '../i18n';
@@ -119,7 +120,7 @@ export function evaluateClosedMonths({ expenses, incomes, incomeEntries, pet, no
       const made = list.filter((e) => countsInBudget(e) && e.source !== 'recurring').length;
       const score =
         income && made >= MIN_EXPENSES_FOR_BONUS
-          ? budgetScore({ income, byBucket: summarize(list).byBucket, dayFrac: 1 })
+          ? budgetScore({ income, byBucket: summarize(list).byBucket, dayFrac: 1, split: splitFor(year, month) })
           : null;
       evaluated[key] = score;
       reports.push({ key, year, month, score, bonus: monthEndBonus(score) });

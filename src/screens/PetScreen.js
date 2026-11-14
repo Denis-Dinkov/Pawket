@@ -68,7 +68,7 @@ function StreakCount({ value, children }) {
 
 
 // Charlie's own tab: his room, the streak, this week's missions, rewards and the year in review
-export default function PetScreen() {
+export default function PetScreen({ onOpenChat }) {
   const data = useStore();
   const { pet, expenses, incomes, incomeEntries, recurring, goals, wearItem, checkInNoSpend } = data;
   const outfit = outfitOf(pet);
@@ -125,6 +125,19 @@ export default function PetScreen() {
 
         <Appear index={1} style={s.sheet}>
           <PetChips status={status} onStat={setStatOpen} />
+          {/* The chat about the user's own budget */}
+          <Touch onPress={onOpenChat} accessibilityHint={t('Отваря чат за бюджета ти')}>
+            <Card style={s.chatCard}>
+              <View style={s.chatIcon}>
+                <Ionicons name="chatbubbles" size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.h2}>{t('Съвети с {0}', { 0: pet.name })}</Text>
+                <Text style={s.muted}>{t('Питай как е бюджетът ти и къде да спестиш')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+            </Card>
+          </Touch>
           {/* Streak: the days this week with at least one entry */}
           <Card style={{ gap: 12 }}>
             <View style={s.head}>
@@ -314,5 +327,7 @@ const s = themed((c) => ({
   stepPet: { width: 58, height: 58, marginTop: 10 },
   stepName: { color: c.text, fontSize: 12, fontWeight: '700' },
   stepXp: { color: c.muted, fontSize: 11, fontVariant: ['tabular-nums'] },
+  chatCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  chatIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
   reviewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
 }));

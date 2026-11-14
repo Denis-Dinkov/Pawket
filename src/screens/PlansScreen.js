@@ -224,7 +224,7 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
       <Text style={[s.hint, { textAlign: 'center' }]}>
         {t('Остават {0}. {1}', { 0: money(left), 1: from === 'existing'
           ? t('Пари от друга сметка или стари спестявания: пълнят целта, но не намаляват бюджета за месеца.')
-          : t('Сумата се записва в „Спестявания“ и се брои към 20% за месеца.') })}
+          : t('Сумата се записва в „Спестявания“ и се брои към {s}% за месеца.') })}
       </Text>
       <AmountField value={amount} onChange={setAmount} label={t('Сума в евро')} autoFocus />
       <View style={[s.chipRow, { justifyContent: 'center' }]}>
@@ -371,7 +371,7 @@ export default function PlansScreen({ onAdd }) {
           <Card style={s.emptyCard}>
             <Ionicons name="flag-outline" size={30} color={colors.savings} />
             <Text style={s.emptyTitle}>{t('Спестявай за нещо конкретно')}</Text>
-            <Text style={s.hintCenter}>{t('Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към 20% спестявания.')}</Text>
+            <Text style={s.hintCenter}>{t('Ваканция, нов телефон, резерв за 3 месеца. Парите, които слагаш, се броят към {s}% спестявания.')}</Text>
             <Pill icon="add" label={t('Създай цел')} variant="ink" onPress={() => setGoalEdit('new')} />
           </Card>
         ) : (

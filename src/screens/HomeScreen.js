@@ -72,7 +72,7 @@ function Legend({ ov }) {
   return (
     <View style={s.legend}>
       {Object.entries(BUCKETS).map(([k, b]) => {
-        const target = ov.income * b.target;
+        const target = ov.income * ov.split[k];
         const over = k !== 'savings' && ov.byBucket[k] > target;
         return (
           <View key={k} style={s.legendItem}>
@@ -267,11 +267,11 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     rule: () => (
       <Card style={{ gap: 14 }}>
         <View style={s.cardHead}>
-          <Text style={s.h2}>{t('Правило 50/30/20')}</Text>
+          <Text style={s.h2}>{t('Правило {rule}')}</Text>
           {ov.score != null && ov.list.length > 0 && <Text style={s.score}>{ov.score}/100</Text>}
         </View>
         {Object.entries(BUCKETS).map(([k, b]) => {
-          const target = ov.income * b.target;
+          const target = ov.income * ov.split[k];
           return (
             <View key={k} style={{ gap: 8 }}>
               <View style={s.cardHead}>

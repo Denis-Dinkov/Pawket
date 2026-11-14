@@ -23,6 +23,7 @@
       "./plugins/withoutPushEntitlement",
       "./plugins/withSceneLifecycle",
       "./plugins/withRecordPaymentIntent",
+      "./plugins/withAndroidWorkVersion",
       "expo-quick-actions",
       "expo-sharing",
       [

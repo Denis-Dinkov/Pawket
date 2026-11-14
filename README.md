@@ -21,6 +21,7 @@ A 50/30/20 expense tracker with a digital tamagotchi puppy (a Cavalier King Char
 - **Charlie** (tab)
   - The streak (days with an entry) for this week, three weekly missions (+25 XP each), rewards (collar, bandana, bow tie, party hat, sunglasses) unlocked by habits and worn by the dog, growth stages, advice.
   - **Year in review:** the best month, average score, top category and merchant, most expensive month, longest streak. Also in "Отчети".
+- **Advice with Charlie** (a card on the Charlie tab, titled with the dog's name): a chat about the user's own money. Each conversation starts from a snapshot of the app's numbers (this month's 50/30/20, free money and daily limit, categories, merchants, earlier months, recurring payments, goals, this month's entries), so the answers are about the real budget. It answers money questions only and turns everything else down. It works with Google Gemini's free tier by default (the chat asks for the free key once); Claude (Haiku, Sonnet, Opus, Fable; paid by usage) can be picked instead. Each provider needs the user's own API key, kept in the Keychain, never in the backup. The questions and the snapshot go straight from the phone to the chosen provider.
 - **The dog** (tamagotchi): mood from the 50/30/20 score, fullness that drops over 72 hours, XP per active day and per closed month, stages Puppy → Young dog → Cavalier → Champion.
 - **Reports:** spending by category (donut), comparison with last month, days, weekdays, merchants, 50/30/20, "What to improve".
 - **Settings:** monthly income, the dog's name, custom categories, theme (system / light / dark), the evening reminder, backup.
@@ -103,6 +104,15 @@ highlights them until they are opened. Merchants nothing matches are booked with
 The action also subtracts the payment from the widget's budget straight away (the inputs come from
 `liveBudgetProps` in `src/widget/widgetData.js`) and posts a notification with what's left per day.
 
+## Android: payments from notifications
+Android has no Shortcuts, so Pawket reads the notifications of Google Wallet and Revolut instead (once the user
+allows notification access: Settings → "Запис от известия"). A NotificationListenerService
+(`modules/pawket-payments`, a local Expo module) keeps only those two apps' notifications as JSON files, even
+while Pawket is closed; the next time the app is in front (and every 20 s while it is) they are turned into
+payments by `src/notificationPayments.js`, with the iPhone's rules: the amount and shop, refunds and top-ups
+skipped, and the Wallet and the bank notification of one payment booked once. Notifications that weren't
+recognised as payments are listed in that Settings card, so a new wording can be added.
+
 The older way still works on an unlocked phone — "Open URLs" with:
 ```
 pawket://add?source=applepay&amount=[Сума]&merchant=[Търговец]
@@ -122,8 +132,11 @@ src/plans.js                  recurring payments, goals, sinking funds, emergenc
 src/store.js                  saved data + migration, actions, undo, weekly missions
 src/reminders.js, backup.js   evening notification, savings alert, backup file
 src/yearReview.js             the year in review
+modules/pawket-payments/      Android notification reader (local Expo module)
+src/notificationPayments.js   Android: payments from Wallet and Revolut notifications
+src/ai/                       the chat with the dog: models and the request (coach.js), the finance snapshot, the API keys
 src/pet/                      the dog: logic, advice, speech lines, missions and rewards, SVG shapes
-src/screens/                  Home, Reports, Plans, Charlie, New expense, Settings, Onboarding, Apple Pay guide
+src/screens/                  Home, Reports, Plans, Charlie, the chat, New expense, Settings, Onboarding, Apple Pay guide
 src/components/               the room, sheets, lists, toast, charts, UI primitives (ui/)
 src/widget/                   widget data, the Live Activity's events, iOS widget + Live Activity (expo-widgets), Android widget
 plugins/                      local config plugins (UIScene lifecycle for iOS 27, removing the push entitlement)

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { monthKey, monthIncome } from './budget';
 import { setCustomCategories, CUSTOM_SHADES, money, categoryById } from './theme';
@@ -10,9 +10,15 @@ import { outfitOf, toggleItem } from './pet/outfit';
 import { animateNextLayout } from './motion';
 import { scheduleWishReminder, cancelWishReminder } from './reminders';
 import { t, setLang, resolveLang } from './i18n';
+import { setSplits } from './split';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
 import { takePendingPayments, writeCategorizer, matchManual } from './pendingPayments';
 import { guessCategory, rememberedCategory, sameMerchant } from './categoryGuess';
+import { takeNotificationReports } from './androidPayments';
+import { groupReports } from './notificationPayments';
+
+// Payments booked by themselves: the Apple Pay automations on the iPhone, the notification reader on Android
+const AUTO_SOURCE = Platform.OS === 'android' ? 'gpay' : 'applepay';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
@@ -25,6 +31,8 @@ const SAVE_DELAY = 700;
 const EMPTY = {
   expenses: [],
   incomes: {},
+  // The budget split from a month on: { 'YYYY-MM': { needs, wants, savings } } (split.js); none = 50/30/20
+  splits: {},
   incomeEntries: [],
   categories: [],
   merchants: {},
@@ -43,6 +51,7 @@ const EMPTY = {
   // liveActivity: Charlie in the Dynamic Island for a no-spend day, spending over the limit or from the savings,
   // payments due and the last days of the month
   // savingsAlert: a notification when the day's spending starts eating the savings
+  // coachModel: the model picked for the chat with the dog (see ai/coach.js); unset = the default for the keys there are
   settings: { theme: 'system', language: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true, savingsAlert: true },
   lastBackupAt: null,
 };
@@ -96,6 +105,8 @@ export function StoreProvider({ children }) {
 
   // Custom categories are needed by the pure modules too (theme.categoryById)
   setCustomCategories(data.categories);
+  // The budget split per month (split.js), needed by the pure modules too
+  setSplits(data.splits);
   // The language is set here, before anything below (or any screen) produces text
   const lang = resolveLang(data.settings?.language);
   setLang(lang);
@@ -176,8 +187,17 @@ export function StoreProvider({ children }) {
     if (importing.current) return;
     importing.current = true;
     try {
-      const payments = await takePendingPayments();
-      if (!payments.length) return;
+      // Android: reports of the notification reader, grouped so the Wallet and the bank notification of one
+      // payment make one expense; joined: earlier expenses that a late report turned out to belong to
+      let payments;
+      let joined = {};
+      if (Platform.OS === 'android') {
+        const reports = await takeNotificationReports();
+        ({ payments, joined } = groupReports(reports, dataRef.current.expenses.filter((e) => e.autoSources), sameMerchant));
+      } else {
+        payments = await takePendingPayments();
+      }
+      if (!payments.length && !Object.keys(joined).length) return;
       // A payment already entered by hand (same amount and shop within 24 hours) isn't booked again: that
       // expense is matched to it instead. Same amount but nothing to compare: booked, marked "Дубликат?"
       const known = new Set(dataRef.current.expenses.map((e) => e.paymentId).filter(Boolean));
@@ -194,9 +214,12 @@ export function StoreProvider({ children }) {
         }
         fresh.push({ ...p, maybeDuplicate: p.maybeDuplicate || m.flag });
       }
-      if (!fresh.length && !Object.keys(matched).length) return;
+      if (!fresh.length && !Object.keys(matched).length && !Object.keys(joined).length) return;
       setData((d) => {
-        const expenses = d.expenses.map((e) => (matched[e.id] ? { ...e, matchedPayment: matched[e.id] } : e));
+        const expenses = d.expenses.map((e) => {
+          const x = matched[e.id] ? { ...e, matchedPayment: matched[e.id] } : e;
+          return joined[e.id] ? { ...x, autoSources: joined[e.id] } : x;
+        });
         if (!fresh.length) return { ...d, expenses };
         const booked = fresh
           .map((p) => {
@@ -209,24 +232,26 @@ export function StoreProvider({ children }) {
               categoryId: cat && !cat.archived ? remembered : guessCategory(p.merchant),
               merchant: p.merchant,
               note: '',
-              source: 'applepay',
+              source: AUTO_SOURCE,
               date: p.date,
               loggedAt: p.date,
               paymentId: p.id,
               unreviewed: true,
               ...(p.maybeDuplicate && { possibleDuplicate: true }),
+              ...(p.autoSources && { autoSources: p.autoSources }),
             };
           })
           .reverse();
         return { ...d, expenses: [...booked, ...expenses], pet: feedPet(d.pet) };
       });
       if (!fresh.length) return;
+      const android = AUTO_SOURCE === 'gpay';
       showToast({
         text:
           fresh.length === 1
-            ? t('Записах {0} от Apple Pay 🐾', { 0: money(fresh[0].amount) })
-            : t('Записах {0} плащания от Apple Pay 🐾', { 0: fresh.length }),
-        icon: 'logo-apple',
+            ? android ? t('Записах {0} от известие 🐾', { 0: money(fresh[0].amount) }) : t('Записах {0} от Apple Pay 🐾', { 0: money(fresh[0].amount) })
+            : android ? t('Записах {0} плащания от известия 🐾', { 0: fresh.length }) : t('Записах {0} плащания от Apple Pay 🐾', { 0: fresh.length }),
+        icon: android ? 'notifications' : 'logo-apple',
       });
     } catch {
       // nothing to import this time
@@ -245,7 +270,12 @@ export function StoreProvider({ children }) {
     if (!ready) return undefined;
     importPayments();
     const sub = AppState.addEventListener('change', (st) => st === 'active' && importPayments());
-    return () => sub.remove();
+    // Android: a payment made while Pawket stays open comes in too (on the iPhone the action records it by itself)
+    const timer = Platform.OS === 'android' ? setInterval(() => AppState.currentState === 'active' && importPayments(), 20000) : null;
+    return () => {
+      sub.remove();
+      clearInterval(timer);
+    };
   }, [ready, importPayments]);
 
   // Weekly missions: a finished mission gives XP once. The best streak is remembered for the rewards.
@@ -640,6 +670,15 @@ export function StoreProvider({ children }) {
           const incomes = Object.fromEntries(Object.entries(d.incomes).filter(([k]) => k < key));
           if (amount > 0) incomes[key] = amount;
           return { ...d, incomes };
+        }),
+
+      // The split applies from this month on, like the income (later ones are removed). percents: whole numbers summing to 100
+      setSplitFrom: (year, month, percents) =>
+        setData((d) => {
+          const key = monthKey(year, month);
+          const splits = Object.fromEntries(Object.entries(d.splits || {}).filter(([k]) => k < key));
+          splits[key] = { needs: percents.needs / 100, wants: percents.wants / 100, savings: percents.savings / 100 };
+          return { ...d, splits };
         }),
 
       // Order and visibility of the Home sections

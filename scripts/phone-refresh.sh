@@ -66,7 +66,12 @@ for device in $targets; do
   fi
 done
 
-revision="$(git rev-parse HEAD)-$(git status --porcelain -- . ':!ios' ':!android' | shasum | cut -c1-12)"
+# The commit plus the content of every uncommitted change (edits and new files). Hashing only the list of
+# changed files missed further edits to a file that was already changed, so the phone kept an old build.
+revision="$(git rev-parse HEAD)-$({
+  git diff HEAD -- . ':!ios' ':!android'
+  git ls-files --others --exclude-standard -z -- . ':!ios' ':!android' | xargs -0 shasum 2>/dev/null
+} | shasum | cut -c1-12)"
 reason=""
 if [[ "${FORCE:-0}" == 1 ]]; then reason="forced"
 elif (( seconds_left < 3 * 86400 )); then reason="profile expires in $(( seconds_left / 3600 ))h"
@@ -112,7 +117,8 @@ fi
 built=$(cat "$BUILT")
 for device in $targets; do
   stamp="$STATE_DIR/installed-$device"
-  [[ "$(cat "$stamp" 2>/dev/null)" == "$built" ]] && continue
+  # FORCE=1 installs again even when the phone already has this build
+  [[ "${FORCE:-0}" != 1 && "$(cat "$stamp" 2>/dev/null)" == "$built" ]] && continue
   # A phone missing from the profile would reject the app; it was logged above
   (( ${profile_devices[(Ie)$device]} )) || continue
   if (( ! ${reachable[(Ie)$device]} )); then

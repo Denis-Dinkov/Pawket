@@ -2,7 +2,7 @@
 import { moneyShort, money, limitMoney, decimalSep, euroFirst, categoryById } from '../theme';
 import { petStatus, EXPRESSIONS, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
-import { dailyLimit, freeToSpend, SAVINGS_SHARE } from '../budget';
+import { dailyLimit, freeToSpend } from '../budget';
 import { pendingSpend, upcomingPayments } from '../plans';
 import { sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from '../sessions';
 import { outfitOf, lookKey } from '../pet/outfit';
@@ -126,9 +126,9 @@ export function widgetProps({ expenses = [], incomes = {}, incomeEntries = [], r
     needsPct: share('needs', 50),
     wantsPct: share('wants', 30),
     savingsPct: share('savings', 20),
-    needs: I ? clamp01(ov.byBucket.needs / (0.5 * I)) : 0,
-    wants: I ? clamp01(ov.byBucket.wants / (0.3 * I)) : 0,
-    savings: I ? clamp01(ov.byBucket.savings / (0.2 * I)) : 0,
+    needs: I ? clamp01(ov.byBucket.needs / (ov.split.needs * I || 1)) : 0,
+    wants: I ? clamp01(ov.byBucket.wants / (ov.split.wants * I || 1)) : 0,
+    savings: I ? clamp01(ov.byBucket.savings / (ov.split.savings * I || 1)) : 0,
     tip: tip ? tip.title : '',
     nextPayment: next ? t('{0} · {1} · {2}', { 0: payeeOf(next.rule), 1: moneyShort(next.rule.amount), 2: whenLabel(next.date, now) }) : '',
     ...quickProps(quickCategories(expenses, now)),
@@ -159,7 +159,7 @@ function liveBudgetProps(ov, daily, now) {
     budRoom: daily.free + daily.reserve,
     budSpentToday: daily.spentToday,
     budReserve: daily.reserve,
-    budBudget: ov.income * (1 - SAVINGS_SHARE),
+    budBudget: ov.income * (1 - ov.split.savings),
     budDays: daily.days,
     fmtEn: euroFirst() ? 1 : 0,
     lblFree: t('Свободни'),

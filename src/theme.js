@@ -1,4 +1,5 @@
 import { t, tList, getLang } from './i18n';
+import { currentSplit } from './split';
 // Design tokens and category data. No RN imports — also used by the widget.
 
 // Every text color here has at least 4.5:1 contrast against bg and card (WCAG AA).
@@ -115,9 +116,9 @@ export const tint = (hex, alpha = 0.12) =>
 
 // color is a getter so it follows the live palette (light / dark)
 export const BUCKETS = {
-  needs: { get label() { return t('Нужди'); }, target: 0.5, get color() { return colors.needs; }, icon: 'home' },
-  wants: { get label() { return t('Желания'); }, target: 0.3, get color() { return colors.wants; }, icon: 'sparkles' },
-  savings: { get label() { return t('Спестявания'); }, target: 0.2, get color() { return colors.savings; }, icon: 'wallet' },
+  needs: { get label() { return t('Нужди'); }, get target() { return currentSplit().needs; }, get color() { return colors.needs; }, icon: 'home' },
+  wants: { get label() { return t('Желания'); }, get target() { return currentSplit().wants; }, get color() { return colors.wants; }, icon: 'sparkles' },
+  savings: { get label() { return t('Спестявания'); }, get target() { return currentSplit().savings; }, get color() { return colors.savings; }, icon: 'wallet' },
 };
 
 // Every category belongs to a bucket of the 50/30/20 rule

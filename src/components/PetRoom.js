@@ -133,7 +133,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
         <Text style={s.bubbleText} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{bubble}</Text>
         {bubbleAction ? (
           <Touch haptic="success" style={s.bubbleBtn} onPress={bubbleAction.onPress}>
-            <Text style={s.bubbleBtnText}>{bubbleAction.label}</Text>
+            <Text style={s.bubbleBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{bubbleAction.label}</Text>
           </Touch>
         ) : (
           <Text style={s.more}>{t('Съвети ›')}</Text>
@@ -156,7 +156,9 @@ const s = themed((c) => ({
   // A bit right of center, so the speech bubble has room on the left
   pet: { position: 'absolute', bottom: 30, left: '50%', marginLeft: -52 },
   bubble: {
-    position: 'absolute', left: 14, bottom: 112, maxWidth: 160, zIndex: 2,
+    // Wide enough that the button stays on one line (Android's text is a little wider), so the bubble
+    // doesn't grow up into the month picker
+    position: 'absolute', left: 14, bottom: 112, maxWidth: 178, zIndex: 2,
     backgroundColor: c.card, borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 12, paddingVertical: 9, gap: 4, ...shadow,
   },
   bubbleText: { color: c.text, fontSize: 13.5, fontWeight: '600', lineHeight: 18 },
