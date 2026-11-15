@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pawket",
     "slug": "pawket",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "scheme": "pawket",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

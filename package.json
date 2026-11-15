@@ -14,7 +14,9 @@
     "phone:auto": "./scripts/phone-auto-setup.sh",
     "test": "node --test scripts/test.js",
     "check:i18n": "node scripts/check-i18n.js",
-    "check": "npm test && npm run check:i18n"
+    "check": "npm test && npm run check:i18n",
+    "version:bump": "node scripts/bump-version.js",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

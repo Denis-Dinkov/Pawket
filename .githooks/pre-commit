@@ -1,0 +1,21 @@
+#!/bin/sh
+# Every commit raises the app version (the patch number), so Settings shows whether a phone has the latest
+# build. A commit that already changes the version in app.json keeps that one (e.g. after
+# `npm run version:bump minor`). Skip it for one commit with PAWKET_NO_BUMP=1 git commit …
+# Turned on by `npm install` (the "prepare" script sets core.hooksPath to .githooks).
+[ "${PAWKET_NO_BUMP:-0}" = 1 ] && exit 0
+
+version_in() { git show "$1:app.json" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).expo.version)}catch{}})'; }
+
+head_version=$(version_in HEAD)
+staged_version=$(version_in "")
+# A first commit, or a version already changed in this commit: nothing to do
+[ -z "$head_version" ] && exit 0
+[ "$head_version" != "$staged_version" ] && exit 0
+
+# Bumps the staged app.json; unstaged edits to app.json would get committed with it, so then it stops
+if ! git diff --quiet -- app.json; then
+  echo "pre-commit: app.json has unstaged changes; stage them or commit with PAWKET_NO_BUMP=1" >&2
+  exit 1
+fi
+node scripts/bump-version.js patch && git add app.json
