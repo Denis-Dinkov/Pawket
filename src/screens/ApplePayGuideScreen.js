@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { Text } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -110,7 +110,7 @@ const s = themed((colors) => ({
   num: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   numText: { color: colors.primary, fontWeight: '800' },
   stepTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  stepText: { color: colors.muted, fontSize: 13.5, lineHeight: 19, marginTop: 2 },
+  stepText: { color: colors.muted, fontSize: 14, lineHeight: 19, marginTop: 2 },
   section: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 10 },
   // A code block stays dark in both themes
   template: { backgroundColor: '#2A1E16', borderRadius: radius.card, padding: 16, gap: 12 },
@@ -118,5 +118,5 @@ const s = themed((colors) => ({
   copy: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
   copyText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   notes: { marginTop: 20, gap: 4 },
-  note: { color: colors.muted, fontSize: 12.5, lineHeight: 18 },
+  note: { color: colors.muted, fontSize: 13, lineHeight: 18 },
 }));

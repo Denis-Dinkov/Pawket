@@ -5,9 +5,9 @@ import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
 import Segmented from './ui/Segmented';
-import { colors, BUCKETS, categoryById, money, moneyShort, pct } from '../theme';
+import { colors, BUCKETS, categoryById, money, moneyShort, pct, radius } from '../theme';
 import { dayLabel, plural } from '../format';
-import { countsInBudget } from '../budget';
+import { countsInBudget, chartScale } from '../budget';
 import { themed } from '../themed';
 import { t, tList } from '../i18n';
 
@@ -96,9 +96,10 @@ export function SpendingChart({ ov, stats, year, month }) {
 // Spending per day — tap a bar for details
 function DailyBars({ ov, stats, year, month }) {
   const [sel, setSel] = useState(null);
-  const max = Math.max(...stats.byDay.map((d) => d.total), 1);
-  // Average daily budget for needs and wants under 50/30/20
-  const dailyBudget = ov.income ? (0.8 * ov.income) / ov.progress.daysInMonth : 0;
+  const max = chartScale(stats.byDay.map((d) => d.total));
+  // The month's spending budget (everything but the savings share) spread evenly over its days. It's an
+  // average for the whole month, not today's limit on Home, which is recalculated from what's left.
+  const dailyBudget = ov.income ? ((1 - ov.split.savings) * ov.income) / ov.progress.daysInMonth : 0;
   const lineAt = dailyBudget && dailyBudget < max ? dailyBudget / max : null;
   const today = ov.progress.isCurrent ? ov.progress.daysInMonth - ov.progress.daysLeft : -1;
   const picked = sel != null ? stats.byDay[sel] : null;
@@ -117,11 +118,14 @@ function DailyBars({ ov, stats, year, month }) {
               style={[
                 s.bar,
                 {
-                  height: `${Math.max(d.total ? 4 : 1.5, (d.total / max) * 100)}%`,
+                  height: `${Math.min(100, Math.max(d.total ? 4 : 1.5, (d.total / max) * 100))}%`,
                   backgroundColor: sel === i ? colors.ink : i === today ? colors.wants : d.total ? colors.primary : colors.faint,
                 },
               ]}
-            />
+            >
+              {/* Taller than the scale (the day the rent went out): a gap near the top marks it as cut */}
+              {d.total > max && <View style={s.cut} />}
+            </View>
           </Touch>
         ))}
       </View>
@@ -130,7 +134,7 @@ function DailyBars({ ov, stats, year, month }) {
         <Text style={s.axisText}>15</Text>
         <Text style={s.axisText}>{ov.progress.daysInMonth}</Text>
       </View>
-      {lineAt != null && <Text style={s.legend}>{t('— — дневен бюджет по {rule} ≈ {0}', { 0: money(dailyBudget) })}</Text>}
+      {lineAt != null && <Text style={s.legend}>{t('— — средно {0} на ден за целия месец', { 0: moneyShort(dailyBudget) })}</Text>}
     </View>
   );
 }
@@ -199,7 +203,7 @@ export function TopMerchants({ stats, total }) {
 
 const s = themed((colors) => ({
   pair: { flexDirection: 'row', gap: 10 },
-  stat: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  stat: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.badge, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
   statLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   statValue: { color: colors.text, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   statSub: { color: colors.muted, fontSize: 11 },
@@ -208,6 +212,7 @@ const s = themed((colors) => ({
   chart: { height: 120, flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   barSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 3 },
+  cut: { position: 'absolute', top: 6, left: -1, right: -1, height: 3, backgroundColor: colors.card, transform: [{ rotate: '-12deg' }] },
   line: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderStyle: 'dashed', borderColor: colors.savings },
   axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   axisText: { color: colors.muted, fontSize: 11 },

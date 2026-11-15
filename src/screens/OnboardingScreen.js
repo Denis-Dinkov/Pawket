@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Keyboard, StyleSheet } from 'react-native';
+import { View, ScrollView, Keyboard } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, defaultPetName } from '../store';
 import { colors, money, radius, euroFirst } from '../theme';
 import { getIncome } from '../budget';
-import { cleanAmountInput, amountText } from '../format';
+import { cleanAmountInput, amountText, parseAmount } from '../format';
 import Pet from '../pet/Pet';
 import Touch from '../components/ui/Touch';
 import { themed } from '../themed';
@@ -21,7 +21,7 @@ export default function OnboardingScreen() {
   const existing = getIncome(incomes, now.getFullYear(), now.getMonth());
   const [incomeText, setIncomeText] = useState(amountText(existing));
   const [name, setName] = useState(defaultPetName);
-  const income = parseFloat(incomeText.replace(/\s/g, '').replace(',', '.')) || 0;
+  const income = parseAmount(incomeText);
 
   return (
     <LinearGradient colors={[colors.heroFrom, colors.heroTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
@@ -36,7 +36,7 @@ export default function OnboardingScreen() {
           <Pet expression={income > 0 ? 'ecstatic' : 'sleeping'} stage="kitten" size={190} />
           <Text style={s.h1}>{income > 0 ? t('Бау! Събудих се 🐾') : t('Здравей! Аз съм твоето кученце')}</Text>
           <Text style={s.sub}>
-            {t('Ще следя бюджета ти по правилото {rule}. Колкото по-добре се справяш, толкова по-щастлив съм — и раста.')}
+            {t('Ще следя бюджета ти. Колкото по-добре се справяш, толкова по-щастлив съм.')}
           </Text>
 
           <View style={s.card}>

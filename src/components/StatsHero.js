@@ -6,7 +6,7 @@ import Money from './ui/Money';
 import Touch from './ui/Touch';
 import Pill from './ui/Pill';
 import ProgressRing from './ui/ProgressRing';
-import { colors, BUCKETS, MONTHS, pct, monthLower } from '../theme';
+import { colors, BUCKETS, MONTHS, pct, monthLower, radius } from '../theme';
 import { scoreVerdict } from '../budget';
 import { themed } from '../themed';
 import { t } from '../i18n';
@@ -27,14 +27,14 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
         <View style={{ flex: 1 }}>
           <Text style={s.label}>
             {/* The total includes the money put into savings, so it isn't called just "spent" then */}
-            {t('{0} през {1} {2}', { 0: byBucket.savings > 0 ? t('Похарчено и заделено') : t('Похарчено'), 1: monthName, 2: progress.isCurrent ? t(' досега') : '' })}
+            {t('{0} през {1}', { 0: byBucket.savings > 0 ? t('Похарчено и заделено') : t('Похарчено'), 1: monthName })}
           </Text>
-          <Money value={total} size={40} color={colors.text} />
+          <Money whole value={total} size={40} color={colors.text} />
           {vsPrev != null && Math.abs(vsPrev) >= 0.01 && (
             <View style={s.delta}>
               <Ionicons name={vsPrev > 0 ? 'trending-up' : 'trending-down'} size={14} color={vsPrev > 0 ? colors.danger : colors.savings} />
               <Text style={[s.deltaText, { color: vsPrev > 0 ? colors.danger : colors.savings }]}>
-                {t('{0} {1} спрямо {2} {3}', { 0: vsPrev > 0 ? '+' : '−', 1: pct(Math.abs(vsPrev)), 2: prevName, 3: progress.isCurrent ? t(' до момента') : '' })}
+                {t('{0}{1} спрямо {2}', { 0: vsPrev > 0 ? '+' : '−', 1: pct(Math.abs(vsPrev)), 2: progress.isCurrent ? t('същите дни на {0}', { 0: prevName }) : prevName })}
               </Text>
             </View>
           )}
@@ -91,14 +91,14 @@ const s = themed((c) => ({
   deltaText: { fontSize: 13, fontWeight: '700' },
   scoreLabel: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
   buckets: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  bucket: { flex: 1, backgroundColor: c.card, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
+  bucket: { flex: 1, backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
   bucketHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   bucketName: { color: c.muted, fontSize: 12, fontWeight: '600' },
   bucketPct: { color: c.text, fontSize: 17, fontWeight: '800' },
   bucketOver: { color: c.danger },
   bucketTarget: { color: c.muted, fontSize: 12, fontWeight: '600' },
-  score: { alignItems: 'center', backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 10 },
+  score: { alignItems: 'center', backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 12, paddingVertical: 10 },
   ringValue: { color: c.text, fontSize: 16, fontWeight: '800' },
   scoreText: { color: c.muted, fontSize: 12, fontWeight: '600' },
 }));

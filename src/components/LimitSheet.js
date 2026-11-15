@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import Money from './ui/Money';
-import { colors, money, monthLower } from '../theme';
+import { colors, money, monthLower, radius } from '../theme';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -93,10 +93,10 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
 const s = themed((c) => ({
   title: { color: c.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   sub: { color: c.muted, fontSize: 14, textAlign: 'center' },
-  alert: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderRadius: 14, padding: 12, marginTop: 16, backgroundColor: c.dangerSoft },
+  alert: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderRadius: radius.field, padding: 12, marginTop: 16, backgroundColor: c.dangerSoft },
   alertText: { flex: 1, color: c.text, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   section: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 18, marginBottom: 8 },
-  card: { backgroundColor: c.card, borderRadius: 20, padding: 14, gap: 10, marginTop: 16 },
+  card: { backgroundColor: c.card, borderRadius: radius.tile, padding: 14, gap: 10, marginTop: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
   rowLabel: { flex: 1, color: c.text, fontSize: 15 },
   rowValue: { color: c.text, fontSize: 15, fontVariant: ['tabular-nums'] },

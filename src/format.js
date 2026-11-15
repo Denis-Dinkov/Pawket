@@ -53,3 +53,6 @@ export function cleanAmountInput(text) {
 
 // A number as the text of an amount field: 12.5 → "12,5" / "12.5"
 export const amountText = (n) => (n ? String(n).replace('.', decimalSep()) : '');
+
+// The text of an amount field as a number: "1 240,5" → 1240.5; anything unreadable → 0
+export const parseAmount = (text) => parseFloat(String(text ?? '').replace(/\s/g, '').replace(',', '.')) || 0;

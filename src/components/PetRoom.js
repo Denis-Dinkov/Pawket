@@ -130,7 +130,8 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
       {badges ? <View style={[s.badges, { top: insetTop + 52 }]}>{badges}</View> : null}
 
       <Touch style={s.bubble} onPress={onBubble} accessibilityLabel={t('{0} казва: {1}', { 0: pet.name, 1: bubble })} accessibilityHint={t('Отваря всички съвети')}>
-        <Text style={s.bubbleText} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{bubble}</Text>
+        {/* Full-size text: the lines are written short (see pet/lines.js) instead of being shrunk to fit */}
+        <Text style={s.bubbleText} numberOfLines={bubbleAction ? 3 : 4}>{bubble}</Text>
         {bubbleAction ? (
           <Touch haptic="success" style={s.bubbleBtn} onPress={bubbleAction.onPress}>
             <Text style={s.bubbleBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{bubbleAction.label}</Text>
@@ -158,13 +159,13 @@ const s = themed((c) => ({
   bubble: {
     // Wide enough that the button stays on one line (Android's text is a little wider), so the bubble
     // doesn't grow up into the month picker
-    position: 'absolute', left: 14, bottom: 112, maxWidth: 178, zIndex: 2,
+    position: 'absolute', left: 14, bottom: 112, maxWidth: 184, zIndex: 2,
     backgroundColor: c.card, borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 12, paddingVertical: 9, gap: 4, ...shadow,
   },
-  bubbleText: { color: c.text, fontSize: 13.5, fontWeight: '600', lineHeight: 18 },
+  bubbleText: { color: c.text, fontSize: 14, fontWeight: '600', lineHeight: 18 },
   more: { color: c.primary, fontSize: 12, fontWeight: '700' },
   bubbleBtn: { alignSelf: 'flex-start', backgroundColor: c.primary, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7, marginTop: 2 },
-  bubbleBtnText: { color: c.onAccent, fontSize: 12.5, fontWeight: '700' },
+  bubbleBtnText: { color: c.onAccent, fontSize: 13, fontWeight: '700' },
   tail: { position: 'absolute', left: 10, bottom: -6, width: 12, height: 12, backgroundColor: c.card, transform: [{ rotate: '45deg' }] },
   chips: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   chip: {

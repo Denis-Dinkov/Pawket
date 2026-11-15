@@ -71,7 +71,7 @@ const s = themed((c) => ({
     flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch',
     backgroundColor: c.text, borderRadius: radius.badge, paddingVertical: 12, paddingLeft: 16, paddingRight: 8, ...shadow,
   },
-  text: { flex: 1, color: c.bg, fontSize: 14.5, fontWeight: '600' },
+  text: { flex: 1, color: c.bg, fontSize: 15, fontWeight: '600' },
   action: { paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
-  actionText: { color: c.inverseAccent, fontSize: 14.5, fontWeight: '800' },
+  actionText: { color: c.inverseAccent, fontSize: 15, fontWeight: '800' },
 }));

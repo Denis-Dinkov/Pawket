@@ -56,7 +56,7 @@ export default function LayoutSheet({ visible, onClose, layout, onChange }) {
 const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   sub: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 14 },
-  card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 12, paddingVertical: 4 },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, paddingHorizontal: 12, paddingVertical: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
   name: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600' },

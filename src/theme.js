@@ -100,7 +100,13 @@ export function applyScheme(scheme) {
   return true;
 }
 
-export const radius = { card: 24, sheet: 32, pill: 999, badge: 16 };
+// Corner radii. card: a card on a screen; tile: a card inside a sheet or another card; badge: small tiles and
+// highlighted rows; field: inputs, keys and inline notices. Circles use half their size instead.
+export const radius = { card: 24, tile: 20, sheet: 32, pill: 999, badge: 16, field: 14 };
+
+// The type scale, in points: 11 fine print · 12 captions · 13 secondary text · 14 body · 15 row titles ·
+// 16 card titles and buttons · 18 section headings · 20–26 screen titles. Display numbers sit above it.
+// Keep new text on these steps (no half sizes).
 
 export const shadow = {
   shadowColor: '#4A2A14',

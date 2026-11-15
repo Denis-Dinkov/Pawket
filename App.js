@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold } from '@expo-google-fonts/onest';
 import { StoreProvider, useStore, useToast } from './src/store';
-import { colors, shadow, applyScheme, money } from './src/theme';
+import { colors, shadow, radius, applyScheme, money } from './src/theme';
 import { stageFor, dayKey } from './src/pet/logic';
 import { sameDay } from './src/format';
 import HomeScreen from './src/screens/HomeScreen';
@@ -117,7 +117,7 @@ function TabBar({ tab, onTab, onAdd, petName }) {
 }
 
 function Main() {
-  const { ready, pet, expenses, incomes, incomeEntries, recurring, categories, settings, session, pendingEvent, dismissEvent, checkInNoSpend, endSession, showToast } =
+  const { ready, loadFailed, retryLoad, startFresh, pet, expenses, incomes, incomeEntries, recurring, categories, settings, session, pendingEvent, dismissEvent, checkInNoSpend, endSession, showToast } =
     useStore();
   // The font ships in the bundle; if loading fails, the app falls back to the system font
   const [fontsLoaded, fontError] = useFonts({ Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold, Onest_800ExtraBold });
@@ -248,13 +248,35 @@ function Main() {
   );
   useEffect(() => (ready && pet ? listenToReminders(onReminder) : undefined), [ready, !!pet]);
 
-  if (!ready || (!fontsLoaded && !fontError)) {
+  const loading = (
+    <View style={[s.root, { justifyContent: 'center' }]}>
+      <ActivityIndicator color={colors.primary} />
+    </View>
+  );
+  if (!fontsLoaded && !fontError) return loading;
+  // The saved data couldn't be read: say so instead of showing an empty app that would overwrite it
+  if (loadFailed) {
+    const confirmFresh = () =>
+      Alert.alert(t('Да започна ли отначало?'), t('Записаните досега данни няма да се виждат в приложението.'), [
+        { text: t('Отказ'), style: 'cancel' },
+        { text: t('Започни отначало'), style: 'destructive', onPress: startFresh },
+      ]);
     return (
-      <View style={[s.root, { justifyContent: 'center' }]}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[s.root, s.failed]}>
+        <Ionicons name="cloud-offline-outline" size={40} color={colors.muted} />
+        <Text style={s.failedTitle}>{t('Данните не се заредиха')}</Text>
+        <Text style={s.failedText}>{t('Нищо не е изтрито. Опитай пак или затвори и отвори Pawket.')}</Text>
+        <Touch style={s.failedBtn} onPress={retryLoad}>
+          <Text style={s.failedBtnText}>{t('Опитай пак')}</Text>
+        </Touch>
+        <Touch onPress={confirmFresh} hitSlop={10} style={{ minHeight: 44, justifyContent: 'center' }}>
+          <Text style={s.failedLink}>{t('Започни отначало')}</Text>
+        </Touch>
       </View>
     );
   }
+
+  if (!ready) return loading;
 
   if (!pet) return <OnboardingScreen />;
 
@@ -372,6 +394,12 @@ export default function App() {
 
 const s = themed((c) => ({
   root: { flex: 1, backgroundColor: c.bg },
+  failed: { alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
+  failedTitle: { color: c.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  failedText: { color: c.muted, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  failedBtn: { backgroundColor: c.ink, borderRadius: radius.pill, minHeight: 52, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  failedBtnText: { color: c.onAccent, fontSize: 16, fontWeight: '700' },
+  failedLink: { color: c.muted, fontSize: 14, fontWeight: '600' },
   tabBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
@@ -382,7 +410,7 @@ const s = themed((c) => ({
   tabText: { color: c.muted, fontSize: 11, fontWeight: '600' },
   tabActive: { color: c.primary, fontWeight: '700' },
   fab: {
-    width: 58, height: 58, borderRadius: 20, marginTop: -26, alignItems: 'center', justifyContent: 'center',
+    width: 58, height: 58, borderRadius: radius.tile, marginTop: -26, alignItems: 'center', justifyContent: 'center',
     backgroundColor: c.primary, borderWidth: 4, borderColor: c.card,
     shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },

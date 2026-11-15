@@ -1,7 +1,7 @@
 import React, { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../theme';
+import { colors, shadow } from '../theme';
 import { themed } from '../themed';
 
 // Owns the "covered" flag, so showing the strip mid-scroll re-renders only this view, not the screen
@@ -48,6 +48,6 @@ const s = themed((colors) => ({
   scrim: {
     // The light room color of the headers, so the clock stays readable over it
     position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.roomFrom,
-    shadowColor: '#4A2A14', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    shadowColor: shadow.shadowColor, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
 }));

@@ -67,11 +67,11 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
 
 const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  card: { backgroundColor: colors.card, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 4, marginTop: 16 },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 4, marginTop: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  sub: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
+  sub: { color: colors.muted, fontSize: 13, marginTop: 2 },
   amount: { color: colors.text, fontSize: 15, fontWeight: '700' },
   struck: { textDecorationLine: 'line-through', color: colors.muted },
   hint: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 8 },

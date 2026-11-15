@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import { colors, radius, MONTHS, moneyShort } from '../theme';

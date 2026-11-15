@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import ProgressRing from './ui/ProgressRing';
-import { colors, MONTHS, money, pct } from '../theme';
+import { colors, MONTHS, money, pct, radius } from '../theme';
 import { budgetScoreParts } from '../budget';
 import { EXPRESSIONS, expressionFor } from '../pet/logic';
 import { themed } from '../themed';
@@ -69,11 +69,11 @@ const s = themed((colors) => ({
   head: { alignItems: 'center', gap: 8, marginBottom: 14 },
   score: { color: colors.text, fontSize: 26, fontWeight: '800' },
   title: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 4, textAlign: 'center' },
-  text: { color: colors.muted, fontSize: 13.5, lineHeight: 19, textAlign: 'center' },
-  card: { backgroundColor: colors.card, borderRadius: 22, padding: 14, gap: 4 },
+  text: { color: colors.muted, fontSize: 14, lineHeight: 19, textAlign: 'center' },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, padding: 14, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  rowTitle: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
-  rowDetail: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
+  rowTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  rowDetail: { color: colors.muted, fontSize: 13, marginTop: 2 },
   badge: { fontSize: 14, fontWeight: '800' },
   foot: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 12 },
 }));

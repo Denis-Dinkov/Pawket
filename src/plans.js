@@ -1,5 +1,5 @@
 // Recurring payments and savings goals. Pure logic, no RN imports.
-import { monthKey, shiftMonth, countsInBudget, spendRoom, savingsReserve } from './budget';
+import { monthKey, shiftMonth, countsInBudget, spendRoom, savingsReserve, filterMonth } from './budget';
 import { categoryById } from './theme';
 import { t } from './i18n';
 
@@ -98,6 +98,9 @@ export function goalProgress(goal, expenses = []) {
   return { saved, left: Math.max(0, goal.target - saved), progress: goal.target ? Math.min(1, saved / goal.target) : 0, done: saved >= goal.target };
 }
 
+// The goal Home and Charlie talk about: an unfinished one first. states: [{ g, p: goalProgress(g) }]
+export const firstOpenGoal = (states = []) => [...states].sort((a, b) => Number(a.p.done) - Number(b.p.done))[0];
+
 // How much to put aside every month to reach the goal by its deadline
 export function monthlyNeeded(goal, saved, now = new Date()) {
   if (!goal.deadline) return null;
@@ -146,12 +149,10 @@ const PARTIAL_START_DAY = 7;
  * Falls back to this month when there are no earlier months at all.
  */
 export function averageNeeds(expenses = [], now = new Date(), months = 3) {
+  // Month lookups go through the shared index instead of scanning every expense once per month
   const needsIn = (year, month) =>
-    expenses
-      .filter((e) => {
-        const d = new Date(e.date);
-        return d.getFullYear() === year && d.getMonth() === month && countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs';
-      })
+    filterMonth(expenses, year, month)
+      .filter((e) => countsInBudget(e) && categoryById(e.categoryId)?.bucket === 'needs')
       .reduce((a, e) => a + e.amount, 0);
   let first = null;
   for (const e of expenses) {

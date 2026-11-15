@@ -225,7 +225,7 @@ const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   sheet: {
     backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    marginTop: -32, paddingHorizontal: 20, paddingTop: 20, minHeight: 600,
+    marginTop: -32, paddingHorizontal: 16, paddingTop: 16, minHeight: 600,
   },
   section: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 24, marginBottom: 12 },
   hint: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', paddingVertical: 12 },

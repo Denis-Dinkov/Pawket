@@ -21,7 +21,9 @@ import useKeyboardHeight from '../hooks/useKeyboardHeight';
 import { themed } from '../themed';
 import { t, tList } from '../i18n';
 
-const DAYS = tList(['Днес', 'Вчера', 'Преди 2 дни']);
+// Two quick days; anything earlier goes through the calendar chip
+const DAYS = tList(['Днес', 'Вчера']);
+const QUICK_DAYS = DAYS.length - 1;
 const MODES = [
   { key: 'expense', get label() { return t('Разход'); } },
   { key: 'income', get label() { return t('Доход'); } },
@@ -79,10 +81,12 @@ export default function AddScreen({ onDone, prefill = {} }) {
     setDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() - n));
   };
   const [pickDate, setPickDate] = useState(false);
-  const [repeat, setRepeat] = useState(false);
+  const [repeat, setRepeat] = useState(!!prefill.repeat);
   // Off: paid with money the user already had (another account, old savings), kept out of the month
   const [offBudget, setOffBudget] = useState(!!editing?.offBudget || !!prefill.offBudget);
   const [allCats, setAllCats] = useState(false);
+  // The rarely used switches (monthly, counted in the month) stay folded until asked for or already in use
+  const [moreOpen, setMoreOpen] = useState(!!prefill.repeat || !!editing?.offBudget || !!prefill.offBudget);
   // The keypad folds away after a category is picked, so the fields and the button are in view
   const [padOpen, setPadOpen] = useState(!(initialAmount > 0));
   const [newCategoryFor, setNewCategoryFor] = useState(null); // bucket or null
@@ -271,87 +275,16 @@ export default function AddScreen({ onDone, prefill = {} }) {
             haptic="select"
             small
             icon="calendar-outline"
-            label={daysAgo > 2 ? dayLabel(day.toISOString()) : t('Друга дата')}
-            variant={daysAgo > 2 ? 'active' : 'outline'}
+            label={daysAgo > QUICK_DAYS ? dayLabel(day.toISOString()) : t('Друга дата')}
+            variant={daysAgo > QUICK_DAYS ? 'active' : 'outline'}
             onPress={() => {
               Keyboard.dismiss();
               setPickDate(true);
             }}
-            accessibilityLabel={daysAgo > 2 ? t('Дата: {0}, смени', { 0: dayLabel(day.toISOString()) }) : t('Друга дата, отваря календар')}
+            accessibilityLabel={daysAgo > QUICK_DAYS ? t('Дата: {0}, смени', { 0: dayLabel(day.toISOString()) }) : t('Друга дата, отваря календар')}
           />
         </View>
 
-        <View style={s.fields}>
-          {!isIncome && (
-            <View style={s.field}>
-              <Ionicons name="storefront-outline" size={18} color={colors.muted} />
-              <TextInput
-                value={merchant}
-                onChangeText={setMerchant}
-                placeholder={t('Къде? (магазин, заведение)')}
-                placeholderTextColor={colors.muted}
-                style={s.input}
-                returnKeyType="next"
-                accessibilityLabel={t('Къде')}
-              />
-            </View>
-          )}
-          <View style={[s.field, !isIncome && s.sep]}>
-            <Ionicons name="document-text-outline" size={18} color={colors.muted} />
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder={isIncome ? t('Бележка (напр. от кого)') : t('За какво? (бележка)')}
-              placeholderTextColor={colors.muted}
-              style={s.input}
-              returnKeyType="done"
-              accessibilityLabel={t('Бележка')}
-            />
-          </View>
-          {!isIncome && !editing && !fromGoal && (
-            <Touch
-              haptic="select"
-              onPress={() => setRepeat((v) => !v)}
-              style={[s.field, s.sep]}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: repeat }}
-              accessibilityLabel={t('Повтаря се всеки месец')}
-            >
-              <Ionicons name="repeat" size={18} color={colors.muted} />
-              <Text style={[s.input, { color: colors.text }]}>{t('Всеки месец')}</Text>
-              <View pointerEvents="none">
-                <Switch
-              thumbColor={colors.white} value={repeat} trackColor={{ true: colors.primary }} />
-              </View>
-            </Touch>
-          )}
-          {!isIncome && !fromGoal && !editing?.fromGoalId && !repeat && (
-            <Touch
-              haptic="select"
-              onPress={() => setOffBudget((v) => !v)}
-              style={[s.field, s.sep]}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: !offBudget }}
-              accessibilityLabel={t('Брои се в бюджета за месеца')}
-            >
-              <Ionicons name="calculator-outline" size={18} color={colors.muted} />
-              <Text style={[s.input, { color: colors.text }]}>{t('Брои се в месеца')}</Text>
-              <View pointerEvents="none">
-                <Switch
-              thumbColor={colors.white} value={!offBudget} trackColor={{ true: colors.primary }} />
-              </View>
-            </Touch>
-          )}
-        </View>
-        {fromGoal && (
-          <Text style={s.incomeHint}>{t('Плащането намалява „{0}“ и не се брои в разходите за месеца — парите вече са заделени.', { 0: fromGoal.name })}</Text>
-        )}
-        {offBudget && !isIncome && !fromGoal && (
-          <Text style={s.incomeHint}>{t('Платено с пари, които вече имаш настрана (друга сметка, стари спестявания). Остава в историята, но не намалява бюджета за месеца и не влиза в отчетите.')}</Text>
-        )}
-        {repeat && !isIncome && (
-          <Text style={s.incomeHint}>{t('Всеки месец на {0} число се записва сам. Управлява се от „Планове“.', { 0: dayOrdinal(day.getDate()) })}</Text>
-        )}
         {isIncome ? (
           <>
             <Text style={[s.bucketLabel, { marginTop: 18, marginBottom: 10 }]}>{t('Вид доход')}</Text>
@@ -376,8 +309,8 @@ export default function AddScreen({ onDone, prefill = {} }) {
             </View>
             <Text style={s.incomeHint}>
               {kind === 'salary'
-                ? t('Заплатата замества месечния доход от настройките{0} за този месец — не се брои двойно.', { 0: baseIncome ? ` (${money(baseIncome)})` : '' })
-                : t('Добавя се към месечния доход и увеличава бюджета за месеца по {rule}.')}
+                ? t('Заплатата замества месечния доход{0} за този месец.', { 0: baseIncome ? ` (${money(baseIncome)})` : '' })
+                : t('Добавя се към дохода за месеца.')}
             </Text>
           </>
         ) : allCats ? (
@@ -406,7 +339,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
             <Pill small label={t('По-малко')} icon="chevron-up" variant="outline" style={{ alignSelf: 'center', marginTop: 12 }} onPress={() => setAllCats(false)} />
           </>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14, marginHorizontal: -20 }} contentContainerStyle={s.quickRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16, marginHorizontal: -20 }} contentContainerStyle={s.quickRow}>
             {quick.map((c) => (
               <View key={c.id} style={s.quickCell}>
                 <CategoryTile c={c} fill />
@@ -419,6 +352,91 @@ export default function AddScreen({ onDone, prefill = {} }) {
               </Touch>
             </View>
           </ScrollView>
+        )}
+
+
+        <View style={s.fields}>
+          {!isIncome && (
+            <View style={s.field}>
+              <Ionicons name="storefront-outline" size={18} color={colors.muted} />
+              <TextInput
+                value={merchant}
+                onChangeText={setMerchant}
+                placeholder={t('Къде? (магазин, заведение)')}
+                placeholderTextColor={colors.muted}
+                style={s.input}
+                returnKeyType="next"
+                accessibilityLabel={t('Къде')}
+              />
+            </View>
+          )}
+          <View style={[s.field, !isIncome && s.sep]}>
+            <Ionicons name="document-text-outline" size={18} color={colors.muted} />
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder={isIncome ? t('Бележка (напр. от кого)') : t('За какво? (бележка)')}
+              placeholderTextColor={colors.muted}
+              style={s.input}
+              returnKeyType="done"
+              accessibilityLabel={t('Бележка')}
+            />
+          </View>
+        </View>
+        {fromGoal && (
+          <Text style={s.incomeHint}>{t('Плаща се от „{0}“ и не намалява бюджета за месеца.', { 0: fromGoal.name })}</Text>
+        )}
+        {/* Rare options: folded away, so the usual path is amount → category → save */}
+        {!isIncome && !fromGoal && !editing?.fromGoalId && (
+          moreOpen ? (
+            <View style={[s.fields, { marginTop: 10 }]}>
+          {!isIncome && !editing && !fromGoal && (
+            <Touch
+              haptic="select"
+              onPress={() => setRepeat((v) => !v)}
+              style={s.field}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: repeat }}
+              accessibilityLabel={t('Повтаря се всеки месец')}
+            >
+              <Ionicons name="repeat" size={18} color={colors.muted} />
+              <Text style={[s.input, { color: colors.text }]}>{t('Всеки месец')}</Text>
+              <View pointerEvents="none">
+                <Switch
+              thumbColor={colors.white} value={repeat} trackColor={{ true: colors.primary }} />
+              </View>
+            </Touch>
+          )}
+          {!isIncome && !fromGoal && !editing?.fromGoalId && !repeat && (
+            <Touch
+              haptic="select"
+              onPress={() => setOffBudget((v) => !v)}
+              style={[s.field, !editing && s.sep]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !offBudget }}
+              accessibilityLabel={t('Брои се в бюджета за месеца')}
+            >
+              <Ionicons name="calculator-outline" size={18} color={colors.muted} />
+              <Text style={[s.input, { color: colors.text }]}>{t('Брои се в месеца')}</Text>
+              <View pointerEvents="none">
+                <Switch
+              thumbColor={colors.white} value={!offBudget} trackColor={{ true: colors.primary }} />
+              </View>
+            </Touch>
+          )}
+            </View>
+          ) : (
+            <Touch haptic="select" style={s.moreBtn} onPress={() => setMoreOpen(true)} accessibilityHint={t('Показва „Всеки месец“ и „Брои се в месеца“')}>
+              <Text style={s.moreText}>{t('Още настройки')}</Text>
+              <Ionicons name="chevron-down" size={14} color={colors.muted} />
+            </Touch>
+          )
+        )}
+        {offBudget && !isIncome && !fromGoal && (
+          <Text style={s.incomeHint}>{t('Платено с пари извън месечния доход. Остава в историята, но не намалява бюджета.')}</Text>
+        )}
+        {repeat && !isIncome && (
+          <Text style={s.incomeHint}>{t('Всеки месец на {0} число се записва сам. Управлява се от „Планове“.', { 0: dayOrdinal(day.getDate()) })}</Text>
         )}
 
       </ScrollView>
@@ -508,17 +526,19 @@ const s = themed((c) => ({
     backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 5, padding: 5,
   },
   newCat: { backgroundColor: 'transparent', borderColor: c.faint, borderStyle: 'dashed' },
-  catText: { fontSize: 11.5, color: c.text, alignSelf: 'stretch', textAlign: 'center' },
+  catText: { fontSize: 12, color: c.text, alignSelf: 'stretch', textAlign: 'center' },
   footer: { paddingHorizontal: 12, paddingTop: 8, backgroundColor: c.bg, borderTopWidth: 1, borderColor: c.faint, gap: 8 },
   pad: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   // Three columns: 31% each plus the two 6 px gaps fit on every phone width
-  key: { width: '31%', flexGrow: 1, height: 46, borderRadius: 14, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' },
+  key: { width: '31%', flexGrow: 1, height: 46, borderRadius: radius.field, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' },
   keyText: { color: c.text, fontSize: 22, fontWeight: '600' },
   save: {
     flexDirection: 'row', gap: 8, backgroundColor: c.ink, borderRadius: radius.pill,
     minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16,
   },
   saveText: { color: c.onAccent, fontSize: 16, fontWeight: '700' },
+  moreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 44, marginTop: 4 },
+  moreText: { color: c.muted, fontSize: 14, fontWeight: '600' },
   waitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.wants },
-  waitText: { color: c.wants, fontSize: 14.5, fontWeight: '700' },
+  waitText: { color: c.wants, fontSize: 15, fontWeight: '700' },
 }));

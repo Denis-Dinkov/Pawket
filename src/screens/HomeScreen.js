@@ -6,12 +6,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, categoryById, currentColorScheme, monthLower } from '../theme';
+import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, categoryById, currentColorScheme, monthLower, shadow } from '../theme';
 import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { weekMissions, streak, activityDays } from '../pet/missions';
-import { upcomingPayments, pendingSpend, goalProgress, monthForecast } from '../plans';
+import { upcomingPayments, pendingSpend, goalProgress, monthForecast, firstOpenGoal } from '../plans';
 import { sameDay, plural, dayLabel } from '../format';
 import { tapFeedback } from '../haptics';
 import useNow from '../hooks/useNow';
@@ -166,7 +166,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   const recent = useMemo(() => sortByDateDesc(ov.list).slice(0, RECENT), [ov.list]);
   const upcoming = useMemo(() => upcomingPayments(recurring, now)[0], [recurring, now]);
   const goal = useMemo(
-    () => goals.map((g) => ({ g, p: goalProgress(g, expenses) })).sort((a, b) => Number(a.p.done) - Number(b.p.done))[0],
+    () => firstOpenGoal(goals.map((g) => ({ g, p: goalProgress(g, expenses) }))),
     [goals, expenses]
   );
   // Home shows only what's real: a payment due within a week and an unfinished goal (empty prompts live in Plans)
@@ -411,13 +411,14 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     accessibilityHint={t('Показва доходите за месеца')}
                   >
                     {/* With payments still due, say so: otherwise the number looks smaller than income − spent.
+                        The savings still to be put aside aren't repeated here: the legend below shows saved / target,
+                        and the limit sheet has the whole calculation.
                         The chevron sits inside the text, so it follows the last word when the line wraps */}
                     <Text style={s.miniSub} numberOfLines={2}>
                       {[
                         t('от {0} доход', { 0: moneyShort(ov.income) }),
                         free && pending > 0 && t('{0} предстоящи', { 0: moneyShort(pending) }),
-                        free && free.reserve > 0 && t('{0} за спестяване', { 0: moneyShort(free.reserve) }),
-                      ].filter(Boolean).join(', ')}{' '}
+                      ].filter(Boolean).join(' · ')}{' '}
                       <Ionicons name="chevron-forward" size={12} color={colors.muted} />
                     </Text>
                   </Touch>
@@ -451,9 +452,12 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     size={22}
                     color={todayBad ? colors.danger : colors.savings}
                   />
-                  <Text style={[s.miniSub, todayBad && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
-                    {daily.eatenSavings > 0 ? t('лимит 0 €') : t('от {0} за днес', { 0: limitText(daily.todayLimit) })}
-                  </Text>
+                  {/* Before anything is spent today the caption would only repeat the number above it */}
+                  {(todayBad || daily.spentToday > 0) && (
+                    <Text style={[s.miniSub, todayBad && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
+                      {daily.eatenSavings > 0 ? t('лимит 0 €') : t('от {0} лимит', { 0: limitText(daily.todayLimit) })}
+                    </Text>
+                  )}
                 </Touch>
               ) : !isCurrent && ov.score != null ? (
                 <View style={s.today}>
@@ -488,7 +492,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           </Card>
 
           {/* A no-spend day: started here, followed here and in the Dynamic Island */}
-          {isCurrent && <SessionCard now={now} />}
+          {/* While Charlie offers today's check-in in his bubble, the challenge button stays out of the way:
+              two "no spending today" buttons at once read as the same thing */}
+          {isCurrent && <SessionCard now={now} canStart={!canFeed} />}
 
           {!isCurrent && (
             <Pill
@@ -581,7 +587,7 @@ const s = themed((c) => ({
     backgroundColor: c.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
     marginTop: -30, paddingHorizontal: 16, paddingTop: 16, gap: 16, minHeight: 600,
   },
-  label: { color: c.muted, fontSize: 12.5, fontWeight: '600' },
+  label: { color: c.muted, fontSize: 13, fontWeight: '600' },
   moneyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   today: { alignItems: 'flex-end', maxWidth: '46%' },
   todayHead: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -594,23 +600,23 @@ const s = themed((c) => ({
   legendName: { color: c.text, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   legendValue: { color: c.muted, fontSize: 12 },
   incomeLine: { alignSelf: 'flex-start', marginTop: 2 },
-  forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
+  forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, paddingHorizontal: 12, paddingVertical: 9 },
   forecastText: { flex: 1, color: c.text, fontSize: 13, lineHeight: 18 },
   duo: { flexDirection: 'row', gap: 10 },
-  mini: { flex: 1, backgroundColor: c.card, borderRadius: 20, padding: 12, gap: 4 },
-  miniHead: { color: c.muted, fontSize: 11.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  mini: { flex: 1, backgroundColor: c.card, borderRadius: radius.card, padding: 14, gap: 4, borderWidth: 1, borderColor: c.faint },
+  miniHead: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   miniValue: { color: c.text, fontSize: 15, fontWeight: '800' },
-  miniSub: { color: c.muted, fontSize: 12.5 },
+  miniSub: { color: c.muted, fontSize: 13 },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   h2: { color: c.text, fontSize: 16, fontWeight: '700' },
   score: { color: c.primary, fontSize: 15, fontWeight: '800' },
-  bucketName: { color: c.text, fontSize: 14.5, fontWeight: '700' },
+  bucketName: { color: c.text, fontSize: 15, fontWeight: '700' },
   streak: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.warningSoft, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
-  streakText: { color: c.text, fontSize: 12.5, fontWeight: '700' },
+  streakText: { color: c.text, fontSize: 13, fontWeight: '700' },
   mission: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   missionText: { flex: 1, color: c.text, fontSize: 14, fontWeight: '600' },
   missionDone: { color: c.muted, textDecorationLine: 'line-through' },
-  missionCount: { color: c.muted, fontSize: 12.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  missionCount: { color: c.muted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   section: { color: c.text, fontSize: 18, fontWeight: '800' },
   listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
   empty: { color: c.muted, textAlign: 'center', fontSize: 14 },
@@ -621,7 +627,7 @@ const s = themed((c) => ({
   dockWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
   dockShadow: {
     backgroundColor: c.roomTo, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
-    shadowColor: '#4A2A14', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+    shadowColor: shadow.shadowColor, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
   },
   dock: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingBottom: 10,

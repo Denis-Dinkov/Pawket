@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { Modal, View, StyleSheet } from 'react-native';
+import { Modal, View } from 'react-native';
 import { Text } from './ui/AppText';
 import Pet from '../pet/Pet';
 import Pill from './ui/Pill';
-import { colors, MONTHS, shadow } from '../theme';
+import { colors, MONTHS, shadow, radius } from '../theme';
 import { expressionFor } from '../pet/logic';
 import { outfitOf } from '../pet/outfit';
 import { successFeedback } from '../haptics';
@@ -57,7 +57,7 @@ const s = themed((colors) => ({
   h1: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 6 },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
   text: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.badge, padding: 12 },
   month: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
   score: { color: colors.text, fontSize: 14, fontWeight: '700', marginRight: 12 },
   xp: { fontSize: 14, fontWeight: '800' },

@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Text } from './AppText';
-import { colors, radius } from '../../theme';
+import { colors, radius, shadow } from '../../theme';
 import Touch from './Touch';
 import { themed } from '../../themed';
 
@@ -26,7 +26,7 @@ const s = themed((colors) => ({
   item: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, alignItems: 'center' },
   active: {
     backgroundColor: colors.raised,
-    shadowColor: '#4A2A14', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    shadowColor: shadow.shadowColor, shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   text: { fontSize: 13, fontWeight: '600', color: colors.muted },
   activeText: { color: colors.text },

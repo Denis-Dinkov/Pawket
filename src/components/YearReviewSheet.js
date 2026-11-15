@@ -109,7 +109,7 @@ const s = themed((c) => ({
   colLabel: { color: c.muted, fontSize: 11 },
   facts: { backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 14, marginTop: 10 },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderColor: c.faint },
-  factLabel: { color: c.muted, fontSize: 12.5, fontWeight: '600' },
+  factLabel: { color: c.muted, fontSize: 13, fontWeight: '600' },
   factValue: { color: c.text, fontSize: 16, fontWeight: '800' },
-  factSub: { color: c.muted, fontSize: 12.5 },
+  factSub: { color: c.muted, fontSize: 13 },
 }));

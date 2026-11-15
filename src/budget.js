@@ -278,3 +278,13 @@ export function dailyLimit(ov, now = new Date(), pendingRecurring = 0) {
     overIncome: Math.max(0, -room),
   };
 }
+
+/**
+ * The top of the daily chart's scale. One day far above the rest (rent on the 1st) would flatten every other
+ * bar, so the scale then follows the second-highest day and the outlier is drawn cut off at the top.
+ */
+export function chartScale(totals) {
+  const [top = 0, second = 0] = [...totals].sort((a, b) => b - a);
+  if (second > 0 && top > second * 2.5) return second * 1.35;
+  return Math.max(top, 1);
+}

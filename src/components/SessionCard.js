@@ -17,7 +17,7 @@ import { t } from '../i18n';
  * Home: start a no-spend day and follow it until midnight. Charlie shows the same countdown in the
  * Dynamic Island. The button appears only on a day with nothing spent yet.
  */
-export default function SessionCard({ now }) {
+export default function SessionCard({ now, canStart = true }) {
   const { session, expenses, startNoSpendDay, endSession } = useStore();
   const state = useMemo(() => sessionState(session, expenses, now), [session, expenses, now]);
 
@@ -48,7 +48,9 @@ export default function SessionCard({ now }) {
     );
   }
 
-  if (spentToday(expenses, now) > 0) return null;
+  if (!canStart || spentToday(expenses, now) > 0) return null;
+  // XP only for a day started in the morning (see finishSession in store.js)
+  const earnsXp = now.getHours() < NOSPEND_XP_BEFORE;
   return (
     <Touch
       style={s.start}
@@ -59,7 +61,8 @@ export default function SessionCard({ now }) {
       accessibilityHint={t('Предизвикателство: без харчене до полунощ')}
     >
       <Ionicons name="leaf-outline" size={18} color={colors.savings} />
-      <Text style={s.startText} numberOfLines={1}>{t('Ден без разходи')}</Text>
+      <Text style={s.startText} numberOfLines={1}>{t('Предизвикателство: ден без разходи')}</Text>
+      {earnsXp && <Text style={s.startXp}>+{SESSION_XP.nospend} XP</Text>}
     </Touch>
   );
 }
@@ -67,11 +70,12 @@ export default function SessionCard({ now }) {
 const s = themed((c) => ({
   start: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44,
-    backgroundColor: c.card, borderRadius: radius.pill, paddingHorizontal: 12,
+    backgroundColor: c.card, borderRadius: radius.pill, paddingHorizontal: 14, borderWidth: 1, borderColor: c.faint,
   },
+  startXp: { color: c.savings, fontSize: 13, fontWeight: '800' },
   startText: { color: c.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  icon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 36, height: 36, borderRadius: radius.field, alignItems: 'center', justifyContent: 'center' },
   name: { color: c.text, fontSize: 15, fontWeight: '800' },
-  sub: { color: c.muted, fontSize: 12.5 },
+  sub: { color: c.muted, fontSize: 13 },
 }));

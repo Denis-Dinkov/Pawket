@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme';
@@ -16,7 +16,7 @@ export default function GradientHero({ children, bottomSpace = 64, style, tone =
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       // overflow: the decorative circles must not widen the screen horizontally
-      style={[{ paddingTop: insets.top + 8, paddingBottom: bottomSpace, paddingHorizontal: 20, overflow: 'hidden' }, style]}
+      style={[{ paddingTop: insets.top + 8, paddingBottom: bottomSpace, paddingHorizontal: 16, overflow: 'hidden' }, style]}
     >
       {/* Decorative circles for depth */}
       {!room && <View pointerEvents="none" style={[s.orb, { width: 260, height: 260, top: -90, right: -80 }]} />}

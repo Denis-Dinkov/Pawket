@@ -134,7 +134,7 @@ const s = themed((c) => ({
   name: { color: c.text, fontSize: 15, fontWeight: '700' },
   hint: { color: c.muted, fontSize: 13, lineHeight: 18 },
   step: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.faint, alignItems: 'center', justifyContent: 'center' },
-  pctBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderRadius: 12, paddingHorizontal: 8, minWidth: 66, justifyContent: 'center' },
+  pctBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderRadius: radius.field, paddingHorizontal: 8, minWidth: 66, justifyContent: 'center' },
   pct: { fontSize: 18, fontWeight: '800', paddingVertical: 6, minWidth: 30, textAlign: 'right', fontVariant: ['tabular-nums'] },
   pctSign: { fontSize: 16, fontWeight: '700' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: c.faint, paddingTop: 10 },

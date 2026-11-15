@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Text } from './ui/AppText';
 import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
@@ -85,9 +85,9 @@ export function TopCategoriesCard({ ov }) {
 const s = themed((colors) => ({
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  muted: { color: colors.muted, fontSize: 12.5 },
+  muted: { color: colors.muted, fontSize: 13 },
   limit: { fontSize: 13, fontWeight: '700' },
   cat: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  catName: { color: colors.text, fontSize: 14.5, fontWeight: '600' },
-  catValue: { color: colors.text, fontSize: 14.5, fontWeight: '700' },
+  catName: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  catValue: { color: colors.text, fontSize: 15, fontWeight: '700' },
 }));

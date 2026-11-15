@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Text } from './ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import IconBadge from './ui/IconBadge';
-import { colors, categoryById, BUCKETS, money } from '../theme';
+import { colors, categoryById, BUCKETS, money, radius } from '../theme';
 import { dayLabel, timeLabel, SOURCES } from '../format';
 import Touch from './ui/Touch';
 import { themed } from '../themed';
@@ -68,15 +68,15 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
 const s = themed((colors) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   // The same padding comes off the margin, so a highlighted row lines up with the others
-  fresh: { backgroundColor: colors.primarySoft, borderRadius: 16, marginHorizontal: -10, paddingHorizontal: 10 },
+  fresh: { backgroundColor: colors.primarySoft, borderRadius: radius.badge, marginHorizontal: -10, paddingHorizontal: 10 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   badge: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
-  dupe: { backgroundColor: colors.dangerSoft, borderRadius: 16, marginHorizontal: -10, paddingHorizontal: 10 },
+  dupe: { backgroundColor: colors.dangerSoft, borderRadius: radius.badge, marginHorizontal: -10, paddingHorizontal: 10 },
   dupeBadge: { backgroundColor: colors.danger },
-  badgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.4 },
-  sub: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  sub: { color: colors.muted, fontSize: 13, marginTop: 2 },
   amount: { color: colors.text, fontSize: 15, fontWeight: '700' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  metaText: { color: colors.muted, fontSize: 11.5 },
+  metaText: { color: colors.muted, fontSize: 12 },
 }));

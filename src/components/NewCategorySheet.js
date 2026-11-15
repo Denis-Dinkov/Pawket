@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Text, TextInput } from './ui/AppText';
 import Sheet from './ui/Sheet';
 import IconBadge from './ui/IconBadge';
@@ -84,7 +84,7 @@ const s = themed((colors) => ({
   name: { flex: 1, minWidth: 0, fontSize: 18, fontWeight: '700', color: colors.text, paddingVertical: 6 },
   label: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 18, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  icon: { width: '11.4%', minWidth: 40, aspectRatio: 1, borderRadius: 14, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  icon: { width: '11.4%', minWidth: 40, aspectRatio: 1, borderRadius: radius.field, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   save: { backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center' },
   saveText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
 }));

@@ -22,6 +22,8 @@ const AUTO_SOURCE = Platform.OS === 'android' ? 'gpay' : 'applepay';
 
 export const KEY = 'spendlite:v2';
 const KEY_V1 = 'spendlite:v1';
+// A copy of saved data that couldn't be parsed, so it can still be recovered by hand
+const KEY_DAMAGED = 'spendlite:v2:damaged';
 const Ctx = createContext(null);
 // The toast lives apart from the data, so showing or hiding it doesn't re-render every screen
 const ToastCtx = createContext(null);
@@ -77,10 +79,30 @@ function migrateV1(v1) {
   return { ...EMPTY, expenses, incomes };
 }
 
+// A read that failed once is tried again: a transient storage error must not look like "no data"
+async function readSaved(key, tries = 3) {
+  for (let i = 0; ; i++) {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (e) {
+      if (i >= tries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+    }
+  }
+}
+
+// Throws when the saved data can't be read. The caller then keeps saving off, so the data on disk survives.
 async function load() {
-  const raw = await AsyncStorage.getItem(KEY);
+  const raw = await readSaved(KEY);
   if (raw) {
-    const saved = JSON.parse(raw);
+    let saved;
+    try {
+      saved = JSON.parse(raw);
+    } catch (e) {
+      // Unreadable text: kept aside under another key before anything can overwrite it
+      await AsyncStorage.setItem(KEY_DAMAGED, raw).catch(() => {});
+      throw e;
+    }
     // Saves from before English existed stay in Bulgarian; new installs follow the phone
     if (saved && !saved.settings?.language) saved.settings = { ...(saved.settings || {}), language: 'bg' };
     const data = withDefaults(saved);
@@ -89,7 +111,7 @@ async function load() {
     if (data.session && data.session.kind !== 'nospend') data.session = null;
     return data;
   }
-  const old = await AsyncStorage.getItem(KEY_V1);
+  const old = await readSaved(KEY_V1);
   return old ? migrateV1(JSON.parse(old)) : EMPTY;
 }
 
@@ -111,22 +133,53 @@ export function StoreProvider({ children }) {
   const lang = resolveLang(data.settings?.language);
   setLang(lang);
 
+  // loadFailed: the saved data couldn't be read. Nothing is written until a load succeeds (or the user
+  // chooses to start over), otherwise the empty state would replace the real data on disk.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const canSave = useRef(false);
+  const loadSaved = useCallback(() => {
+    setLoadFailed(false);
+    return load()
+      .then((d) => {
+        setData(d);
+        canSave.current = true;
+        setReady(true);
+      })
+      .catch(() => setLoadFailed(true));
+  }, []);
   useEffect(() => {
-    load()
-      .then(setData)
-      .catch(() => setData(EMPTY))
-      .finally(() => setReady(true));
+    loadSaved();
+  }, [loadSaved]);
+  // Gives up on the unreadable data and starts empty (the damaged copy stays under its own key)
+  const startFresh = useCallback(() => {
+    setLoadFailed(false);
+    setData(EMPTY);
+    canSave.current = true;
+    setReady(true);
   }, []);
 
   const saveTimer = useRef(null);
   const unsaved = useRef(null);
+  // One message per run of failed saves, not one per change
+  const saveWarned = useRef(false);
   const flush = useCallback(() => {
     clearTimeout(saveTimer.current);
-    if (!unsaved.current) return;
+    if (!unsaved.current || !canSave.current) return;
     const d = unsaved.current;
     unsaved.current = null;
-    AsyncStorage.setItem(KEY, JSON.stringify(d)).catch(() => {});
-  }, []);
+    AsyncStorage.setItem(KEY, JSON.stringify(d))
+      .then(() => {
+        saveWarned.current = false;
+      })
+      .catch(() => {
+        // Kept for the next attempt (unless something newer is already waiting), and the user is told once
+        if (!unsaved.current) unsaved.current = d;
+        if (!saveWarned.current) {
+          saveWarned.current = true;
+          showToast({ text: t('Записът не успя. Провери свободното място на телефона.'), icon: 'alert-circle' });
+        }
+      });
+  }, [showToast]);
   useEffect(() => {
     if (!ready) return;
     unsaved.current = data;
@@ -367,6 +420,9 @@ export function StoreProvider({ children }) {
   const value = useMemo(
     () => ({
       ready,
+      loadFailed,
+      retryLoad: loadSaved,
+      startFresh,
       ...data,
       // The default name follows the language (Чарли / Charlie); a name the user chose stays as it is
       pet: data.pet && data.pet.name === DEFAULT_PET_NAME_BG ? { ...data.pet, name: defaultPetName() } : data.pet,
@@ -691,7 +747,7 @@ export function StoreProvider({ children }) {
         setData(EMPTY);
       },
     }),
-    [ready, data, pendingEvent, showToast, finishSession, lang]
+    [ready, loadFailed, loadSaved, startFresh, data, pendingEvent, showToast, finishSession, lang]
   );
   const toastValue = useMemo(() => ({ toast, dismissToast: () => setToast(null) }), [toast]);
 

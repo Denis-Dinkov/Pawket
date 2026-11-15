@@ -17,7 +17,7 @@ import Pet from '../pet/Pet';
 import { ItemPreview } from '../pet/Accessories';
 import { outfitOf } from '../pet/outfit';
 import { weekMissions, streak, activityDays, rewardsState, missionsTotal, weekStart, MISSION_XP } from '../pet/missions';
-import { goalProgress } from '../plans';
+import { goalProgress, firstOpenGoal } from '../plans';
 import { plural } from '../format';
 import { tapFeedback } from '../haptics';
 import useNow from '../hooks/useNow';
@@ -32,7 +32,7 @@ import { AdviceCard } from '../components/AdviceSheet';
 import { themed } from '../themed';
 import { t, tList } from '../i18n';
 
-// The first letter of each short day name: П В С Ч П С Н / M T W T F S S
+// Two-letter day names: single letters repeat (П … П, С … С)
 const WEEK_SHORT = tList(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']);
 
 // Today, while nothing is recorded yet: the empty ring breathes, asking for an entry
@@ -82,17 +82,23 @@ export default function PetScreen({ onOpenChat }) {
     () => getAdvice({ expenses, incomes, incomeEntries, recurring, year: now.getFullYear(), month: now.getMonth(), now, lastFedAt: pet?.lastFedAt }),
     [expenses, incomes, incomeEntries, recurring, now, pet?.lastFedAt]
   );
-  const days = activityDays({ expenses, incomeEntries, pet });
-  const current = streak(days, now);
-  const missions = weekMissions({ expenses, incomeEntries, pet, income: status.overview.income, now });
-  const goalsDone = goals.filter((g) => goalProgress(g, expenses).done).length;
-  const rewards = rewardsState({ pet, goalsDone });
+  // Memoized: each of these scans every expense, and this tab stays mounted while hidden
+  const days = useMemo(() => activityDays({ expenses, incomeEntries, pet }), [expenses, incomeEntries, pet]);
+  const current = useMemo(() => streak(days, now), [days, now]);
+  const missions = useMemo(
+    () => weekMissions({ expenses, incomeEntries, pet, income: status.overview.income, now }),
+    [expenses, incomeEntries, pet, status.overview.income, now]
+  );
+  const goalStates = useMemo(() => goals.map((g) => ({ g, p: goalProgress(g, expenses) })), [goals, expenses]);
+  const rewards = useMemo(() => rewardsState({ pet, goalsDone: goalStates.filter((x) => x.p.done).length }), [pet, goalStates]);
   const start = weekStart(now);
   const activeToday = days.has(dayKey(now));
   // The same speech line as on Home, so the dog says one thing in both places
-  const daily = dailyLimit(status.overview, now, pendingSpend(recurring, now));
-  const openGoal = goals.map((g) => ({ g, p: goalProgress(g, expenses) })).sort((a, b) => Number(a.p.done) - Number(b.p.done))[0];
-  const bubble = petLine({ status, daily, advice, activeToday, goal: openGoal && { name: openGoal.g.name, done: openGoal.p.done }, now }).text;
+  const bubble = useMemo(() => {
+    const daily = dailyLimit(status.overview, now, pendingSpend(recurring, now));
+    const openGoal = firstOpenGoal(goalStates);
+    return petLine({ status, daily, advice, activeToday, goal: openGoal && { name: openGoal.g.name, done: openGoal.p.done }, now }).text;
+  }, [status, recurring, goalStates, advice, activeToday, now]);
   const feed = () => {
     tapFeedback();
     checkInNoSpend();
@@ -147,16 +153,16 @@ export default function PetScreen({ onOpenChat }) {
                 </View>
               </StreakCount>
               <View style={{ flex: 1 }}>
-                <Text style={s.h2}>{t('Серия: {0} 🔥', { 0: plural(current, t('ден'), t('дни')) })}</Text>
-                <Text style={s.muted}>{t('Най-дълга: {0} · запиши нещо всеки ден', { 0: plural(pet.bestStreak || current, t('ден'), t('дни')) })}</Text>
+                <Text style={s.h2}>{t('Серия: {0}', { 0: plural(current, t('ден'), t('дни')) })}</Text>
+                <Text style={s.muted}>{t('Най-дълга: {0}', { 0: plural(pet.bestStreak || current, t('ден'), t('дни')) })}</Text>
               </View>
             </View>
-            <View style={s.week} accessible accessibilityLabel={t('Тази седмица: {0}', { 0: [...WEEK_SHORT].map((d) => d.charAt(0)).map((d, i) => {
+            <View style={s.week} accessible accessibilityLabel={t('Тази седмица: {0}', { 0: [...WEEK_SHORT].map((d, i) => {
               const day = new Date(start);
               day.setDate(start.getDate() + i);
               return `${d} ${days.has(dayKey(day)) ? t('да') : t('не')}`;
             }).join(', ') })}>
-              {[...WEEK_SHORT].map((d) => d.charAt(0)).map((d, i) => {
+              {[...WEEK_SHORT].map((d, i) => {
                 const day = new Date(start);
                 day.setDate(start.getDate() + i);
                 const done = days.has(dayKey(day));
@@ -191,7 +197,7 @@ export default function PetScreen({ onOpenChat }) {
           </Card>
 
           <Text style={s.section} accessibilityRole="header">{t('Награди за {0}', { 0: pet.name })}</Text>
-          <Text style={s.muted}>{t('Отключват се с навици, не с пари. Докосни отключена награда, за да я сложиш.')}</Text>
+          <Text style={s.muted}>{t('Отключват се с навици. Докосни награда, за да я сложиш.')}</Text>
           <View style={s.rewards}>
             {rewards.map((r) => {
               const on = outfit[r.slot] === r.id;
@@ -310,8 +316,8 @@ const s = themed((c) => ({
   weekDone: { backgroundColor: c.orange },
   weekToday: { borderWidth: 2, borderColor: c.orange, backgroundColor: 'transparent' },
   weekLabel: { color: c.muted, fontSize: 12 },
-  mission: { flex: 1, color: c.text, fontSize: 14.5, fontWeight: '600' },
-  xp: { color: c.muted, fontSize: 12.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  mission: { flex: 1, color: c.text, fontSize: 15, fontWeight: '600' },
+  xp: { color: c.muted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   rewards: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reward: {
     width: '30.8%', minHeight: 112, backgroundColor: c.card, borderRadius: radius.badge, padding: 10,
@@ -319,7 +325,7 @@ const s = themed((c) => ({
   },
   rewardOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
   rewardName: { color: c.text, fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  rewardNeed: { color: c.muted, fontSize: 11.5, textAlign: 'center' },
+  rewardNeed: { color: c.muted, fontSize: 12, textAlign: 'center' },
   lock: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.faint, alignItems: 'center', justifyContent: 'center' },
   path: { flexDirection: 'row', gap: 6 },
   step: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.badge, borderWidth: 2, borderColor: 'transparent', gap: 2 },
