@@ -22,6 +22,7 @@ import { liveActivityAvailable } from '../widget/liveActivity';
 import { backupAvailable, shareBackup, pickBackup } from '../backup';
 import { dayLabel, plural, timeLabel } from '../format';
 import { notificationReaderAvailable, notificationAccessEnabled, openNotificationAccess, unreadNotifications } from '../androidPayments';
+import { appVersion } from '../appVersion';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -403,6 +404,11 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
           <Text style={s.dangerText}>{t('Изтрий всички данни')}</Text>
         </Touch>
 
+        {/* Which build is installed: version, commit and build time (see src/appVersion.js) */}
+        <Text style={s.version} selectable accessibilityLabel={t('Версия {0}', { 0: appVersion() })}>
+          {t('Версия {0}', { 0: appVersion() })}
+        </Text>
+
         <NewCategorySheet
           visible={newCategory}
           onClose={() => setNewCategory(false)}
@@ -450,5 +456,6 @@ const s = themed((colors) => ({
   rowHint: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 },
   linkTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 28, paddingVertical: 12, minHeight: 44 },
+  version: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 4 },
   dangerText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
 }));

@@ -811,4 +811,5 @@ export default {
   "Отключват се с навици. Докосни награда, за да я сложиш.": "Unlocked by habits. Tap a reward to put it on.",
   "Ще следя бюджета ти. Колкото по-добре се справяш, толкова по-щастлив съм.": "I'll watch your budget. The better you do, the happier I am.",
   "3 месеца нужди ≈ {0}": "3 months of needs ≈ {0}",
+  "Версия {0}": "Version {0}",
 };
