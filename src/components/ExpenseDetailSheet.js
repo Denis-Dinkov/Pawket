@@ -31,17 +31,17 @@ function Row({ icon, label, value }) {
 }
 
 // Everything about one expense: where, what for, when and how it was paid
-export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
+export function ExpenseDetail({ expense: snapshot, onDelete, onEdit, onBack }) {
   const { updateExpense, markReviewed, keepDuplicate, expenses } = useStore();
+  // The live record: the sheet holds a snapshot, and Edit (opened on top of it) may change it
+  const expense = expenses.find((x) => x.id === snapshot.id) || snapshot;
   const [dupe, setDupe] = useState(!!expense.possibleDuplicate);
   const cat = categoryById(expense.categoryId);
   const bucket = cat && BUCKETS[cat.bucket];
   const source = SOURCES[expense.source] || SOURCES.manual;
-  // The sheet holds a snapshot of the expense, so the switch keeps its own state
-  const [counts, setCounts] = useState(!expense.offBudget);
+  const counts = !expense.offBudget;
   const toggleCounts = (v) => {
     feedback('select');
-    setCounts(v);
     updateExpense(expense.id, { offBudget: !v || undefined });
   };
   // Booked automatically after Apple Pay: opening it is the check, unless it still needs a category
@@ -123,8 +123,7 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
         </>
       )}
       <View style={s.actions}>
-        {/* The live record: the switch above may have changed it since this snapshot */}
-        {onEdit && <Pill icon="create-outline" label={t('Редактирай')} variant="ink" onPress={() => onEdit(expenses.find((x) => x.id === expense.id) || expense)} />}
+        {onEdit && <Pill icon="create-outline" label={t('Редактирай')} variant="ink" onPress={() => onEdit(expense)} />}
         <Pill
           icon="trash-outline"
           label={t('Изтрий')}

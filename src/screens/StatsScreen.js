@@ -11,7 +11,7 @@ import useNow from '../hooks/useNow';
 import GradientHero from '../components/ui/GradientHero';
 import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
-import Sheet, { whenOnTopShown } from '../components/ui/Sheet';
+import Sheet from '../components/ui/Sheet';
 import Bar from '../components/Bar';
 import MonthPill from '../components/MonthPill';
 import MonthPickerSheet from '../components/MonthPickerSheet';
@@ -183,12 +183,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
             expense={selected}
             onBack={() => setSelected(null)}
             onEdit={(e) => {
-              // Add opens on top of this sheet, which closes underneath once Add is up
+              // Add opens on top of this sheet, which is back (with the changes) once Add closes
               onAdd?.({ edit: e });
-              whenOnTopShown(() => {
-                setCategory(null);
-                setSelected(null);
-              });
             }}
             onDelete={() => {
               removeExpense(selected.id);

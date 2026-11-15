@@ -249,9 +249,9 @@ function Main() {
   );
   useEffect(() => (ready && pet ? listenToReminders(onReminder) : undefined), [ready, !!pet]);
 
-  // Opened from a sheet ("Edit"), the Add page slides up on top of it, as from the "+"
+  // Opened from a sheet ("Edit"), the Add page slides up on top of it, as from the "+"; the sheet waits underneath
   const addOnTop = useOnTop(!!adding, (on) => (
-    <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)} onShow={on.onShow} onDismiss={on.onDismiss}>
+    <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)} onDismiss={on.onDismiss}>
       <ModalFrame>
       <AddScreen
         prefill={adding || {}}

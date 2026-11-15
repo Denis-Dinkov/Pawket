@@ -31,7 +31,6 @@ import MonthPickerSheet from '../components/MonthPickerSheet';
 import ExpenseRow from '../components/ExpenseRow';
 import ExpenseList from '../components/ExpenseList';
 import ExpenseDetailSheet, { confirmDelete } from '../components/ExpenseDetailSheet';
-import { whenOnTopShown } from '../components/ui/Sheet';
 import AdviceSheet from '../components/AdviceSheet';
 import IncomeSheet from '../components/IncomeSheet';
 import PetStatSheet from '../components/PetStatSheet';
@@ -205,11 +204,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
 
   // Add opens on top of the sheet it comes from, which slides away underneath (see useOnTop)
   const openAdd = onAdd;
-  // The detail sheet closes underneath once Add is up, not in the same step
-  const edit = (e) => {
-    openAdd({ edit: e });
-    whenOnTopShown(() => setSelected(null));
-  };
+  // Add opens on top of the detail sheet, which is back (with the changes) once Add closes
+  const edit = (e) => openAdd({ edit: e });
 
   // The room shrinks into a header bar once it scrolls away; the dog stays on screen
   const dockAt = ROOM - 80;
@@ -550,11 +546,9 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         onDelete={removeIncome}
         onEdit={(e) => {
           openAdd({ editIncome: e });
-          whenOnTopShown(() => setIncomeOpen(false));
         }}
         onAdd={() => {
           openAdd({ mode: 'income' });
-          whenOnTopShown(() => setIncomeOpen(false));
         }}
       />
       <PetStatSheet

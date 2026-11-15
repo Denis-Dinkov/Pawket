@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, Pressable, Animated, StyleSheet, Dimensions, PanResponder, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../../theme';
@@ -6,6 +6,10 @@ import useKeyboardHeight from '../../hooks/useKeyboardHeight';
 import { themed } from '../../themed';
 import { DURATION, EASE_IN, SPRING, motionReduced } from '../../motion';
 import { t } from '../../i18n';
+import { useSheetEntry } from './sheetHost';
+import NativeSheet from './NativeSheet';
+
+export { useOnTop } from './sheetHost';
 
 // Dragged further than this (or flicked down faster than CLOSE_VELOCITY) closes the sheet
 const CLOSE_DISTANCE = 110;
@@ -14,75 +18,13 @@ const CLOSE_VELOCITY = 0.9;
 const PULL_CLOSE = 60;
 const ANDROID = Platform.OS === 'android';
 
-// iOS presents a modal only from the topmost one, and only once the one before it has gone. Waiting for a
-// sheet to leave before opening a page from it (e.g. "Edit" opening the Add page) read as a slow stop-and-go.
-// So such a page is presented on top of the sheet it comes from, with the same slide as from the "+":
-// the sheet slides away underneath and keeps its Modal until the page is gone.
-const ROOT = 'root';
-let stack = []; // the sheets whose Modal is on screen, the topmost last
-let nextId = 1;
-let onTop = { hostId: null, element: null };
-const listeners = new Set();
-const subscribe = (fn) => {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-};
-const publish = (next) => {
-  onTop = next;
-  listeners.forEach((fn) => fn());
-};
-// Run once the page on top has finished sliding in (e.g. clearing the sheet it came from). Done together
-// with the opening, that work (re-rendering the screen behind) dropped frames from the start of the slide.
-let afterShown = [];
-export function whenOnTopShown(fn) {
-  afterShown.push(fn);
-}
-const shown = () => {
-  const run = afterShown;
-  afterShown = [];
-  run.forEach((fn) => fn());
-};
-
-/**
- * For a page Modal that may be opened while a sheet is showing (the Add page). Returns atRoot: render the
- * element yourself only then; otherwise the topmost sheet renders it inside its own Modal. render({ onShow,
- * onDismiss }) builds the Modal and passes both on to it; the place is picked when it opens and kept until
- * it is gone (onDismiss, with a timer as backup).
- */
-export function useOnTop(open, render) {
-  const host = useRef(null);
-  const [, rerender] = useReducer((n) => n + 1, 0);
-  if (open && host.current == null) host.current = stack.length ? stack[stack.length - 1] : ROOT;
-  const release = useCallback(() => {
-    if (host.current == null) return;
-    host.current = null;
-    if (onTop.hostId) publish({ hostId: null, element: null });
-    rerender();
-  }, []);
-  const element = render({ onShow: shown, onDismiss: release });
-  const hostId = host.current && host.current !== ROOT ? host.current : null;
-  useLayoutEffect(() => {
-    if (hostId || onTop.hostId) publish({ hostId, element: hostId ? element : null });
-  });
-  useEffect(() => {
-    if (open) return undefined;
-    // Closed before it was shown: nothing waits any more
-    afterShown = [];
-    if (host.current == null) return undefined;
-    // Long enough for the page's own slide down: released earlier, the sheet would take it down mid-way
-    const timer = setTimeout(release, 1200);
-    return () => clearTimeout(timer);
-  }, [open, release]);
-  return { atRoot: !hostId, element };
-}
-
 /**
  * Bottom sheet with a translucent backdrop; footer stays pinned at the bottom (and above the keyboard).
  * It slides up on open and back down on close: the Modal stays mounted until the exit has played,
  * with the last content kept, so a sheet whose content clears on close (e.g. selected = null) doesn't
  * collapse while it leaves.
  */
-export default function Sheet({ visible, onClose, children, footer, scroll = true, maxHeight = 0.88 }) {
+function JsSheet({ visible, onClose, children, footer, scroll = true, maxHeight = 0.88 }) {
   const insets = useSafeAreaInsets();
   // The sheet lifts above the keyboard so it doesn't cover fields and buttons
   const keyboard = useKeyboardHeight();
@@ -98,17 +40,15 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   const y = useRef(new Animated.Value(winHeight)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
-  const id = useRef(0);
-  if (!id.current) id.current = nextId++;
   // A page opened from this sheet, shown on top of it (see useOnTop)
-  const hosted = useSyncExternalStore(subscribe, () => (onTop.hostId === id.current ? onTop.element : null));
+  const { hosted, enter, leave } = useSheetEntry();
   const hosting = !!hosted;
-  // On the stack from the moment it shows until iOS has removed its window
+  // On the stack from the moment it shows until its window is removed
   const counted = useRef(false);
   const release = useRef(() => {
     if (!counted.current) return;
     counted.current = false;
-    stack = stack.filter((x) => x !== id.current);
+    leave();
   }).current;
   useEffect(() => release, [release]);
   // Swipe down to close, like an iOS sheet. The handle and the footer track the finger with a pan
@@ -203,7 +143,7 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
       setMounted(true);
       if (!counted.current) {
         counted.current = true;
-        stack.push(id.current);
+        enter();
       }
       if (motionReduced()) {
         y.setValue(0);
@@ -294,6 +234,14 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
       {hosted}
     </Modal>
   );
+}
+
+/**
+ * On iOS the sheet is the system's own (see NativeSheet): it slides, follows the finger and dims the screen
+ * exactly like the pages opened with "+", at the display's full refresh rate. Elsewhere it is drawn here.
+ */
+export default function Sheet(props) {
+  return NativeSheet ? <NativeSheet {...props} /> : <JsSheet {...props} />;
 }
 
 const s = themed((colors) => ({
