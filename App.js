@@ -27,6 +27,7 @@ import useWidgetSync from './src/widget/useWidgetSync';
 import PetSnapshots from './src/widget/PetSnapshots';
 import { outfitOf } from './src/pet/outfit';
 import Touch from './src/components/ui/Touch';
+import { useOnTop } from './src/components/ui/Sheet';
 import { syncReminders, listenToReminders, notifySavingsEaten, ACTION_NO_SPEND } from './src/reminders';
 import { monthOverview, dailyLimit } from './src/budget';
 import { pendingSpend } from './src/plans';
@@ -248,6 +249,27 @@ function Main() {
   );
   useEffect(() => (ready && pet ? listenToReminders(onReminder) : undefined), [ready, !!pet]);
 
+  // Opened from a sheet ("Edit"), the Add page slides up on top of it, as from the "+"
+  const addOnTop = useOnTop(!!adding, (on) => (
+    <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)} onShow={on.onShow} onDismiss={on.onDismiss}>
+      <ModalFrame>
+      <AddScreen
+        prefill={adding || {}}
+        onDone={(expense) => {
+          setAdding(null);
+          // Show the month of the new expense
+          if (expense) {
+            const d = new Date(expense.date);
+            setPeriod({ year: d.getFullYear(), month: d.getMonth() });
+            const income = expense.type === 'income';
+            setFlying({ id: Date.now(), income, text: `${income ? '+' : '−'}${money(expense.amount)}` });
+          }
+        }}
+      />
+      </ModalFrame>
+    </Modal>
+  ));
+
   const loading = (
     <View style={[s.root, { justifyContent: 'center' }]}>
       <ActivityIndicator color={colors.primary} />
@@ -304,23 +326,7 @@ function Main() {
       <FlyingAmount item={flying} onDone={clearFlying} />
       <ToastLayer />
 
-      <Modal visible={!!adding} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAdding(null)}>
-        <ModalFrame>
-        <AddScreen
-          prefill={adding || {}}
-          onDone={(expense) => {
-            setAdding(null);
-            // Show the month of the new expense
-            if (expense) {
-              const d = new Date(expense.date);
-              setPeriod({ year: d.getFullYear(), month: d.getMonth() });
-              const income = expense.type === 'income';
-              setFlying({ id: Date.now(), income, text: `${income ? '+' : '−'}${money(expense.amount)}` });
-            }
-          }}
-        />
-        </ModalFrame>
-      </Modal>
+      {addOnTop.atRoot && addOnTop.element}
 
       <Modal
         visible={settingsOpen}

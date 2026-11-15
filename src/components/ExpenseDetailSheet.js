@@ -32,7 +32,7 @@ function Row({ icon, label, value }) {
 
 // Everything about one expense: where, what for, when and how it was paid
 export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
-  const { updateExpense, markReviewed, keepDuplicate } = useStore();
+  const { updateExpense, markReviewed, keepDuplicate, expenses } = useStore();
   const [dupe, setDupe] = useState(!!expense.possibleDuplicate);
   const cat = categoryById(expense.categoryId);
   const bucket = cat && BUCKETS[cat.bucket];
@@ -123,7 +123,8 @@ export function ExpenseDetail({ expense, onDelete, onEdit, onBack }) {
         </>
       )}
       <View style={s.actions}>
-        {onEdit && <Pill icon="create-outline" label={t('Редактирай')} variant="ink" onPress={() => onEdit(expense)} />}
+        {/* The live record: the switch above may have changed it since this snapshot */}
+        {onEdit && <Pill icon="create-outline" label={t('Редактирай')} variant="ink" onPress={() => onEdit(expenses.find((x) => x.id === expense.id) || expense)} />}
         <Pill
           icon="trash-outline"
           label={t('Изтрий')}

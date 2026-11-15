@@ -11,13 +11,12 @@ import useNow from '../hooks/useNow';
 import GradientHero from '../components/ui/GradientHero';
 import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
-import Sheet from '../components/ui/Sheet';
+import Sheet, { whenOnTopShown } from '../components/ui/Sheet';
 import Bar from '../components/Bar';
 import MonthPill from '../components/MonthPill';
 import MonthPickerSheet from '../components/MonthPickerSheet';
 import ExpenseList from '../components/ExpenseList';
 import { ExpenseDetail, confirmDelete } from '../components/ExpenseDetailSheet';
-import { afterSheetsClose } from '../components/ui/Sheet';
 import AdviceSheet, { AdviceCard } from '../components/AdviceSheet';
 import { useMonthStats, SpendingChart, TopMerchants } from '../components/MonthDetails';
 import StatsHero from '../components/StatsHero';
@@ -184,10 +183,12 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
             expense={selected}
             onBack={() => setSelected(null)}
             onEdit={(e) => {
-              setCategory(null);
-              setSelected(null);
-              // Opens Add once this sheet has really gone (iOS can't present two at once)
-              afterSheetsClose(() => onAdd?.({ edit: e }));
+              // Add opens on top of this sheet, which closes underneath once Add is up
+              onAdd?.({ edit: e });
+              whenOnTopShown(() => {
+                setCategory(null);
+                setSelected(null);
+              });
             }}
             onDelete={() => {
               removeExpense(selected.id);

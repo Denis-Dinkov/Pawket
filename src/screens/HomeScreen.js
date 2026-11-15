@@ -17,7 +17,6 @@ import { tapFeedback } from '../haptics';
 import useNow from '../hooks/useNow';
 import Money from '../components/ui/Money';
 import Pill from '../components/ui/Pill';
-import { afterSheetsClose } from '../components/ui/Sheet';
 import Card from '../components/ui/Card';
 import IconBadge from '../components/ui/IconBadge';
 import Segmented from '../components/ui/Segmented';
@@ -32,6 +31,7 @@ import MonthPickerSheet from '../components/MonthPickerSheet';
 import ExpenseRow from '../components/ExpenseRow';
 import ExpenseList from '../components/ExpenseList';
 import ExpenseDetailSheet, { confirmDelete } from '../components/ExpenseDetailSheet';
+import { whenOnTopShown } from '../components/ui/Sheet';
 import AdviceSheet from '../components/AdviceSheet';
 import IncomeSheet from '../components/IncomeSheet';
 import PetStatSheet from '../components/PetStatSheet';
@@ -203,11 +203,12 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
       ? t('За {0} няма доход — не мога да го оценя.', { 0: monthLower(month) })
       : t('{0} завърши с {1}/100 {2}', { 0: MONTHS[month], 1: ov.score, 2: MONTH_EMOJI[expressionFor(ov.score)] });
 
-  // Opens Add once the sheet it comes from has really gone (iOS can't present two at once)
-  const openAdd = (prefill) => afterSheetsClose(() => onAdd(prefill));
+  // Add opens on top of the sheet it comes from, which slides away underneath (see useOnTop)
+  const openAdd = onAdd;
+  // The detail sheet closes underneath once Add is up, not in the same step
   const edit = (e) => {
-    setSelected(null);
     openAdd({ edit: e });
+    whenOnTopShown(() => setSelected(null));
   };
 
   // The room shrinks into a header bar once it scrolls away; the dog stays on screen
@@ -548,12 +549,12 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         month={month}
         onDelete={removeIncome}
         onEdit={(e) => {
-          setIncomeOpen(false);
           openAdd({ editIncome: e });
+          whenOnTopShown(() => setIncomeOpen(false));
         }}
         onAdd={() => {
-          setIncomeOpen(false);
           openAdd({ mode: 'income' });
+          whenOnTopShown(() => setIncomeOpen(false));
         }}
       />
       <PetStatSheet

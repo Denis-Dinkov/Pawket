@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, Pressable, Animated, StyleSheet, Dimensions, PanResponder, Platform, Easing } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { Modal, View, Pressable, Animated, StyleSheet, Dimensions, PanResponder, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../../theme';
 import useKeyboardHeight from '../../hooks/useKeyboardHeight';
@@ -13,26 +13,67 @@ const CLOSE_VELOCITY = 0.9;
 // The bounce resists the finger (about half its travel), so pulling the content needs less offset
 const PULL_CLOSE = 60;
 const ANDROID = Platform.OS === 'android';
-// Handing over to another sheet (e.g. "Edit" opening the Add page): the closing one leaves quicker and
-// speeding up, without easing to a stop. Easing out to a standstill, then a pause while iOS swaps
-// the windows, then the next sheet starting read as a stop-and-go stutter.
-const HANDOFF_EXIT = 200;
-const HANDOFF_EASE = Easing.in(Easing.quad);
 
-// iOS won't present a new modal (e.g. "Edit" opening the Add page) while another one is still leaving,
-// and a fixed delay is either too short (a stutter) or too long (a pause). So the sheets count themselves,
-// and afterSheetsClose(fn) runs fn the moment the last one is really gone.
-let openSheets = 0;
-let waiting = [];
-const flush = () => {
-  if (openSheets > 0) return;
-  const run = waiting;
-  waiting = [];
+// iOS presents a modal only from the topmost one, and only once the one before it has gone. Waiting for a
+// sheet to leave before opening a page from it (e.g. "Edit" opening the Add page) read as a slow stop-and-go.
+// So such a page is presented on top of the sheet it comes from, with the same slide as from the "+":
+// the sheet slides away underneath and keeps its Modal until the page is gone.
+const ROOT = 'root';
+let stack = []; // the sheets whose Modal is on screen, the topmost last
+let nextId = 1;
+let onTop = { hostId: null, element: null };
+const listeners = new Set();
+const subscribe = (fn) => {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+};
+const publish = (next) => {
+  onTop = next;
+  listeners.forEach((fn) => fn());
+};
+// Run once the page on top has finished sliding in (e.g. clearing the sheet it came from). Done together
+// with the opening, that work (re-rendering the screen behind) dropped frames from the start of the slide.
+let afterShown = [];
+export function whenOnTopShown(fn) {
+  afterShown.push(fn);
+}
+const shown = () => {
+  const run = afterShown;
+  afterShown = [];
   run.forEach((fn) => fn());
 };
-export function afterSheetsClose(fn) {
-  waiting.push(fn);
-  if (openSheets === 0) requestAnimationFrame(flush);
+
+/**
+ * For a page Modal that may be opened while a sheet is showing (the Add page). Returns atRoot: render the
+ * element yourself only then; otherwise the topmost sheet renders it inside its own Modal. render({ onShow,
+ * onDismiss }) builds the Modal and passes both on to it; the place is picked when it opens and kept until
+ * it is gone (onDismiss, with a timer as backup).
+ */
+export function useOnTop(open, render) {
+  const host = useRef(null);
+  const [, rerender] = useReducer((n) => n + 1, 0);
+  if (open && host.current == null) host.current = stack.length ? stack[stack.length - 1] : ROOT;
+  const release = useCallback(() => {
+    if (host.current == null) return;
+    host.current = null;
+    if (onTop.hostId) publish({ hostId: null, element: null });
+    rerender();
+  }, []);
+  const element = render({ onShow: shown, onDismiss: release });
+  const hostId = host.current && host.current !== ROOT ? host.current : null;
+  useLayoutEffect(() => {
+    if (hostId || onTop.hostId) publish({ hostId, element: hostId ? element : null });
+  });
+  useEffect(() => {
+    if (open) return undefined;
+    // Closed before it was shown: nothing waits any more
+    afterShown = [];
+    if (host.current == null) return undefined;
+    // Long enough for the page's own slide down: released earlier, the sheet would take it down mid-way
+    const timer = setTimeout(release, 1200);
+    return () => clearTimeout(timer);
+  }, [open, release]);
+  return { atRoot: !hostId, element };
 }
 
 /**
@@ -57,13 +98,17 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   const y = useRef(new Animated.Value(winHeight)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
-  // Counted as open from the moment it shows until iOS has removed its window
+  const id = useRef(0);
+  if (!id.current) id.current = nextId++;
+  // A page opened from this sheet, shown on top of it (see useOnTop)
+  const hosted = useSyncExternalStore(subscribe, () => (onTop.hostId === id.current ? onTop.element : null));
+  const hosting = !!hosted;
+  // On the stack from the moment it shows until iOS has removed its window
   const counted = useRef(false);
   const release = useRef(() => {
     if (!counted.current) return;
     counted.current = false;
-    openSheets -= 1;
-    flush();
+    stack = stack.filter((x) => x !== id.current);
   }).current;
   useEffect(() => release, [release]);
   // Swipe down to close, like an iOS sheet. The handle and the footer track the finger with a pan
@@ -158,7 +203,7 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
       setMounted(true);
       if (!counted.current) {
         counted.current = true;
-        openSheets += 1;
+        stack.push(id.current);
       }
       if (motionReduced()) {
         y.setValue(0);
@@ -174,12 +219,9 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
         setMounted(false);
         return;
       }
-      // Something waits for this sheet to go (afterSheetsClose): hand over instead of a full exit
-      const handoff = waiting.length > 0;
-      const exit = handoff ? HANDOFF_EXIT : DURATION.exit;
       Animated.parallel([
-        Animated.timing(y, { toValue: offscreen(), duration: exit, easing: handoff ? HANDOFF_EASE : EASE_IN, useNativeDriver: true }),
-        Animated.timing(backdrop, { toValue: 0, duration: exit, useNativeDriver: true }),
+        Animated.timing(y, { toValue: offscreen(), duration: DURATION.exit, easing: EASE_IN, useNativeDriver: true }),
+        Animated.timing(backdrop, { toValue: 0, duration: DURATION.exit, useNativeDriver: true }),
       ]).start(({ finished }) => finished && setMounted(false));
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -187,12 +229,13 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
   // After the exit the Modal stays rendered but hidden, so iOS reports when its window is gone (onDismiss).
   // A timer backs that up in case the event never comes.
   useEffect(() => {
-    if (mounted || visible || !counted.current) return undefined;
+    if (mounted || visible || hosting || !counted.current) return undefined;
     const timer = setTimeout(release, 400);
     return () => clearTimeout(timer);
-  }, [mounted, visible, release]);
+  }, [mounted, visible, hosting, release]);
 
-  const shown = mounted || visible;
+  // A page on top keeps the Modal (iOS would take the page down with it)
+  const shown = mounted || visible || hosting;
   // The panel unmounts with the Modal's content, and the next one is measured afresh
   if (!shown) measured.current = false;
   const content = visible ? { children, footer } : last.current;
@@ -248,6 +291,7 @@ export default function Sheet({ visible, onClose, children, footer, scroll = tru
         </Animated.View>
       </View>
       )}
+      {hosted}
     </Modal>
   );
 }
