@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, Linking, Platform } from 'react-native';
+import { View, ScrollView, Linking, Platform, AppState } from 'react-native';
+import { requireOptionalNativeModule } from 'expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/ui/AppText';
@@ -29,6 +30,11 @@ let kept = { messages: [], snapshot: null, day: null, sources: null, restored: f
 const SAVED_MESSAGES = 50;
 // What goes to the model: only the newest messages, so a long chat stays quick and within the free limits
 const SENT_MESSAGES = 12;
+
+// iOS: extra time in the background so a reply can finish after the app is left (modules/pawket-payments)
+const keepAlive = Platform.OS === 'ios' ? requireOptionalNativeModule('PawketBackground') : null;
+// Streamed text is shown in steps this far apart, not on every small piece, so the chat isn't redrawn per word
+const TEXT_STEP_MS = 60;
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -212,6 +218,21 @@ export default function ChatScreen({ onClose }) {
   const [hasKey, setHasKey] = useState(null);
   const aborter = useRef(null);
   const scroll = useRef(null);
+  // The reply was still coming when the app went to the background; if the connection is cut there, the question
+  // is asked again (resume) as soon as the app is back
+  const away = useRef(false);
+  const resume = useRef(null);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' && aborter.current) away.current = true;
+      if (state === 'active' && resume.current) {
+        const again = resume.current;
+        resume.current = null;
+        again();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const refreshKeys = useCallback(async () => {
     const found = await Promise.all(PROVIDER_IDS.map(loadApiKey));
@@ -256,6 +277,17 @@ export default function ChatScreen({ onClose }) {
     setBusy(true);
     const patch = (change) => setMessages((list) => list.map((m) => (m.id === reply.id ? { ...m, ...change(m) } : m)));
     aborter.current = new AbortController();
+    away.current = false;
+    resume.current = null;
+    let pending = '';
+    let timer = null;
+    const showText = () => {
+      clearTimeout(timer);
+      timer = null;
+      if (pending) patch((m) => ({ text: m.text + pending }));
+      pending = '';
+    };
+    keepAlive?.begin();
     try {
       const result = await streamReply({
         modelId: model.id,
@@ -263,19 +295,36 @@ export default function ChatScreen({ onClose }) {
         petName: pet.name,
         snapshot: kept.snapshot,
         messages: toApiMessages(next),
-        onText: (piece) => patch((m) => ({ text: m.text + piece })),
+        onText: (piece) => {
+          pending += piece;
+          timer ??= setTimeout(showText, TEXT_STEP_MS);
+        },
         signal: aborter.current.signal,
       });
+      showText();
       // The other free model stood in for an overloaded one: said under the reply
       if (result.modelId !== model.id) patch(() => ({ via: modelById(result.modelId)?.name }));
       if (result.cut) patch((m) => ({ text: `${m.text}\n\n${t('(Отговорът стана твърде дълъг и спря тук.)')}` }));
       // Stopped before the first word: nothing to keep
       if (result.stopped) setMessages((list) => list.filter((m) => m.id !== reply.id || m.text));
     } catch (e) {
-      patch(() => ({ error: { kind: e.kind || 'other', message: e.message } }));
+      showText();
+      if (e.kind === 'network' && away.current) {
+        patch(() => ({ error: { kind: 'away', message: t('Връзката спря, докато Pawket беше на заден план. Питам пак, щом се върнеш.') } }));
+        resume.current = () => ask(question, history);
+      } else {
+        patch(() => ({ error: { kind: e.kind || 'other', message: e.message } }));
+      }
     } finally {
+      keepAlive?.end();
       aborter.current = null;
       setBusy(false);
+    }
+    // The cut connection is often only noticed once the app is back: then ask again right away
+    if (resume.current && AppState.currentState === 'active') {
+      const again = resume.current;
+      resume.current = null;
+      again();
     }
   };
 
@@ -289,6 +338,7 @@ export default function ChatScreen({ onClose }) {
 
   const startOver = () => {
     aborter.current?.abort();
+    resume.current = null;
     kept.snapshot = null;
     setMessages([]);
   };

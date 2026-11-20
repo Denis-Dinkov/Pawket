@@ -1,6 +1,9 @@
 {
-  "platforms": ["android"],
+  "platforms": ["android", "apple"],
   "android": {
     "modules": ["com.denis.pawket.payments.PawketPaymentsModule"]
+  },
+  "apple": {
+    "modules": ["PawketBackgroundModule"]
   }
 }

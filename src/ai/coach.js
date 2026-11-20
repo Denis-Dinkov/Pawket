@@ -1,6 +1,6 @@
 // The chat with the dog: which models can answer, what they are told, and one streamed reply.
-// Claude goes through the official Anthropic SDK; the free option is Google's Gemini API (its OpenAI-compatible
-// endpoint, called with fetch). Both use the user's own key (see key.js) straight from the phone.
+// Claude goes through the official Anthropic SDK; the free options, Google's Gemini and Groq, through their
+// OpenAI-compatible endpoints, called with fetch. All use the user's own key (see key.js) straight from the phone.
 import Anthropic from '@anthropic-ai/sdk';
 import { fetch as streamingFetch } from 'expo/fetch';
 import { t, getLang } from '../i18n';
@@ -8,11 +8,14 @@ import { t, getLang } from '../i18n';
 /**
  * The models offered in the picker, cheapest first within each provider.
  * effort: how hard the model thinks before answering (a chat about one's own budget doesn't need the top levels).
+ * Thinking comes before the first word, so it is most of the wait: the lowest level each model accepts is used.
  * fallbacks: Claude models whose safety classifiers can decline a request; the API then retries on another model.
  */
 export const MODELS = [
-  { id: 'gemini-3.8-flash', provider: 'google', name: 'Gemini 3.8 Flash', free: true, get hint() { return t('Безплатен · бърз'); } },
-  { id: 'gemini-4-hydrogen', provider: 'google', name: 'Gemini 4 Hydrogen', free: true, get hint() { return t('Безплатен · по-умен'); } },
+  { id: 'gemini-3.5-flash-lite', provider: 'google', name: 'Gemini 3.5 Flash-Lite', free: true, effort: 'minimal', get hint() { return t('Безплатен · най-бърз'); } },
+  { id: 'gemini-3.8-flash', provider: 'google', name: 'Gemini 3.8 Flash', free: true, effort: 'low', get hint() { return t('Безплатен · бърз'); } },
+  { id: 'gemini-4-hydrogen', provider: 'google', name: 'Gemini 4 Hydrogen', free: true, effort: 'low', get hint() { return t('Безплатен · по-умен'); } },
+  { id: 'openai/gpt-oss-120b', provider: 'groq', name: 'GPT-OSS 120B', free: true, effort: 'low', get hint() { return t('Безплатен · много бърз, по-слаб на български'); } },
   { id: 'claude-haiku-5-5', provider: 'anthropic', name: 'Claude Haiku 5.5', effort: 'medium', get hint() { return t('Най-евтин · под 1 цент на въпрос'); } },
   { id: 'claude-sonnet-5-5', provider: 'anthropic', name: 'Claude Sonnet 5.5', effort: 'low', fallbacks: true, get hint() { return t('Бърз и умен · около 1 цент на въпрос'); } },
   { id: 'claude-opus-5-5', provider: 'anthropic', name: 'Claude Opus 5.5', effort: 'medium', fallbacks: true, get hint() { return t('Много умен · около 2–3 цента на въпрос'); } },
@@ -24,6 +27,13 @@ export const PROVIDERS = {
     name: 'Google Gemini',
     keyUrl: 'https://aistudio.google.com/apikey',
     get keyHint() { return t('Безплатен ключ от Google AI Studio — без карта.'); },
+    base: process.env.EXPO_PUBLIC_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai',
+  },
+  groq: {
+    name: 'Groq',
+    keyUrl: 'https://console.groq.com/keys',
+    get keyHint() { return t('Безплатен ключ от GroqCloud. Лимитът е няколко въпроса в минута.'); },
+    base: 'https://api.groq.com/openai/v1',
   },
   anthropic: {
     name: 'Claude (Anthropic)',
@@ -38,13 +48,12 @@ export const modelById = (id) => MODELS.find((m) => m.id === id) || null;
 export const FREE_PROVIDER = 'google';
 export const FREE_MODEL = 'gemini-4-hydrogen';
 
-// The model to use when none was picked: the free one when its key is there, otherwise Claude Opus
+// The model to use when none was picked: the free Gemini when its key is there, otherwise Claude Opus, otherwise Groq
 export const defaultModel = (hasKey) =>
-  hasKey[FREE_PROVIDER] ? FREE_MODEL : hasKey.anthropic ? 'claude-opus-5-5' : null;
+  hasKey[FREE_PROVIDER] ? FREE_MODEL : hasKey.anthropic ? 'claude-opus-5-5' : hasKey.groq ? 'openai/gpt-oss-120b' : null;
 
 // A proxy can stand in for Anthropic's own address (e.g. a Worker that holds the key); unset means the real API
 const ANTHROPIC_BASE = process.env.EXPO_PUBLIC_ANTHROPIC_BASE_URL || undefined;
-const GEMINI_BASE = process.env.EXPO_PUBLIC_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
 const MAX_TOKENS = 16000;
 
 // What went wrong, in words for the user. kind: 'auth' | 'limit' | 'busy' | 'network' | 'refusal' | 'other'
@@ -125,16 +134,17 @@ async function streamClaude({ model, apiKey, system, snapshot, messages, onText,
   return { stopped: false, cut: message.stop_reason === 'max_tokens' };
 }
 
-// Gemini's OpenAI-compatible endpoint streams "data: {json}" lines, ending with "data: [DONE]"
-async function streamGemini({ model, apiKey, system, snapshot, messages, onText, signal }) {
+// Gemini's and Groq's OpenAI-compatible endpoints stream "data: {json}" lines, ending with "data: [DONE]".
+// Groq's reasoning models send their thinking in delta.reasoning, apart from the reply in delta.content.
+async function streamOpenAI({ model, apiKey, system, snapshot, messages, onText, signal }) {
   const post = () =>
-    streamingFetch(`${GEMINI_BASE}/chat/completions`, {
+    streamingFetch(`${PROVIDERS[model.provider].base}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: model.id,
         stream: true,
-        reasoning_effort: 'low',
+        reasoning_effort: model.effort,
         messages: [{ role: 'system', content: `${system}\n\n${snapshot}` }, ...messages],
       }),
       signal,
@@ -202,7 +212,7 @@ async function streamGemini({ model, apiKey, system, snapshot, messages, onText,
  * Streams one reply. messages: [{ role: 'user' | 'assistant', content: string }], ending with the user's question.
  * onText gets each new piece of text. Resolves to { stopped, cut, modelId }: stopped by the user (signal), cut off
  * at the length limit, and the model that answered. Throws a CoachError with a message for the user.
- * The free Gemini models stand in for each other: when the picked one is overloaded, the other one answers
+ * The free models of one provider stand in for each other: when the picked one is overloaded, another one answers
  * (same key, nothing streamed yet, since "busy" comes before the first word).
  */
 export async function streamReply({ modelId, apiKey, petName, snapshot, messages, onText, signal }) {
@@ -210,10 +220,10 @@ export async function streamReply({ modelId, apiKey, petName, snapshot, messages
   const args = { model, apiKey, system: systemPrompt(petName), snapshot, messages, onText, signal };
   if (model.provider === 'anthropic') return { ...(await streamClaude(args)), modelId: model.id };
   try {
-    return { ...(await streamGemini(args)), modelId: model.id };
+    return { ...(await streamOpenAI(args)), modelId: model.id };
   } catch (e) {
-    const other = MODELS.find((m) => m.provider === 'google' && m.free && m.id !== model.id);
+    const other = MODELS.find((m) => m.provider === model.provider && m.free && m.id !== model.id);
     if (e.kind !== 'busy' || !other || signal?.aborted) throw e;
-    return { ...(await streamGemini({ ...args, model: other })), modelId: other.id };
+    return { ...(await streamOpenAI({ ...args, model: other })), modelId: other.id };
   }
 }

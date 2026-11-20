@@ -1,4 +1,4 @@
-// The user's own API keys for the chat with the dog, one per provider ('anthropic' | 'google'). They live in
+// The user's own API keys for the chat with the dog, one per provider ('anthropic' | 'google' | 'groq'). They live in
 // the Keychain / Keystore (expo-secure-store), apart from the saved data, so they never end up in a backup file.
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
