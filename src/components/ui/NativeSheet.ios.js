@@ -36,6 +36,10 @@ export default function NativeSheet({ visible, onClose, children, footer, scroll
 
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // The sheet's width as SwiftUI reports it. Without an explicit width from the very first layout, text
+  // in rows (flex: 1) keeps a single-line measurement and runs off the right edge. Until SwiftUI reports
+  // it, the window width stands in (an iPhone sheet is as wide as the screen).
+  const [hostWidth, setHostWidth] = useState(0);
 
   if (!mounted) return null;
   return (
@@ -57,13 +61,19 @@ export default function NativeSheet({ visible, onClose, children, footer, scroll
             preferredColorScheme(currentColorScheme()),
           ]}
         >
-          <RNHostView matchContents={{ vertical: true }}>
+          <RNHostView
+            matchContents={{ vertical: true }}
+            onLayout={(e) => {
+              const w = Math.round(e.nativeEvent.layout.width);
+              if (w > 0 && w !== hostWidth) setHostWidth(w);
+            }}
+          >
             {/* Tall content scrolls inside; the footer stays below it */}
-            <View style={{ maxHeight: Math.min(height * maxHeight, height - insets.top - 12), paddingTop: 14 }}>
+            <View style={{ width: hostWidth || width, maxHeight: Math.min(height * maxHeight, height - insets.top - 12), paddingTop: 16 }}>
               {scroll ? (
                 <ScrollView
                   style={{ flexGrow: 0, flexShrink: 1 }}
-                  contentContainerStyle={{ padding: 20, paddingTop: 10 }}
+                  contentContainerStyle={{ padding: 20, paddingTop: 12 }}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="interactive"
@@ -71,7 +81,7 @@ export default function NativeSheet({ visible, onClose, children, footer, scroll
                   {content.children}
                 </ScrollView>
               ) : (
-                <View style={{ padding: 20, paddingTop: 10 }}>{content.children}</View>
+                <View style={{ padding: 20, paddingTop: 12 }}>{content.children}</View>
               )}
               {content.footer && <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 }}>{content.footer}</View>}
               {hosted}
