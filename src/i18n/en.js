@@ -706,6 +706,8 @@ export default {
   "Нещо се обърка. Опитай пак.": "Something went wrong. Try again.",
   "На това не мога да отговоря. Опитай да го попиташ по друг начин.": "I can't answer that. Try asking it another way.",
   "Безплатният лимит за момента е изчерпан. Опитай след малко или избери друг модел.": "The free limit is used up for now. Try again shortly or pick another model.",
+  "Моделът е претоварен в момента. Опитай пак след малко или избери друг модел.": "The model is overloaded right now. Try again shortly or pick another model.",
+  "Отговори {0}: избраният модел беше претоварен.": "Answered by {0}: the model you picked was overloaded.",
   "Връзката прекъсна. Опитай пак.": "The connection dropped. Try again.",
   "Кой да отговаря": "Who answers",
   "Избери модел. Ключът се пази само на този телефон.": "Pick a model. The key is kept on this phone only.",

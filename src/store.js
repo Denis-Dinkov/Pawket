@@ -21,6 +21,8 @@ import { groupReports } from './notificationPayments';
 const AUTO_SOURCE = Platform.OS === 'android' ? 'gpay' : 'applepay';
 
 export const KEY = 'spendlite:v2';
+// The chat with the dog, kept apart from the data (and out of backups); "delete everything" removes it too
+export const CHAT_KEY = 'pawket:chat';
 const KEY_V1 = 'spendlite:v1';
 // A copy of saved data that couldn't be parsed, so it can still be recovered by hand
 const KEY_DAMAGED = 'spendlite:v2:damaged';
@@ -765,6 +767,7 @@ export function StoreProvider({ children }) {
 
       resetAll: () => {
         setPendingEvent(null);
+        AsyncStorage.removeItem(CHAT_KEY).catch(() => {});
         setData(EMPTY);
       },
     }),

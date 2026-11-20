@@ -3,7 +3,8 @@ import { View, ScrollView, Linking, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/ui/AppText';
-import { useStore } from '../store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useStore, CHAT_KEY } from '../store';
 import { colors, radius } from '../theme';
 import { petStatus } from '../pet/logic';
 import Pet from '../pet/Pet';
@@ -19,11 +20,15 @@ import { t } from '../i18n';
 
 const PROVIDER_IDS = Object.keys(PROVIDERS);
 
-// The conversation outlives the screen (closing the sheet and coming back continues it) but not the app:
-// a new launch starts fresh, with a fresh snapshot of the numbers.
-// messages: [{ id, role: 'user' | 'assistant', text, error?: { kind, message } }]
-// day: when the snapshot was taken; the app can stay open for days, and a new day gets fresh numbers
-let kept = { messages: [], snapshot: null, day: null };
+// The conversation outlives the screen and the app: it's saved on the phone (CHAT_KEY, the newest SAVED_MESSAGES)
+// and restored once per launch. "Нов разговор" clears it.
+// messages: [{ id, role: 'user' | 'assistant', text, error?: { kind, message }, via?: model name }]
+// The snapshot of the numbers is renewed when the data it was read from changed (an entry added mid-chat) or a
+// new day began (sources: the store arrays it was read from)
+let kept = { messages: [], snapshot: null, day: null, sources: null, restored: false };
+const SAVED_MESSAGES = 50;
+// What goes to the model: only the newest messages, so a long chat stays quick and within the free limits
+const SENT_MESSAGES = 12;
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -37,7 +42,10 @@ function toApiMessages(messages) {
     if (last && last.role === m.role) last.content += `\n\n${m.text}`;
     else out.push({ role: m.role, content: m.text });
   }
-  return out;
+  const recent = out.slice(-SENT_MESSAGES);
+  // A conversation sent to the model must start with the user's turn
+  while (recent[0]?.role === 'assistant') recent.shift();
+  return recent;
 }
 
 // Where a provider's key is pasted: what it is, where to get one, the field. onSaved runs once it is stored.
@@ -178,8 +186,25 @@ export default function ChatScreen({ onClose }) {
   const keyboard = useKeyboardHeight();
   const status = petStatus({ ...data, now: new Date() });
 
+  // A new dog (after "delete everything", which also removed the saved chat) starts a new conversation
+  if (kept.petBorn !== pet.createdAt) kept = { messages: [], snapshot: null, day: null, sources: null, restored: kept.restored, petBorn: pet.createdAt };
   const [messages, setMessages] = useState(kept.messages);
   kept.messages = messages;
+  // The saved conversation comes back once per launch; nothing is written before that, or it would be lost
+  const [restored, setRestored] = useState(kept.restored);
+  useEffect(() => {
+    if (kept.restored) return;
+    AsyncStorage.getItem(CHAT_KEY)
+      .then((raw) => {
+        const saved = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(saved) && saved.length && !kept.messages.length) setMessages(saved);
+      })
+      .catch(() => {})
+      .finally(() => {
+        kept.restored = true;
+        setRestored(true);
+      });
+  }, []);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
@@ -215,11 +240,14 @@ export default function ChatScreen({ onClose }) {
       setModelsOpen(true);
       return;
     }
-    // The numbers are read once per conversation and day, so the dog doesn't change its story halfway through
+    // The numbers are read again only when something changed since (or a new day began), so the dog answers
+    // "and now?" with the expense just added, and otherwise keeps one story through the conversation
     const today = new Date().toDateString();
-    if (!kept.snapshot || kept.day !== today) {
+    const sources = [data.expenses, data.incomes, data.incomeEntries, data.recurring, data.goals, data.wishes, data.splits];
+    if (!kept.snapshot || kept.day !== today || sources.some((x, i) => x !== kept.sources?.[i])) {
       kept.snapshot = financeSnapshot(data, new Date());
       kept.day = today;
+      kept.sources = sources;
     }
     const reply = { id: newId(), role: 'assistant', text: '' };
     const next = [...history, { id: newId(), role: 'user', text: question }];
@@ -238,6 +266,8 @@ export default function ChatScreen({ onClose }) {
         onText: (piece) => patch((m) => ({ text: m.text + piece })),
         signal: aborter.current.signal,
       });
+      // The other free model stood in for an overloaded one: said under the reply
+      if (result.modelId !== model.id) patch(() => ({ via: modelById(result.modelId)?.name }));
       if (result.cut) patch((m) => ({ text: `${m.text}\n\n${t('(Отговорът стана твърде дълъг и спря тук.)')}` }));
       // Stopped before the first word: nothing to keep
       if (result.stopped) setMessages((list) => list.filter((m) => m.id !== reply.id || m.text));
@@ -262,6 +292,12 @@ export default function ChatScreen({ onClose }) {
     kept.snapshot = null;
     setMessages([]);
   };
+
+  // Saved once a reply is finished (not on every streamed piece)
+  useEffect(() => {
+    if (!restored || busy) return;
+    AsyncStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-SAVED_MESSAGES))).catch(() => {});
+  }, [messages, busy, restored]);
 
   const suggestions = [
     t('Как ми е бюджетът този месец?'),
@@ -347,6 +383,7 @@ export default function ChatScreen({ onClose }) {
             <View key={m.id} style={s.theirs}>
               {!!m.text && <Text style={s.theirsText} selectable>{m.text}</Text>}
               {!m.text && !m.error && <Text style={s.typing}>{t('{0} мисли…', { 0: pet.name })}</Text>}
+              {!!m.via && <Text style={s.via}>{t('Отговори {0}: избраният модел беше претоварен.', { 0: m.via })}</Text>}
               {m.error && (
                 <View style={{ gap: 10, marginTop: m.text ? 10 : 0 }}>
                   <View style={s.errorRow}>
@@ -355,7 +392,7 @@ export default function ChatScreen({ onClose }) {
                   </View>
                   <View style={s.keyButtons}>
                     {m.error.kind === 'auth' && <Pill small icon="key-outline" label={t('Смени ключа')} onPress={() => setModelsOpen(true)} />}
-                    {m.error.kind === 'limit' && <Pill small icon="swap-horizontal" label={t('Друг модел')} onPress={() => setModelsOpen(true)} />}
+                    {(m.error.kind === 'limit' || m.error.kind === 'busy') && <Pill small icon="swap-horizontal" label={t('Друг модел')} onPress={() => setModelsOpen(true)} />}
                     {m.id === last?.id && !busy && <Pill small variant="outline" icon="refresh" label={t('Опитай пак')} onPress={() => retry(m)} />}
                   </View>
                 </View>
@@ -439,8 +476,10 @@ const s = themed((c) => ({
   },
   theirsText: { color: c.text, fontSize: 15, lineHeight: 22 },
   typing: { color: c.muted, fontSize: 14 },
+  via: { color: c.muted, fontSize: 12, marginTop: 6 },
   errorRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
-  error: { flex: 1, color: c.danger, fontSize: 14, lineHeight: 19 },
+  // flexShrink, not flex: the bubble sizes to its content, and flex: 1 squeezed the text to the buttons' width
+  error: { flexShrink: 1, color: c.danger, fontSize: 14, lineHeight: 19 },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8,
     borderTopWidth: 1, borderTopColor: c.faint, backgroundColor: c.bg,
