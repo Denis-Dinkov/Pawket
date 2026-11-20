@@ -1,8 +1,7 @@
 // "Your year with Charlie": a summary of one calendar year. Pure logic, no RN imports.
 import { getCategories } from './theme';
 import { monthOverview, filterMonth, summarize, budgetScore, monthIncome, countsInBudget } from './budget';
-
-const normalizeMerchant = (m) => (m || '').trim().toLowerCase();
+import { normalizeMerchant } from './categoryGuess';
 
 export function yearReview({ expenses = [], incomes = {}, incomeEntries = [], year, now = new Date() }) {
   const list = expenses.filter((e) => new Date(e.date).getFullYear() === year);

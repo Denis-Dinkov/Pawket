@@ -81,9 +81,6 @@ const DARK = {
   white: '#FFFFFF',
 };
 
-export const lightColors = LIGHT;
-export const darkColors = DARK;
-
 // The live palette. Components read it at render time; applyScheme swaps the values in place,
 // and themed() style sheets rebuild themselves on the next access.
 export const colors = { ...LIGHT };
@@ -185,7 +182,6 @@ export const INCOME_KINDS = [
   { id: 'other', get name() { return t('Друго'); }, icon: 'cash' },
 ];
 export const incomeKindById = (id) => INCOME_KINDS.find((k) => k.id === id) || INCOME_KINDS[INCOME_KINDS.length - 1];
-export const categoryColor = (id) => BUCKETS[categoryById(id)?.bucket]?.color || colors.muted;
 
 // Bulgarian groups thousands with a no-break space from 5 digits on (CLDR bg): 1240, 12 400, 1 234 567.
 // English uses commas from 4 digits on: 1,240, 12,400

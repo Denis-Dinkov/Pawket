@@ -1,5 +1,4 @@
 import React from 'react';
-import { View } from 'react-native';
 import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../../theme';
@@ -46,10 +45,6 @@ export default function Pill({ label, icon, iconRight, onPress, variant: variant
       {iconRight && <Ionicons name={iconRight} size={iconSize} color={v.fg} />}
     </Touch>
   );
-}
-
-export function PillRow({ children, style }) {
-  return <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, style]}>{children}</View>;
 }
 
 const s = themed((colors) => ({

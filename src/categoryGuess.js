@@ -52,11 +52,12 @@ const LEGAL = new Set(LEGAL_WORDS);
 const PROCESSORS = new RegExp(`^(${PROCESSOR_PREFIXES.join('|')})\\s*\\*\\s*`, 'i');
 const GENERIC = new Set(GENERIC_WORDS);
 
-const exactKey = (m) => String(m || '').trim().toLowerCase();
+// The name as the merchant memory stores it: trimmed, lower case
+export const normalizeMerchant = (m) => String(m || '').trim().toLowerCase();
 
 /** "LIDL BULGARIA EOOD*SOFIA 1234" → "lidl bulgaria sofia" */
 export function merchantKey(m) {
-  return exactKey(m)
+  return normalizeMerchant(m)
     .replace(PROCESSORS, '')
     .replace(/[0-9]+/g, ' ')
     .replace(/[*_/\\|,.;:()"'„“”#№-]+/g, ' ')
@@ -75,7 +76,7 @@ const firstWord = (key) => {
  * Exact name first, then the same name without numbers and legal forms, then the same distinctive first word.
  */
 export function rememberedCategory(merchants = {}, merchant) {
-  const exact = exactKey(merchant);
+  const exact = normalizeMerchant(merchant);
   if (!exact) return undefined;
   if (merchants[exact]) return merchants[exact];
   const key = merchantKey(merchant);
@@ -90,4 +91,4 @@ export function rememberedCategory(merchants = {}, merchant) {
 }
 
 /** Whether two merchant names are the same shop by the rules above */
-export const sameMerchant = (a, b) => !!exactKey(a) && rememberedCategory({ [exactKey(a)]: 'x' }, b) === 'x';
+export const sameMerchant = (a, b) => !!normalizeMerchant(a) && rememberedCategory({ [normalizeMerchant(a)]: 'x' }, b) === 'x';

@@ -1,5 +1,5 @@
 // The dog (Cavalier King Charles Spaniel, "Blenheim" coat) described as SVG shapes (viewBox 0 0 200 200).
-// The same description is drawn by Pet.js (react-native-svg) and by petSvgString() for the Android widget and the icon.
+// Pet.js draws this description with react-native-svg.
 // "Sticker" style: dark outline, chestnut with darker shading and light highlights, a golden rim on the fur tufts,
 // white fur with gray shading, small glossy eyes and a big fluffy tail.
 
@@ -360,27 +360,4 @@ export function petShapes({ expression = 'happy', stage = 'adult', blink = false
     y: GROUND.y + (TAIL_BASE.y - GROUND.y) * g.body,
   };
   return { main, tail, pivot, tailScale: g.body, tailAngle: TAIL_ANGLE[expression] ?? 0 };
-}
-
-const attrName = (k) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
-
-export function toSvg(nodes) {
-  return nodes
-    .map(({ t: tag, children, text, ...props }) => {
-      const attrs = Object.entries(props)
-        .filter(([, v]) => v != null)
-        .map(([k, v]) => `${attrName(k)}="${v}"`)
-        .join(' ');
-      if (tag === 'g') return `<g ${attrs}>${toSvg(children)}</g>`;
-      if (tag === 'text') return `<text ${attrs}>${text}</text>`;
-      return `<${tag} ${attrs}/>`;
-    })
-    .join('');
-}
-
-// The whole dog as an SVG string (the tail is behind the body)
-export function petSvgString({ expression, stage, size = 200 }) {
-  const { main, tail, pivot, tailScale, tailAngle } = petShapes({ expression, stage });
-  const tailGroup = { t: 'g', transform: `translate(${pivot.x} ${pivot.y}) rotate(${tailAngle}) scale(${tailScale})`, children: tail };
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 200 200">${toSvg([tailGroup, ...main])}</svg>`;
 }

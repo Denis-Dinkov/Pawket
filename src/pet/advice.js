@@ -3,6 +3,7 @@ import { colors, getCategories, categoryById, money, pct, MONTHS, monthLower } f
 import { monthOverview, filterMonth, summarize, shiftMonth, dailyLimit, countsInBudget } from '../budget';
 import { pendingSpend, VARIABLE_CATEGORIES } from '../plans';
 import { t } from '../i18n';
+import { normalizeMerchant } from '../categoryGuess';
 
 // A concrete idea for each category
 const HINTS = {
@@ -19,8 +20,6 @@ const HINTS = {
   saving: '',
   invest: '',
 };
-
-const normalizeMerchant = (m) => (m || '').trim().toLowerCase();
 
 // Categories spent evenly through the month that can be forecast
 const VARIABLE = VARIABLE_CATEGORIES;

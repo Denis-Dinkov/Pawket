@@ -13,7 +13,7 @@ import { t, setLang, resolveLang } from './i18n';
 import { setSplits } from './split';
 import { startNoSpend, sessionState, SESSION_XP, NOSPEND_XP_BEFORE } from './sessions';
 import { takePendingPayments, writeCategorizer, matchManual } from './pendingPayments';
-import { guessCategory, rememberedCategory, sameMerchant } from './categoryGuess';
+import { guessCategory, rememberedCategory, sameMerchant, normalizeMerchant } from './categoryGuess';
 import { takeNotificationReports } from './androidPayments';
 import { groupReports } from './notificationPayments';
 
@@ -67,7 +67,6 @@ export const defaultPetName = () => t('Чарли');
 // The default name from back when the pet was a cat
 const OLD_DEFAULT_NAME = 'Мърка';
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-export const normalizeMerchant = (m) => (m || '').trim().toLowerCase();
 
 // v1: { expenses, income } → v2. The old income becomes the income for the earliest month with expenses.
 function migrateV1(v1) {
