@@ -9,6 +9,9 @@ import Touch from './ui/Touch';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
+// How long an automatic payment is highlighted as new
+const NEW_FOR_MS = 24 * 3600000;
+
 // Expense row: compact (latest 10) or detailed (all, with time and source)
 export default function ExpenseRow({ expense, onPress, onLongPress, detailed = false }) {
   const cat = categoryById(expense.categoryId);
@@ -22,9 +25,11 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
   const deposit = !!expense.goalId;
   // Paid with money the user already had: listed, but not counted in the month
   const outside = !!expense.offBudget || !!expense.fromGoalId;
-  // Booked by the Apple Pay automation while the app was closed, and not looked at yet
-  const fresh = !!expense.unreviewed;
-  const needsCategory = fresh && !cat;
+  // Booked by itself (Apple Pay, a bank notification) and not opened yet: highlighted as new for a day only,
+  // like a fresh notification, so a payment the user never taps doesn't stay highlighted forever.
+  // One still without a category keeps saying so ("Избери категория"), without the highlight.
+  const fresh = !!expense.unreviewed && Date.now() - new Date(expense.loggedAt || expense.date) < NEW_FOR_MS;
+  const needsCategory = !!expense.unreviewed && !cat;
   // Same amount as another expense in the same day: the user decides whether it's the same payment
   const dupe = !!expense.possibleDuplicate;
 
