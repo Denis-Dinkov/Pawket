@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs the tests and the translation check before every push; a failure stops the push.
+# Turned on by `npm install` (the "prepare" script sets core.hooksPath to .githooks).
+# Skip it once with git push --no-verify.
+npm run --silent check

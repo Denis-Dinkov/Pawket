@@ -377,7 +377,6 @@ export default {
   "Всички ({0})": "All ({0})",
   "Няма разходи за {0}.": "No expenses for {0}.",
   "Добави първия": "Add the first one",
-  "Всички {0}": "All {0}",
   "Без разходи днес 🦴": "No spending today 🦴",
   "Настройки": "Settings",
   "Над бюджета с": "Over budget by",

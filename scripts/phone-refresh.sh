@@ -104,7 +104,7 @@ if [[ -n "$reason" ]]; then
   # app.config.js decides which native parts are built (e.g. the widget), so it counts too; the config plugins
   # copy native code (plugins/*.swift) into ios/, and the local native modules (modules/) are linked as pods,
   # so a change in either needs a fresh ios/ as well
-  if [[ ! -d ios || app.json -nt ios/Pawket.xcodeproj/project.pbxproj || app.config.js -nt ios/Pawket.xcodeproj/project.pbxproj || package.json -nt ios/Podfile.lock || -n "$(find plugins modules -path '*/android/build' -prune -o -newer ios/Pawket.xcodeproj/project.pbxproj -print -quit)" ]]; then
+  if [[ ! -d ios/Pawket.xcworkspace || app.json -nt ios/Pawket.xcodeproj/project.pbxproj || app.config.js -nt ios/Pawket.xcodeproj/project.pbxproj || package.json -nt ios/Podfile.lock || -n "$(find plugins modules -path '*/android/build' -prune -o -newer ios/Pawket.xcodeproj/project.pbxproj -print -quit)" ]]; then
     log "regenerating ios/"
     npx expo prebuild --platform ios --clean
   fi
