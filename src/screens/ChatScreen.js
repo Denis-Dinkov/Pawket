@@ -284,8 +284,10 @@ export default function ChatScreen({ onClose }) {
     const showText = () => {
       clearTimeout(timer);
       timer = null;
-      if (pending) patch((m) => ({ text: m.text + pending }));
+      // The update runs later, during React's render, so it gets the text by value, not the emptied variable
+      const piece = pending;
       pending = '';
+      if (piece) patch((m) => ({ text: m.text + piece }));
     };
     keepAlive?.begin();
     try {
