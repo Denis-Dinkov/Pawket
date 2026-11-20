@@ -302,7 +302,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         {ov.list.length === 0 ? (
           <Card style={{ alignItems: 'center', gap: 12 }}>
             <Text style={s.empty}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
-            <Pill icon="add" label={t('Добави първия')} variant="ink" onPress={() => onAdd({})} />
+            <Pill icon="add" label={t('Добави първия')} variant="ink" onPress={() => onAdd({})} style={{ alignSelf: 'center' }} />
           </Card>
         ) : (
           // The same day-by-day list with the same filters for both: "Последни" is its newest few
@@ -559,7 +559,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
 
 const s = themed((c) => ({
   overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: c.roomFrom },
-  gear: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.card, opacity: 0.92, alignItems: 'center', justifyContent: 'center' },
+  gear: { width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, opacity: 0.92, alignItems: 'center', justifyContent: 'center' },
   sheet: {
     backgroundColor: c.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
     marginTop: -32, paddingHorizontal: 16, paddingTop: 16, gap: 16, minHeight: 600,

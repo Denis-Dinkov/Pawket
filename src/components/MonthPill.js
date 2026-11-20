@@ -25,7 +25,8 @@ export default function MonthPill({ year, month, onChange, onOpenPicker, tone = 
       </Touch>
       <Pill
         variant={onRoom ? 'white' : 'glass'}
-        small={compact}
+        // Pill sets alignSelf: flex-start for columns; in this row it would sit above the arrows
+        style={s.pill}
         label={compact ? MONTHS[month] : `${MONTHS[month]} ${year}`}
         iconRight="chevron-down"
         onPress={onOpenPicker}
@@ -47,6 +48,7 @@ export default function MonthPill({ year, month, onChange, onOpenPicker, tone = 
 
 const s = themed((colors) => ({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  arrow: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)' },
+  pill: { alignSelf: 'center', minHeight: 36 },
+  arrow: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)' },
   arrowRoom: { backgroundColor: colors.card, opacity: 0.92 },
 }));

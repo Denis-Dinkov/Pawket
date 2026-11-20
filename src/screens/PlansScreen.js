@@ -345,7 +345,7 @@ export default function PlansScreen({ onAdd }) {
         <View style={s.sectionHead}>
           <Text style={s.section} accessibilityRole="header">{t('Повтарящи се плащания')}</Text>
           {/* A new expense with "Всеки месец" already on: its first payment and the rule in one step */}
-          <Pill small icon="add" label={t('Ново')} variant="soft" onPress={() => onAdd({ repeat: true })} accessibilityLabel={t('Ново повтарящо се плащане')} />
+          <Pill small icon="add" label={t('Ново')} variant="soft" onPress={() => onAdd({ repeat: true })} style={{ alignSelf: 'center' }} accessibilityLabel={t('Ново повтарящо се плащане')} />
         </View>
         {monthlyTotal > 0 && <Text style={[s.hint, { marginTop: -8 }]}>{t('Общо {0} на месец', { 0: money(monthlyTotal) })}</Text>}
         {recurring.length === 0 ? (
@@ -353,7 +353,7 @@ export default function PlansScreen({ onAdd }) {
             <Ionicons name="repeat" size={30} color={colors.primary} />
             <Text style={s.emptyTitle}>{t('Наем, сметки, абонаменти')}</Text>
             <Text style={s.hintCenter}>{t('Записват се сами всеки месец и влизат в дневния лимит предварително.')}</Text>
-            <Pill icon="add" label={t('Добави плащане')} variant="ink" onPress={() => onAdd({ repeat: true })} />
+            <Pill icon="add" label={t('Добави плащане')} variant="ink" onPress={() => onAdd({ repeat: true })} style={{ alignSelf: 'center' }} />
           </Card>
         ) : (
           <Card style={{ paddingVertical: 4 }}>
@@ -377,7 +377,7 @@ export default function PlansScreen({ onAdd }) {
 
         <View style={s.sectionHead}>
           <Text style={s.section} accessibilityRole="header">{t('Цели и касички')}</Text>
-          <Pill small icon="add" label={t('Нова')} variant="soft" onPress={() => setGoalEdit('new')} />
+          <Pill small icon="add" label={t('Нова')} variant="soft" onPress={() => setGoalEdit('new')} style={{ alignSelf: 'center' }} />
         </View>
         {!hasEmergency && needs > 0 && (
           <Touch onPress={() => setGoalEdit({ preset: { kind: 'emergency' } })}>
@@ -447,7 +447,7 @@ export default function PlansScreen({ onAdd }) {
         {/* The 48-hour wishlist */}
         <View style={s.sectionHead}>
           <Text style={s.section} accessibilityRole="header">{t('Желания · 48 часа')}</Text>
-          <Pill small icon="add" label={t('Желание')} variant="soft" onPress={() => setWishOpen(true)} />
+          <Pill small icon="add" label={t('Желание')} variant="soft" onPress={() => setWishOpen(true)} style={{ alignSelf: 'center' }} />
         </View>
         {openWishes.length === 0 ? (
           <Appear index={1}>

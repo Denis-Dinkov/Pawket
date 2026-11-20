@@ -95,7 +95,7 @@ const s = themed((colors) => ({
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   empty: { color: colors.muted, textAlign: 'center', marginVertical: 28 },
   group: { marginTop: 16 },
-  groupHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, paddingHorizontal: 4 },
+  groupHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, paddingHorizontal: 16 },
   groupTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   groupCount: { color: colors.muted, fontWeight: '500' },
   groupTotal: { color: colors.muted, fontSize: 13, fontWeight: '600' },

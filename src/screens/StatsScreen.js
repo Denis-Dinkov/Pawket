@@ -75,7 +75,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
         <GradientHero tone="room" bottomSpace={56}>
           <View style={s.titleRow}>
             <Text style={s.title} accessibilityRole="header">{t('Отчети')}</Text>
-            <Pill small variant="white" icon="calendar-outline" label={t('Твоята {0}', { 0: year })} onPress={() => setReview(true)} />
+            <Pill small variant="white" icon="calendar-outline" label={t('Твоята {0}', { 0: year })} onPress={() => setReview(true)} style={{ alignSelf: 'center' }} />
           </View>
           <View style={{ marginTop: 16 }}>
             <MonthPill tone="room" year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />

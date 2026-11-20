@@ -41,7 +41,7 @@ export default function SessionCard({ now, canStart = true }) {
                 : t('до полунощ')}
             </Text>
           </View>
-          <Pill icon="close" label={t('Спри')} variant="outline" small onPress={stop} />
+          <Pill icon="close" label={t('Спри')} variant="outline" small onPress={stop} style={{ alignSelf: 'center' }} />
         </View>
         <Bar value={state.ratio} color={colors.savings} height={6} label={t('Мина {0}% от деня', { 0: Math.round(state.ratio * 100) })} />
       </Card>
