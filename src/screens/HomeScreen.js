@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
 import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, categoryById, currentColorScheme, monthLower, shadow } from '../theme';
-import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
+import { monthOverview, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { weekMissions, streak, activityDays, MISSION_XP } from '../pet/missions';
@@ -28,7 +28,6 @@ import Appear from '../components/ui/Appear';
 import { petLine } from '../pet/lines';
 import MonthPill from '../components/MonthPill';
 import MonthPickerSheet from '../components/MonthPickerSheet';
-import ExpenseRow from '../components/ExpenseRow';
 import ExpenseList from '../components/ExpenseList';
 import ExpenseDetailSheet, { confirmDelete } from '../components/ExpenseDetailSheet';
 import AdviceSheet from '../components/AdviceSheet';
@@ -160,7 +159,6 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
   // while the sheet is closing), so nothing here should re-scan all expenses unless its inputs changed
   const pending = useMemo(() => pendingSpend(recurring, now), [recurring, now]);
   const daily = useMemo(() => dailyLimit(current, now, pending), [current, now, pending]);
-  const recent = useMemo(() => sortByDateDesc(ov.list).slice(0, RECENT), [ov.list]);
   const upcoming = useMemo(() => upcomingPayments(recurring, now)[0], [recurring, now]);
   const goal = useMemo(
     () => firstOpenGoal(goals.map((g) => ({ g, p: goalProgress(g, expenses) }))),
@@ -291,7 +289,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           <Text style={s.section}>{t('Разходи')}</Text>
           <Text style={s.miniSub}>{plural(ov.list.length, t('плащане'), t('плащания'))}</Text>
         </View>
-        {view === 'all' && (
+        {ov.list.length > RECENT && (
           <Segmented
             options={[
               { key: 'recent', label: t('Последни') },
@@ -307,24 +305,12 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             <Text style={s.empty}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
             <Pill icon="add" label={t('Добави първия')} variant="ink" onPress={() => onAdd({})} />
           </Card>
-        ) : view === 'recent' ? (
-          <Card style={{ paddingVertical: 6 }}>
-            {recent.map((e, i) => (
-              <View key={e.id} style={i > 0 && s.sep}>
-                <ExpenseRow expense={e} onPress={() => setSelected(e)} onLongPress={() => confirmDelete(e, () => removeExpense(e.id))} />
-              </View>
-            ))}
-            {ov.list.length > RECENT && (
-              <Touch style={s.seeAll} onPress={() => setView('all')}>
-                <Text style={s.seeAllText}>{t('Всички {0}', { 0: ov.list.length })}</Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-              </Touch>
-            )}
-          </Card>
         ) : (
+          // The same day-by-day list with the same filters for both: "Последни" is its newest few
           <ExpenseList
             key={`${year}-${month}`}
             expenses={ov.list}
+            limit={view === 'recent' ? RECENT : Infinity}
             onSelect={setSelected}
             onLongPress={(e) => confirmDelete(e, () => removeExpense(e.id))}
           />
@@ -612,9 +598,6 @@ const s = themed((c) => ({
   section: { color: c.text, fontSize: 18, fontWeight: '800' },
   listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
   empty: { color: c.muted, textAlign: 'center', fontSize: 14 },
-  sep: { borderTopWidth: 1, borderColor: c.faint },
-  seeAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 44, borderTopWidth: 1, borderColor: c.faint },
-  seeAllText: { color: c.primary, fontSize: 14, fontWeight: '700' },
   layoutBtn: { alignSelf: 'center', marginTop: 6, borderColor: c.faint },
   dockWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
   dockShadow: {

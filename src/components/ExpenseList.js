@@ -15,8 +15,9 @@ const matches = (filter, e) => {
   return kind === 'cat' ? e.categoryId === id : categoryById(e.categoryId)?.bucket === id;
 };
 
-// All expenses for the month: filters by bucket/category and grouping by day
-export default function ExpenseList({ expenses, onSelect, onLongPress, initialFilter = 'all', showFilters = true }) {
+// The month's expenses grouped by day, with filters by bucket/category. limit: show only the newest that many
+// (Home's "Последни"); a day's heading still counts and adds up the whole day.
+export default function ExpenseList({ expenses, onSelect, onLongPress, initialFilter = 'all', showFilters = true, limit = Infinity }) {
   const [filter, setFilter] = useState(initialFilter);
 
   const usedCats = useMemo(
@@ -33,8 +34,15 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
       g.items.push(e);
       if (countsInBudget(e)) g.total += e.amount;
     }
-    return [...map.values()];
-  }, [expenses, filter]);
+    let left = limit;
+    const out = [];
+    for (const g of map.values()) {
+      if (left <= 0) break;
+      out.push({ ...g, shown: g.items.slice(0, left) });
+      left -= g.items.length;
+    }
+    return out;
+  }, [expenses, filter, limit]);
 
   const chips = [
     { key: 'all', label: t('Всички') },
@@ -70,7 +78,7 @@ export default function ExpenseList({ expenses, onSelect, onLongPress, initialFi
             <Text style={s.groupTotal}>−{money(g.total)}</Text>
           </View>
           <View style={s.card}>
-            {g.items.map((e, i) => (
+            {g.shown.map((e, i) => (
               <View key={e.id} style={i > 0 && s.sep}>
                 <ExpenseRow expense={e} detailed onPress={() => onSelect?.(e)} onLongPress={() => onLongPress?.(e)} />
               </View>
