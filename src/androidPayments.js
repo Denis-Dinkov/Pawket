@@ -28,22 +28,36 @@ export function openNotificationAccess() {
   }
 }
 
+// Files read in this run and not deleted yet, so they aren't read twice while their payments wait for a save
+const taken = new Set();
+
 /**
- * The payments the reader saw while Pawket was in the background: [{ amount, merchant, source, date }].
- * The kept notifications are deleted as they are read; the ones that weren't payments go to the short list
- * Settings shows.
+ * The payments the reader saw while Pawket was in the background: { reports: [{ amount, merchant, source, date }],
+ * done }. The kept notifications stay on disk until done() is called, once the saved data holds them; done is
+ * null when there was nothing new. The ones that weren't payments go to the short list Settings shows.
  */
 export async function takeNotificationReports() {
-  if (!native) return [];
-  let raws = [];
+  const none = { reports: [], done: null };
+  if (!native) return none;
+  let files = [];
   try {
-    raws = native.takePending() || [];
+    files = (native.readPending() || []).filter((f) => !taken.has(f.name));
   } catch {
-    return [];
+    return none;
   }
+  if (!files.length) return none;
+  const names = files.map((f) => f.name);
+  names.forEach((n) => taken.add(n));
+  const done = () => {
+    try {
+      native.deletePending(names);
+    } catch {
+      // left for the next launch, where the payments are recognized as already booked
+    }
+  };
   const reports = [];
   const unread = [];
-  for (const text of raws) {
+  for (const { text } of files) {
     let raw;
     try {
       raw = JSON.parse(text);
@@ -62,7 +76,7 @@ export async function takeNotificationReports() {
       // only a diagnostic list
     }
   }
-  return reports;
+  return { reports, done };
 }
 
 export async function unreadNotifications() {

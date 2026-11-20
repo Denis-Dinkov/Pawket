@@ -1,7 +1,7 @@
 // Payments recorded by the "Запиши плащане" Shortcuts action (plugins/withRecordPaymentIntent.js) while
 // Pawket was closed or the phone was locked. Each one is a JSON file in the App Group container:
-// { id, amount: "8,83 €", merchant, date }. They are read and deleted when the app comes to the front.
-import { Platform } from 'react-native';
+// { id, amount: "8,83 €", merchant, date }. They are read when the app comes to the front and deleted once
+// the saved data holds them. react-native is required lazily, so the pure parts below load in Node tests.
 import { parseAmount } from './deeplink';
 import { RULES, LEGAL_WORDS, PROCESSOR_PREFIXES, GENERIC_WORDS } from './categoryGuess';
 import { categoryById } from './theme';
@@ -13,8 +13,8 @@ const FOLDER = 'PendingPayments';
 
 // The App Group container, or null (Expo Go and web have no native file system / no App Group)
 function sharedContainer() {
-  if (Platform.OS !== 'ios') return null;
   try {
+    if (require('react-native').Platform.OS !== 'ios') return null;
     const { Paths } = require('expo-file-system');
     return Paths.appleSharedContainers?.[APP_GROUP] || null;
   } catch {
@@ -57,30 +57,39 @@ export function writeCategorizer(merchants = {}) {
   }
 }
 
+// Files read in this run and not deleted yet, so they aren't read twice while their payments wait for a save
+const taken = new Set();
+
 /**
- * Reads the waiting payments and deletes their files. Returns [{ id, amount, merchant, date }],
- * oldest first; unreadable files and zero amounts are dropped.
+ * Reads the waiting payments: { payments: [{ id, amount, merchant, date }] oldest first, done }. The files stay
+ * until done() is called, once the saved data holds the payments; done is null when there was nothing new.
+ * Unreadable files and zero amounts are dropped (and deleted with the rest).
  */
 export async function takePendingPayments() {
+  const none = { payments: [], done: null };
   const dir = pendingFolder();
-  if (!dir) return [];
+  if (!dir) return none;
+  const files = dir.list().filter((item) => item.uri.endsWith('.json') && typeof item.text === 'function' && !taken.has(item.uri));
+  if (!files.length) return none;
   const out = [];
-  for (const item of dir.list()) {
-    if (!item.uri.endsWith('.json') || typeof item.text !== 'function') continue;
+  for (const item of files) {
+    taken.add(item.uri);
     try {
-      const raw = JSON.parse(await item.text());
-      const payment = toPayment(raw);
+      const payment = toPayment(JSON.parse(await item.text()));
       if (payment) out.push(payment);
     } catch {
-      // a half-written or broken file: drop it rather than retrying it forever
-    }
-    try {
-      item.delete();
-    } catch {
-      // already gone
+      // a half-written or broken file: dropped rather than retried forever
     }
   }
-  return out.sort((a, b) => a.date.localeCompare(b.date));
+  const done = () =>
+    files.forEach((item) => {
+      try {
+        item.delete();
+      } catch {
+        // already gone
+      }
+    });
+  return { payments: out.sort((a, b) => a.date.localeCompare(b.date)), done };
 }
 
 // Raw file content → payment, or null. Pure, so it can be tested without a phone.

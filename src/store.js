@@ -56,6 +56,8 @@ const EMPTY = {
   // coachModel: the model picked for the chat with the dog (see ai/coach.js); unset = the default for the keys there are
   settings: { theme: 'system', language: 'system', reminder: { enabled: false, hour: 20 }, liveActivity: true, savingsAlert: true },
   lastBackupAt: null,
+  // When payment files were last imported (importPayments). A save that holds it lets those files be deleted.
+  lastImport: 0,
 };
 // Older saves lack the newer keys; settings are merged one level deep
 const withDefaults = (d) => ({ ...EMPTY, ...d, settings: { ...EMPTY.settings, ...(d?.settings || {}) } });
@@ -91,6 +93,16 @@ async function readSaved(key, tries = 3) {
   }
 }
 
+// Repairs older data: the saved state and a restored backup alike
+function normalize(saved) {
+  // Saves from before English existed stay in Bulgarian; new installs follow the phone
+  const data = withDefaults(saved && !saved.settings?.language ? { ...saved, settings: { ...(saved.settings || {}), language: 'bg' } } : saved);
+  if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME_BG };
+  // Only no-spend days are sessions now (an early build also had shopping trips)
+  if (data.session && data.session.kind !== 'nospend') data.session = null;
+  return data;
+}
+
 // Throws when the saved data can't be read. The caller then keeps saving off, so the data on disk survives.
 async function load() {
   const raw = await readSaved(KEY);
@@ -103,13 +115,7 @@ async function load() {
       await AsyncStorage.setItem(KEY_DAMAGED, raw).catch(() => {});
       throw e;
     }
-    // Saves from before English existed stay in Bulgarian; new installs follow the phone
-    if (saved && !saved.settings?.language) saved.settings = { ...(saved.settings || {}), language: 'bg' };
-    const data = withDefaults(saved);
-    if (data.pet?.name === OLD_DEFAULT_NAME) data.pet = { ...data.pet, name: DEFAULT_PET_NAME_BG };
-    // Only no-spend days are sessions now (an early build also had shopping trips)
-    if (data.session && data.session.kind !== 'nospend') data.session = null;
-    return data;
+    return normalize(saved);
   }
   const old = await readSaved(KEY_V1);
   return old ? migrateV1(JSON.parse(old)) : EMPTY;
@@ -162,6 +168,8 @@ export function StoreProvider({ children }) {
   const unsaved = useRef(null);
   // One message per run of failed saves, not one per change
   const saveWarned = useRef(false);
+  // Imported payment files waiting to be deleted: [{ token, done }] (see importPayments)
+  const importCleanup = useRef([]);
   const flush = useCallback(() => {
     clearTimeout(saveTimer.current);
     if (!unsaved.current || !canSave.current) return;
@@ -170,6 +178,11 @@ export function StoreProvider({ children }) {
     AsyncStorage.setItem(KEY, JSON.stringify(d))
       .then(() => {
         saveWarned.current = false;
+        // The payment files of every import this save holds can go now
+        const saved = d.lastImport || 0;
+        const ready = importCleanup.current.filter((c) => c.token <= saved);
+        importCleanup.current = importCleanup.current.filter((c) => c.token > saved);
+        ready.forEach((c) => c.done());
       })
       .catch(() => {
         // Kept for the next attempt (unless something newer is already waiting), and the user is told once
@@ -242,15 +255,19 @@ export function StoreProvider({ children }) {
     try {
       // Android: reports of the notification reader, grouped so the Wallet and the bank notification of one
       // payment make one expense; joined: earlier expenses that a late report turned out to belong to
+      // done deletes the files read; it's called only once a save holds their payments (see flush), so a crash
+      // or an error before that leaves them for the next launch, where the ones already booked are skipped
       let payments;
+      let done;
       let joined = {};
       if (Platform.OS === 'android') {
-        const reports = await takeNotificationReports();
+        let reports;
+        ({ reports, done } = await takeNotificationReports());
         ({ payments, joined } = groupReports(reports, dataRef.current.expenses.filter((e) => e.autoSources), sameMerchant));
       } else {
-        payments = await takePendingPayments();
+        ({ payments, done } = await takePendingPayments());
       }
-      if (!payments.length && !Object.keys(joined).length) return;
+      if (!done) return;
       // A payment already entered by hand (same amount and shop within 24 hours) isn't booked again: that
       // expense is matched to it instead. Same amount but nothing to compare: booked, marked "Дубликат?"
       const known = new Set(dataRef.current.expenses.map((e) => e.paymentId).filter(Boolean));
@@ -267,13 +284,18 @@ export function StoreProvider({ children }) {
         }
         fresh.push({ ...p, maybeDuplicate: p.maybeDuplicate || m.flag });
       }
-      if (!fresh.length && !Object.keys(matched).length && !Object.keys(joined).length) return;
+      // Marks the saved data as holding this import, even when nothing changed (the files still have to go)
+      const token = Math.max(Date.now(), (dataRef.current.lastImport || 0) + 1);
+      importCleanup.current.push({ token, done });
+      const touched = Object.keys(matched).length || Object.keys(joined).length;
       setData((d) => {
-        const expenses = d.expenses.map((e) => {
-          const x = matched[e.id] ? { ...e, matchedPayment: matched[e.id] } : e;
-          return joined[e.id] ? { ...x, autoSources: joined[e.id] } : x;
-        });
-        if (!fresh.length) return { ...d, expenses };
+        const expenses = touched
+          ? d.expenses.map((e) => {
+            const x = matched[e.id] ? { ...e, matchedPayment: matched[e.id] } : e;
+            return joined[e.id] ? { ...x, autoSources: joined[e.id] } : x;
+          })
+          : d.expenses;
+        if (!fresh.length) return { ...d, expenses, lastImport: token };
         const booked = fresh
           .map((p) => {
             // The user's own choice for this merchant first, then a guess from its name
@@ -295,7 +317,7 @@ export function StoreProvider({ children }) {
             };
           })
           .reverse();
-        return { ...d, expenses: [...booked, ...expenses], pet: feedPet(d.pet) };
+        return { ...d, expenses: [...booked, ...expenses], pet: feedPet(d.pet), lastImport: token };
       });
       if (!fresh.length) return;
       const android = AUTO_SOURCE === 'gpay';
@@ -684,7 +706,7 @@ export function StoreProvider({ children }) {
       },
       restoreData: (backup) => {
         setPendingEvent(null);
-        setData(withDefaults(backup.data));
+        setData(normalize(backup.data));
       },
 
       // New category { name, icon, bucket } → returns the id
