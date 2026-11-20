@@ -47,11 +47,11 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
           <Text style={[s.name, { flexShrink: 1 }]} numberOfLines={1}>{needsCategory ? t('Избери категория') : cat?.name || t('Без категория')}</Text>
           {dupe ? (
             <View style={[s.badge, s.dupeBadge]}>
-              <Text style={s.badgeText}>{t('ДУБЛИКАТ?')}</Text>
+              <Text style={s.badgeText}>{t('Дубликат?')}</Text>
             </View>
           ) : fresh ? (
             <View style={s.badge}>
-              <Text style={s.badgeText}>{t('НОВО')}</Text>
+              <Text style={s.badgeText}>{t('Ново')}</Text>
             </View>
           ) : null}
         </View>
@@ -71,13 +71,13 @@ export default function ExpenseRow({ expense, onPress, onLongPress, detailed = f
 }
 
 const s = themed((colors) => ({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   // The same padding comes off the margin, so a highlighted row lines up with the others
-  fresh: { backgroundColor: colors.primarySoft, borderRadius: radius.badge, marginHorizontal: -10, paddingHorizontal: 10 },
-  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  fresh: { backgroundColor: colors.primarySoft, borderRadius: radius.badge, marginHorizontal: -12, paddingHorizontal: 12 },
+  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  badge: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
-  dupe: { backgroundColor: colors.dangerSoft, borderRadius: radius.badge, marginHorizontal: -10, paddingHorizontal: 10 },
+  badge: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1 },
+  dupe: { backgroundColor: colors.dangerSoft, borderRadius: radius.badge, marginHorizontal: -12, paddingHorizontal: 12 },
   dupeBadge: { backgroundColor: colors.danger },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
   sub: { color: colors.muted, fontSize: 13, marginTop: 2 },

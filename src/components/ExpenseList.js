@@ -94,11 +94,11 @@ const s = themed((colors) => ({
   chipsWrap: { marginHorizontal: -16, marginBottom: 4 },
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   empty: { color: colors.muted, textAlign: 'center', marginVertical: 28 },
-  group: { marginTop: 14 },
+  group: { marginTop: 16 },
   groupHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, paddingHorizontal: 4 },
   groupTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   groupCount: { color: colors.muted, fontWeight: '500' },
   groupTotal: { color: colors.muted, fontSize: 13, fontWeight: '600' },
-  card: { backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 14, paddingVertical: 4, borderWidth: 1, borderColor: colors.faint },
+  card: { backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16, paddingVertical: 4, borderWidth: 1, borderColor: colors.faint },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
 }));

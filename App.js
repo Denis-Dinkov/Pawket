@@ -416,7 +416,7 @@ const s = themed((c) => ({
   tabText: { color: c.muted, fontSize: 11, fontWeight: '600' },
   tabActive: { color: c.primary, fontWeight: '700' },
   fab: {
-    width: 58, height: 58, borderRadius: radius.tile, marginTop: -26, alignItems: 'center', justifyContent: 'center',
+    width: 58, height: 58, borderRadius: radius.tile, marginTop: -28, alignItems: 'center', justifyContent: 'center',
     backgroundColor: c.primary, borderWidth: 4, borderColor: c.card,
     shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },

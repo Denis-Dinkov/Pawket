@@ -66,12 +66,12 @@ export default function ScoreSheet({ visible, onClose, ov, month, year }) {
 }
 
 const s = themed((colors) => ({
-  head: { alignItems: 'center', gap: 8, marginBottom: 14 },
+  head: { alignItems: 'center', gap: 8, marginBottom: 16 },
   score: { color: colors.text, fontSize: 26, fontWeight: '800' },
   title: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 4, textAlign: 'center' },
   text: { color: colors.muted, fontSize: 14, lineHeight: 19, textAlign: 'center' },
-  card: { backgroundColor: colors.card, borderRadius: radius.tile, padding: 14, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, padding: 16, gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   rowTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   rowDetail: { color: colors.muted, fontSize: 13, marginTop: 2 },
   badge: { fontSize: 14, fontWeight: '800' },

@@ -29,7 +29,7 @@ export function TodayCard({ ov, now, pending = 0 }) {
   const daily = dailyLimit(ov, now, pending);
   const over = !!daily?.over;
   return (
-    <Card style={{ gap: 10 }}>
+    <Card style={{ gap: 12 }}>
       <View style={s.head}>
         <Text style={s.h2}>{t('Днес')}</Text>
         <Text style={s.muted}>{plural(today.length, t('плащане'), t('плащания'))}</Text>
@@ -64,7 +64,7 @@ export function TopCategoriesCard({ ov }) {
       {top.map((c) => (
         <View key={c.id ?? 'none'} style={s.cat}>
           <IconBadge icon={c.icon} color={BUCKETS[c.bucket].color} size={36} />
-          <View style={{ flex: 1, gap: 5 }}>
+          <View style={{ flex: 1, gap: 4 }}>
             <View style={s.head}>
               <Text style={s.catName}>{c.name}</Text>
               <Text style={s.catValue}>{money(c.value)}</Text>

@@ -250,7 +250,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
         </Card>
 
         <Text style={s.group} accessibilityRole="header">{t('Изглед')}</Text>
-        <Card style={{ gap: 10 }}>
+        <Card style={{ gap: 12 }}>
           <Text style={s.label}>{t('Тема')}</Text>
           <Segmented
             options={[
@@ -261,7 +261,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
             value={settings.theme}
             onChange={(theme) => setSettings({ theme })}
           />
-          <Text style={[s.label, { marginTop: 6 }]}>{t('Език')}</Text>
+          <Text style={[s.label, { marginTop: 8 }]}>{t('Език')}</Text>
           {/* Each language is named in itself, so it can be found whatever the app is showing */}
           <Segmented
             options={[
@@ -276,7 +276,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
 
         {/* One card for everything that notifies: three switches read faster as rows than as three cards */}
         <Text style={s.group} accessibilityRole="header">{t('Известия')}</Text>
-        <Card style={{ paddingVertical: 6 }}>
+        <Card style={{ paddingVertical: 8 }}>
           {remindersAvailable() && (
             <View style={s.row}>
               <IconBadge icon="notifications-outline" color={colors.primary} size={36} />
@@ -329,7 +329,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
 
         <Text style={s.group} accessibilityRole="header">{t('Автоматичен запис')}</Text>
         {notificationReaderAvailable() && (
-          <Card style={{ gap: 10 }}>
+          <Card style={{ gap: 12 }}>
             <View style={s.linkRow}>
               <IconBadge icon="notifications" color={access ? colors.savings : colors.ink} size={36} />
               <View style={{ flex: 1 }}>
@@ -345,7 +345,7 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
               onPress={openNotificationAccess}
             />
             {unread.length > 0 && (
-              <View style={{ gap: 6 }}>
+              <View style={{ gap: 8 }}>
                 <Text style={s.label}>{t('Известия, които не разпознах')}</Text>
                 {unread.map((n, i) => (
                   <Text key={i} style={s.hint} selectable>
@@ -424,26 +424,26 @@ export default function SettingsScreen({ onClose, onTryApplePay }) {
 
 const s = themed((colors) => ({
   container: { paddingHorizontal: 16, paddingBottom: 60 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   doneBtn: { width: 70, minHeight: 44, justifyContent: 'center' },
   done: { color: colors.primary, fontSize: 15, fontWeight: '700', textAlign: 'right' },
   // A group of related cards: its heading sits outside them
-  group: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 24, marginBottom: 10, marginHorizontal: 4 },
+  group: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 24, marginBottom: 12, marginHorizontal: 4 },
   gap: { marginTop: 12 },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
-  incomeRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 6 },
+  label: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  incomeRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 8 },
   incomeInput: { flex: 1, minWidth: 0, fontSize: 30, fontWeight: '800', color: colors.text, paddingVertical: 4 },
   currency: { fontSize: 22, color: colors.muted, fontWeight: '700' },
-  hint: { color: colors.muted, fontSize: 13, marginTop: 6, lineHeight: 18 },
-  split: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  splitCell: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.badge, paddingHorizontal: 8, paddingVertical: 10, gap: 2 },
-  splitHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  hint: { color: colors.muted, fontSize: 13, marginTop: 8, lineHeight: 18 },
+  split: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  splitCell: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.badge, paddingHorizontal: 8, paddingVertical: 12, gap: 2 },
+  splitHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  splitName: { color: colors.muted, fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  splitName: { color: colors.muted, fontSize: 11, fontWeight: '600', flexShrink: 1 },
   splitPct: { fontSize: 18, fontWeight: '800' },
   splitAmount: { color: colors.muted, fontSize: 12 },
-  splitEdit: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 12, minHeight: 32 },
+  splitEdit: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 12, minHeight: 32 },
   petRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   catHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   addLink: { color: colors.primary, fontSize: 14, fontWeight: '700' },
@@ -455,7 +455,7 @@ const s = themed((colors) => ({
   sep: { borderTopWidth: 1, borderColor: colors.faint },
   rowHint: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 },
   linkTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 28, paddingVertical: 12, minHeight: 44 },
+  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 28, paddingVertical: 12, minHeight: 44 },
   version: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 4 },
   dangerText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
 }));

@@ -118,7 +118,7 @@ export default function PetScreen({ onOpenChat }) {
           insetTop={insets.top}
           height={300}
           bubble={bubble}
-          bubbleAction={!activeToday ? { label: t('Без разходи днес 🦴'), onPress: feed } : null}
+          bubbleAction={!activeToday ? { label: t('Без разходи днес'), onPress: feed } : null}
           onBubble={() => setStatOpen('mood')}
           onStat={setStatOpen}
           bounceKey={pet.lastFedAt}
@@ -182,9 +182,9 @@ export default function PetScreen({ onOpenChat }) {
           </Card>
 
           <Text style={s.section} accessibilityRole="header">{t('Мисии тази седмица')}</Text>
-          <Card style={{ gap: 14 }}>
+          <Card style={{ gap: 16 }}>
             {missions.map((m) => (
-              <View key={m.id} style={{ gap: 6 }} accessible accessibilityLabel={`${m.title}: ${m.done ? t('изпълнена') : t('{0} от {1}', { 0: m.n, 1: m.of })}`}>
+              <View key={m.id} style={{ gap: 8 }} accessible accessibilityLabel={`${m.title}: ${m.done ? t('изпълнена') : t('{0} от {1}', { 0: m.n, 1: m.of })}`}>
                 <View style={s.head}>
                   <Ionicons name={m.done ? 'checkmark-circle' : m.icon} size={22} color={m.done ? colors.savings : colors.primary} />
                   <Text style={[s.mission, m.done && { color: colors.muted }]}>{m.title}</Text>
@@ -228,7 +228,7 @@ export default function PetScreen({ onOpenChat }) {
 
           {/* Growth: four little Charlies, what each stage adds, and how far the next one is */}
           <Text style={s.section} accessibilityRole="header">{t('Растеж')}</Text>
-          <Card style={{ gap: 14 }}>
+          <Card style={{ gap: 16 }}>
             <View style={s.path}>
               {STAGES.map((st, i) => {
                 const reached = (pet.xp || 0) >= st.xp;
@@ -251,7 +251,7 @@ export default function PetScreen({ onOpenChat }) {
                 );
               })}
             </View>
-            <Bar value={status.progress} color={colors.needs} height={6} label={`${pet.xp || 0} XP`} />
+            <Bar value={status.progress} color={colors.primary} height={6} label={`${pet.xp || 0} XP`} />
             <Text style={s.muted}>
               {status.next
                 ? t('{0} XP · още {1} до „{2}“. Ще получи: {3}.', { 0: pet.xp || 0, 1: status.next.xp - (pet.xp || 0), 2: status.next.name, 3: STAGE_PERKS[status.next.key] })
@@ -303,13 +303,13 @@ const s = themed((c) => ({
   roomTitle: { color: c.text, fontSize: 26, fontWeight: '800', paddingTop: 8 },
   sheet: {
     backgroundColor: c.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    marginTop: -30, paddingHorizontal: 16, paddingTop: 16, gap: 12,
+    marginTop: -32, paddingHorizontal: 16, paddingTop: 16, gap: 12,
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   flame: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.warningSoft, alignItems: 'center', justifyContent: 'center' },
   h2: { color: c.text, fontSize: 16, fontWeight: '700' },
   muted: { color: c.muted, fontSize: 13, lineHeight: 18 },
-  section: { color: c.text, fontSize: 18, fontWeight: '800', marginTop: 10 },
+  section: { color: c.text, fontSize: 18, fontWeight: '800', marginTop: 12 },
   week: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDay: { alignItems: 'center', gap: 4 },
   weekDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: c.faint, alignItems: 'center', justifyContent: 'center' },
@@ -318,22 +318,23 @@ const s = themed((c) => ({
   weekLabel: { color: c.muted, fontSize: 12 },
   mission: { flex: 1, color: c.text, fontSize: 15, fontWeight: '600' },
   xp: { color: c.muted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  rewards: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  rewards: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   reward: {
-    width: '30.8%', minHeight: 112, backgroundColor: c.card, borderRadius: radius.badge, padding: 10,
-    alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 2, borderColor: 'transparent',
+    width: '30.8%', minHeight: 144, backgroundColor: c.card, borderRadius: radius.badge, padding: 12,
+    // Top-aligned and tall enough for two-line name and need, so every tile in the grid lines up
+    alignItems: 'center', justifyContent: 'flex-start', gap: 4, borderWidth: 2, borderColor: 'transparent',
   },
   rewardOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
   rewardName: { color: c.text, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   rewardNeed: { color: c.muted, fontSize: 12, textAlign: 'center' },
   lock: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.faint, alignItems: 'center', justifyContent: 'center' },
-  path: { flexDirection: 'row', gap: 6 },
+  path: { flexDirection: 'row', gap: 8 },
   step: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.badge, borderWidth: 2, borderColor: 'transparent', gap: 2 },
   stepOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
-  stepPet: { width: 58, height: 58, marginTop: 10 },
+  stepPet: { width: 58, height: 58, marginTop: 12 },
   stepName: { color: c.text, fontSize: 12, fontWeight: '700' },
   stepXp: { color: c.muted, fontSize: 11, fontVariant: ['tabular-nums'] },
   chatCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   chatIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  reviewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  reviewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
 }));

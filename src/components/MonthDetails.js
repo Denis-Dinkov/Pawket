@@ -5,7 +5,7 @@ import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
 import Touch from './ui/Touch';
 import Segmented from './ui/Segmented';
-import { colors, BUCKETS, categoryById, money, moneyShort, pct, radius } from '../theme';
+import { colors, BUCKETS, categoryById, money, moneyShort, pct, radius, tint } from '../theme';
 import { dayLabel, plural } from '../format';
 import { countsInBudget, chartScale } from '../budget';
 import { themed } from '../themed';
@@ -119,7 +119,7 @@ function DailyBars({ ov, stats, year, month }) {
                 s.bar,
                 {
                   height: `${Math.min(100, Math.max(d.total ? 4 : 1.5, (d.total / max) * 100))}%`,
-                  backgroundColor: sel === i ? colors.ink : i === today ? colors.wants : d.total ? colors.primary : colors.faint,
+                  backgroundColor: sel === i ? colors.ink : i === today ? colors.primary : d.total ? tint(colors.primary, 0.45) : colors.faint,
                 },
               ]}
             >
@@ -152,9 +152,9 @@ function WeekdayBars({ stats }) {
               {v ? moneyShort(v) : ''}
             </Text>
             <View style={s.weekTrack}>
-              <View style={[s.weekBar, { height: `${(v / max) * 100}%`, backgroundColor: i === top && v ? colors.wants : colors.primary }]} />
+              <View style={[s.weekBar, { height: `${(v / max) * 100}%`, backgroundColor: i === top && v ? colors.primary : tint(colors.primary, 0.45) }]} />
             </View>
-            <Text style={[s.weekDay, i >= 5 && { color: colors.wants }]}>{WEEKDAYS[i]}</Text>
+            <Text style={s.weekDay}>{WEEKDAYS[i]}</Text>
           </View>
         ))}
       </View>
@@ -175,7 +175,7 @@ export function TopMerchants({ stats, total }) {
     );
   }
   return (
-    <Card style={{ paddingVertical: 6 }}>
+    <Card style={{ paddingVertical: 8 }}>
       {stats.merchants.map((m, i) => {
         const cat = categoryById(m.categoryId);
         return (
@@ -202,19 +202,19 @@ export function TopMerchants({ stats, total }) {
 }
 
 const s = themed((colors) => ({
-  pair: { flexDirection: 'row', gap: 10 },
-  stat: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.badge, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  pair: { flexDirection: 'row', gap: 12 },
+  stat: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.badge, paddingHorizontal: 12, paddingVertical: 12, gap: 2 },
   statLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   statValue: { color: colors.text, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   statSub: { color: colors.muted, fontSize: 11 },
   statOf: { color: colors.muted, fontSize: 13, fontWeight: '600' },
-  caption: { color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  caption: { color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 12 },
   chart: { height: 120, flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   barSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 3 },
   cut: { position: 'absolute', top: 6, left: -1, right: -1, height: 3, backgroundColor: colors.card, transform: [{ rotate: '-12deg' }] },
   line: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderStyle: 'dashed', borderColor: colors.savings },
-  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   axisText: { color: colors.muted, fontSize: 11 },
   legend: { color: colors.muted, fontSize: 12, marginTop: 8 },
   week: { flexDirection: 'row', gap: 8, height: 140 },
@@ -223,7 +223,7 @@ const s = themed((colors) => ({
   weekTrack: { flex: 1, width: '70%', justifyContent: 'flex-end', backgroundColor: colors.bg, borderRadius: 6, overflow: 'hidden' },
   weekBar: { width: '100%', borderRadius: 6 },
   weekDay: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  merchant: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  merchant: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
   rank: { color: colors.muted, fontSize: 13, fontWeight: '800', width: 14, textAlign: 'center' },
   mName: { color: colors.text, fontSize: 15, fontWeight: '600' },

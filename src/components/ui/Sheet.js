@@ -249,7 +249,7 @@ const s = themed((colors) => ({
   backdrop: { backgroundColor: colors.backdrop },
   panel: { backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
   // No overlap with the content below: scrolled content would otherwise slide over the handle
-  grab: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 10 },
+  grab: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 12 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: colors.faint },
   content: { padding: 20 },
   footer: { paddingHorizontal: 20, paddingTop: 4 },

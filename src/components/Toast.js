@@ -68,7 +68,7 @@ export default function Toast({ toast: current, onDismiss, bottom = 110 }) {
 const s = themed((c) => ({
   wrap: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
   toast: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch',
+    flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch',
     backgroundColor: c.text, borderRadius: radius.badge, paddingVertical: 12, paddingLeft: 16, paddingRight: 8, ...shadow,
   },
   text: { flex: 1, color: c.bg, fontSize: 15, fontWeight: '600' },

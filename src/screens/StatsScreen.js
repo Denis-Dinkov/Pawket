@@ -77,7 +77,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
             <Text style={s.title} accessibilityRole="header">{t('Отчети')}</Text>
             <Pill small variant="white" icon="calendar-outline" label={t('Твоята {0}', { 0: year })} onPress={() => setReview(true)} />
           </View>
-          <View style={{ marginTop: 14 }}>
+          <View style={{ marginTop: 16 }}>
             <MonthPill tone="room" year={year} month={month} onChange={onMonthChange} onOpenPicker={() => setPicker(true)} />
           </View>
           <StatsHero ov={ov} month={month} vsPrev={stats.vsPrev} onOpenScore={() => setScoreOpen(true)} onOpenSettings={onOpenSettings} />
@@ -91,7 +91,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
               <Text style={s.hint}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
             </Card>
           ) : (
-            <Card style={{ paddingVertical: 6 }}>
+            <Card style={{ paddingVertical: 8 }}>
               {(allCats ? cats : cats.slice(0, TOP_CATS)).map((c, i) => {
                 const delta = c.before ? c.value / c.before - 1 : null;
                 const bucketColor = BUCKETS[c.bucket].color;
@@ -104,7 +104,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
                     accessibilityHint={t('Показва разходите в категорията')}
                   >
                     <IconBadge icon={c.icon} color={bucketColor} size={42} />
-                    <View style={{ flex: 1, gap: 6 }}>
+                    <View style={{ flex: 1, gap: 8 }}>
                       <View style={s.catHead}>
                         <Text style={s.catName}>{c.name}</Text>
                         <Text style={s.catValue}>{money(c.value)}</Text>
@@ -218,7 +218,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
 
 const s = themed((colors) => ({
   overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.roomFrom },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   sheet: {
     backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
@@ -235,8 +235,8 @@ const s = themed((colors) => ({
   delta: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill, overflow: 'hidden' },
   more: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12 },
   moreText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
-  allTips: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 10 },
-  catSheetHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  allTips: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 12 },
+  catSheetHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   catSheetTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
   catSheetTotal: { color: colors.text, fontSize: 18, fontWeight: '800' },
 }));

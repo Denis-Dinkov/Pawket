@@ -56,6 +56,9 @@ function Hearts({ id }) {
   ));
 }
 
+// Line icons for the mood chip, so the chip row matches the rest of the interface (no emoji)
+const MOOD_ICONS = { ecstatic: 'happy-outline', happy: 'happy-outline', worried: 'alert-circle-outline', sad: 'sad-outline', crying: 'sad-outline', hungry: 'restaurant-outline', sleeping: 'moon-outline' };
+
 /**
  * Mood / fullness / level in one row. It sits below the room (on the money card),
  * so the chips never cover the dog.
@@ -68,14 +71,14 @@ export function PetChips({ status, onStat, style, compact = false, streak, onStr
       {/* Compact (in the room on Home): no mood chip — his face shows it, and a hat needs the space */}
       {!compact && (
       <Chip
-        icon={<Text style={s.emoji}>{expr.emoji}</Text>}
+        icon={<Ionicons name={MOOD_ICONS[status.expression] || 'happy-outline'} size={14} color={expr.color} />}
         label={expr.label}
         onPress={() => onStat('mood')}
         a11y={t('Настроение: {0}{1}', { 0: expr.label, 1: status.score != null ? t(', {0} от 100', { 0: status.mood }) : '' })}
       />
       )}
       <Chip
-        icon={<Text style={s.emoji}>🦴</Text>}
+        icon={<Ionicons name="restaurant-outline" size={14} color={hungry ? colors.danger : colors.primary} />}
         label={`${status.fullness}%`}
         color={hungry ? colors.danger : status.fullness < 60 ? colors.warning : null}
         onPress={() => onStat('fullness')}
@@ -152,7 +155,7 @@ export default function PetRoom({ pet, status, bubble, bubbleAction, onBubble, o
 }
 
 const s = themed((c) => ({
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6, zIndex: 3 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, zIndex: 3 },
   badges: { position: 'absolute', right: 16, top: 0, zIndex: 3 },
   // A bit right of center, so the speech bubble has room on the left
   pet: { position: 'absolute', bottom: 30, left: '50%', marginLeft: -52 },
@@ -160,20 +163,19 @@ const s = themed((c) => ({
     // Wide enough that the button stays on one line (Android's text is a little wider), so the bubble
     // doesn't grow up into the month picker
     position: 'absolute', left: 14, bottom: 112, maxWidth: 184, zIndex: 2,
-    backgroundColor: c.card, borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 12, paddingVertical: 9, gap: 4, ...shadow,
+    backgroundColor: c.card, borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 12, paddingVertical: 8, gap: 4, ...shadow,
   },
   bubbleText: { color: c.text, fontSize: 14, fontWeight: '600', lineHeight: 18 },
   more: { color: c.primary, fontSize: 12, fontWeight: '700' },
-  bubbleBtn: { alignSelf: 'flex-start', backgroundColor: c.primary, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7, marginTop: 2 },
+  bubbleBtn: { alignSelf: 'flex-start', backgroundColor: c.primary, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8, marginTop: 2 },
   bubbleBtnText: { color: c.onAccent, fontSize: 13, fontWeight: '700' },
   tail: { position: 'absolute', left: 10, bottom: -6, width: 12, height: 12, backgroundColor: c.card, transform: [{ rotate: '45deg' }] },
-  chips: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  chips: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: c.card, borderRadius: radius.pill,
-    paddingHorizontal: 10, minHeight: 34, flexShrink: 1, borderWidth: 1, borderColor: c.faint, justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.card, borderRadius: radius.pill,
+    paddingHorizontal: 12, minHeight: 34, flexShrink: 1, borderWidth: 1, borderColor: c.faint, justifyContent: 'center',
   },
   chipText: { color: c.text, fontSize: 12, fontWeight: '700', flexShrink: 1 },
-  emoji: { fontSize: 13 },
   meter: { width: 28, height: 5, borderRadius: 3, backgroundColor: c.faint, overflow: 'hidden' },
   meterFill: { height: 5, borderRadius: 3 },
 }));

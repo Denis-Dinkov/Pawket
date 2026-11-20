@@ -75,4 +75,8 @@ test('average needs over the last full months', () => {
   assert.equal(averageNeeds([e(700, 8), e(900, 9), e(5000, 10)], now), 800);
   // Nothing before this month: this month is all there is
   assert.equal(averageNeeds([e(600, 10)], now), 600);
+  // ...unless a planned budget is given: a few days of logging say little about a whole month
+  assert.equal(averageNeeds([e(3, 10)], now, 3, 1200), 1200);
+  // Earlier months still win over the plan
+  assert.equal(averageNeeds([e(700, 8), e(900, 9)], now, 3, 1200), 800);
 });

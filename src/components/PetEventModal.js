@@ -26,12 +26,12 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
           <Pet expression={levelUp ? 'ecstatic' : expressionFor(best)} stage={(levelUp || stage).key} {...outfitOf(pet)} size={140} />
           {levelUp && (
             <>
-              <Text style={s.h1}>{t('{0} порасна! 🎉', { 0: pet.name })}</Text>
+              <Text style={s.h1}>{t('{0} порасна', { 0: pet.name })}</Text>
               <Text style={s.text}>{t('Вече е „{0}“. Благодарение на добрите ти навици.', { 0: levelUp.name })}</Text>
             </>
           )}
           {reports.length > 0 && (
-            <View style={{ alignSelf: 'stretch', marginTop: 14, gap: 8 }}>
+            <View style={{ alignSelf: 'stretch', marginTop: 16, gap: 8 }}>
               <Text style={s.h2}>{t('Месечен отчет')}</Text>
               {reports.map((r) => (
                 <View key={r.key} style={s.row}>
@@ -44,7 +44,7 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
               ))}
             </View>
           )}
-          <Pill label={t('Супер!')} variant="ink" onPress={onClose} style={s.btn} />
+          <Pill label={t('Готово')} variant="ink" onPress={onClose} style={s.btn} />
         </View>
       </View>
     </Modal>
@@ -54,12 +54,12 @@ export default function PetEventModal({ event, pet, stage, onClose }) {
 const s = themed((colors) => ({
   backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 32, padding: 24, alignItems: 'center', ...shadow },
-  h1: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 6 },
+  h1: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 8 },
   h2: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  text: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 6 },
+  text: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.badge, padding: 12 },
   month: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
   score: { color: colors.text, fontSize: 14, fontWeight: '700', marginRight: 12 },
   xp: { fontSize: 14, fontWeight: '800' },
-  btn: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 20, paddingVertical: 14 },
+  btn: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 20, paddingVertical: 16 },
 }));

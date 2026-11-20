@@ -8,6 +8,7 @@ import Pill from './ui/Pill';
 import ProgressRing from './ui/ProgressRing';
 import { colors, BUCKETS, MONTHS, pct, monthLower, radius } from '../theme';
 import { scoreVerdict } from '../budget';
+import { EXPRESSIONS, expressionFor } from '../pet/logic';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
@@ -47,7 +48,7 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
           accessibilityLabel={scored ? t('Оценка {0} от 100, {1}', { 0: ov.score, 1: scoreVerdict(ov.score) }) : t('Оценка: още няма')}
           accessibilityHint={scored ? t('Показва разбивката на оценката') : undefined}
         >
-          <ProgressRing value={scored ? ov.score / 100 : 0} size={58} stroke={6} color={colors.primary} track={colors.faint}>
+          <ProgressRing value={scored ? ov.score / 100 : 0} size={58} stroke={6} color={scored ? EXPRESSIONS[expressionFor(ov.score)].color : colors.primary} track={colors.faint}>
             <Text style={s.ringValue}>{scored ? ov.score : '—'}</Text>
           </ProgressRing>
           <View style={s.scoreLabel}>
@@ -78,27 +79,27 @@ export default function StatsHero({ ov, month, vsPrev, onOpenScore, onOpenSettin
           })}
         </View>
       ) : (
-        <Pill icon="settings-outline" label={t('Задай месечния си доход')} variant="white" onPress={onOpenSettings} style={{ alignSelf: 'flex-start', marginTop: 14 }} />
+        <Pill icon="settings-outline" label={t('Задай месечния си доход')} variant="white" onPress={onOpenSettings} style={{ alignSelf: 'flex-start', marginTop: 16 }} />
       )}
     </View>
   );
 }
 
 const s = themed((c) => ({
-  top: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20 },
   label: { color: c.muted, fontSize: 14, fontWeight: '600' },
   delta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   deltaText: { fontSize: 13, fontWeight: '700' },
   scoreLabel: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
   buckets: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  bucket: { flex: 1, backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
-  bucketHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  bucket: { flex: 1, backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
+  bucketHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   bucketName: { color: c.muted, fontSize: 12, fontWeight: '600' },
   bucketPct: { color: c.text, fontSize: 17, fontWeight: '800' },
   bucketOver: { color: c.danger },
   bucketTarget: { color: c.muted, fontSize: 12, fontWeight: '600' },
-  score: { alignItems: 'center', backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 12, paddingVertical: 10 },
+  score: { alignItems: 'center', backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 12, paddingVertical: 12 },
   ringValue: { color: c.text, fontSize: 16, fontWeight: '800' },
   scoreText: { color: c.muted, fontSize: 12, fontWeight: '600' },
 }));

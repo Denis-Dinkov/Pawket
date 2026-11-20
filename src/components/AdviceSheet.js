@@ -18,7 +18,7 @@ export function AdviceCard({ tip }) {
         <Text style={s.title}>{tip.title}</Text>
         <Text style={s.text}>{tip.text}</Text>
         {tip.saving > 1 && (
-          <Pill small variant="soft" icon="wallet-outline" label={t('до {0} спестени', { 0: money(tip.saving) })} style={{ marginTop: 10 }} textStyle={{ color: colors.savings }} />
+          <Pill small variant="soft" icon="wallet-outline" label={t('до {0} спестени', { 0: money(tip.saving) })} style={{ marginTop: 12 }} textStyle={{ color: colors.savings }} />
         )}
       </View>
     </View>

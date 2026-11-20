@@ -146,9 +146,10 @@ const PARTIAL_START_DAY = 7;
  * Average monthly "needs" over the last full months: the base for the emergency fund.
  * The month the user started in is skipped when they began after its first week (half its costs
  * were never logged, so it would pull the average down), unless there's nothing else to go on.
- * Falls back to this month when there are no earlier months at all.
+ * With no earlier months at all it falls back to `fallback` (the planned needs budget) when given,
+ * since a few days of this month say little about a whole month; otherwise to this month so far.
  */
-export function averageNeeds(expenses = [], now = new Date(), months = 3) {
+export function averageNeeds(expenses = [], now = new Date(), months = 3, fallback = 0) {
   // Month lookups go through the shared index instead of scanning every expense once per month
   const needsIn = (year, month) =>
     filterMonth(expenses, year, month)
@@ -170,7 +171,7 @@ export function averageNeeds(expenses = [], now = new Date(), months = 3) {
     if (sum > 0) (partial(year, month) ? partials : full).push(sum);
   }
   const totals = full.length ? full : partials;
-  if (!totals.length) return needsIn(now.getFullYear(), now.getMonth());
+  if (!totals.length) return fallback > 0 ? fallback : needsIn(now.getFullYear(), now.getMonth());
   return totals.reduce((a, x) => a + x, 0) / totals.length;
 }
 

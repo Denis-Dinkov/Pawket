@@ -63,7 +63,7 @@ export default function OnboardingScreen() {
                 <Text style={[s.splitItem, { color: colors.savings }]}>{t('Спестявания {0}', { 0: money(income * split.savings) })}</Text>
               </View>
             )}
-            <Text style={[s.label, { marginTop: 18 }]}>{t('Как да се казвам?')}</Text>
+            <Text style={[s.label, { marginTop: 20 }]}>{t('Как да се казвам?')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -95,15 +95,15 @@ export default function OnboardingScreen() {
 const s = themed((colors) => ({
   container: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 24 },
   h1: { color: '#fff', fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 8 },
-  sub: { color: 'rgba(255,255,255,0.88)', fontSize: 15, textAlign: 'center', lineHeight: 21, marginTop: 10 },
-  card: { alignSelf: 'stretch', backgroundColor: colors.card, borderRadius: 28, padding: 20, marginTop: 26 },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  sub: { color: 'rgba(255,255,255,0.88)', fontSize: 15, textAlign: 'center', lineHeight: 21, marginTop: 12 },
+  card: { alignSelf: 'stretch', backgroundColor: colors.card, borderRadius: 28, padding: 20, marginTop: 28 },
+  label: { color: colors.muted, fontSize: 13, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'baseline' },
   income: { flex: 1, minWidth: 0, fontSize: 38, fontWeight: '800', color: colors.text, paddingVertical: 4 },
   currency: { fontSize: 24, color: colors.muted, fontWeight: '700' },
-  split: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  splitItem: { fontSize: 12, fontWeight: '700', backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, overflow: 'hidden' },
-  name: { fontSize: 20, fontWeight: '700', color: colors.text, paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.faint },
-  btn: { alignSelf: 'stretch', backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 17, alignItems: 'center', marginTop: 20 },
+  split: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  splitItem: { fontSize: 12, fontWeight: '700', backgroundColor: colors.bg, paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
+  name: { fontSize: 20, fontWeight: '700', color: colors.text, paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.faint },
+  btn: { alignSelf: 'stretch', backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
   btnText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
 }));

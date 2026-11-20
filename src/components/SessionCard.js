@@ -28,7 +28,7 @@ export default function SessionCard({ now, canStart = true }) {
         { text: t('Спри'), style: 'destructive', onPress: endSession },
       ]);
     return (
-      <Card style={{ gap: 10 }}>
+      <Card style={{ gap: 12 }}>
         <View style={s.head}>
           <View style={[s.icon, { backgroundColor: colors.savingsSoft }]}>
             <Ionicons name="leaf" size={18} color={colors.savings} />
@@ -69,12 +69,12 @@ export default function SessionCard({ now, canStart = true }) {
 
 const s = themed((c) => ({
   start: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44,
-    backgroundColor: c.card, borderRadius: radius.pill, paddingHorizontal: 14, borderWidth: 1, borderColor: c.faint,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44,
+    backgroundColor: c.card, borderRadius: radius.pill, paddingHorizontal: 16, borderWidth: 1, borderColor: c.faint,
   },
   startXp: { color: c.savings, fontSize: 13, fontWeight: '800' },
   startText: { color: c.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: { width: 36, height: 36, borderRadius: radius.field, alignItems: 'center', justifyContent: 'center' },
   name: { color: c.text, fontSize: 15, fontWeight: '800' },
   sub: { color: c.muted, fontSize: 13 },

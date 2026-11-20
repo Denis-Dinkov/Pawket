@@ -437,7 +437,7 @@ export default function ChatScreen({ onClose }) {
               {!m.text && !m.error && <Text style={s.typing}>{t('{0} мисли…', { 0: pet.name })}</Text>}
               {!!m.via && <Text style={s.via}>{t('Отговори {0}: избраният модел беше претоварен.', { 0: m.via })}</Text>}
               {m.error && (
-                <View style={{ gap: 10, marginTop: m.text ? 10 : 0 }}>
+                <View style={{ gap: 12, marginTop: m.text ? 10 : 0 }}>
                   <View style={s.errorRow}>
                     <Ionicons name="alert-circle" size={18} color={colors.danger} />
                     <Text style={s.error}>{m.error.message}</Text>
@@ -504,32 +504,32 @@ const s = themed((c) => ({
   modelPick: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', marginTop: 2 },
   modelPickText: { color: c.primary, fontSize: 13, fontWeight: '600' },
   done: { color: c.primary, fontSize: 15, fontWeight: '700' },
-  list: { padding: 16, gap: 10, flexGrow: 1 },
+  list: { padding: 16, gap: 12, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 },
-  hello: { color: c.text, fontSize: 20, fontWeight: '800', marginTop: 6, textAlign: 'center' },
+  hello: { color: c.text, fontSize: 20, fontWeight: '800', marginTop: 8, textAlign: 'center' },
   sub: { color: c.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', paddingHorizontal: 12 },
-  setup: { alignSelf: 'stretch', gap: 10, marginTop: 10 },
+  setup: { alignSelf: 'stretch', gap: 12, marginTop: 12 },
   setupTitle: { color: c.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  suggestions: { alignSelf: 'stretch', gap: 8, marginTop: 10 },
+  suggestions: { alignSelf: 'stretch', gap: 8, marginTop: 12 },
   suggestion: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.card, borderRadius: radius.badge,
-    paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: c.faint,
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: radius.badge,
+    paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: c.faint,
   },
   suggestionText: { flex: 1, color: c.text, fontSize: 15, fontWeight: '600' },
-  privacy: { color: c.muted, fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 10, paddingHorizontal: 12 },
+  privacy: { color: c.muted, fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 12, paddingHorizontal: 12 },
   mine: {
     alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: c.primary, borderRadius: radius.tile, borderBottomRightRadius: 6,
-    paddingHorizontal: 14, paddingVertical: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
   mineText: { color: c.onAccent, fontSize: 15, lineHeight: 21 },
   theirs: {
     alignSelf: 'flex-start', maxWidth: '92%', backgroundColor: c.card, borderRadius: radius.tile, borderBottomLeftRadius: 6,
-    paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: c.faint,
+    paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: c.faint,
   },
   theirsText: { color: c.text, fontSize: 15, lineHeight: 22 },
   typing: { color: c.muted, fontSize: 14 },
-  via: { color: c.muted, fontSize: 12, marginTop: 6 },
-  errorRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
+  via: { color: c.muted, fontSize: 12, marginTop: 8 },
+  errorRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   // flexShrink, not flex: the bubble sizes to its content, and flex: 1 squeezed the text to the buttons' width
   error: { flexShrink: 1, color: c.danger, fontSize: 14, lineHeight: 19 },
   inputBar: {
@@ -538,27 +538,27 @@ const s = themed((c) => ({
   },
   input: {
     flex: 1, minHeight: 42, maxHeight: 120, backgroundColor: c.card, borderRadius: 21, borderWidth: 1, borderColor: c.faint,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, color: c.text, fontSize: 15,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, color: c.text, fontSize: 15,
   },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
 
   sheetTitle: { color: c.text, fontSize: 20, fontWeight: '800' },
   sheetSub: { color: c.muted, fontSize: 14, lineHeight: 20, marginTop: 4 },
-  group: { marginTop: 18, gap: 8 },
+  group: { marginTop: 20, gap: 8 },
   groupHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   groupName: { color: c.text, fontSize: 15, fontWeight: '700' },
-  keyActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  keyActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   link: { color: c.primary, fontSize: 14, fontWeight: '700' },
-  keyBox: { backgroundColor: c.card, borderRadius: radius.badge, padding: 14, gap: 10, borderWidth: 1, borderColor: c.faint },
+  keyBox: { backgroundColor: c.card, borderRadius: radius.badge, padding: 16, gap: 12, borderWidth: 1, borderColor: c.faint },
   keyInput: {
-    backgroundColor: c.bg, borderRadius: radius.field, borderWidth: 1, borderColor: c.faint, paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: c.bg, borderRadius: radius.field, borderWidth: 1, borderColor: c.faint, paddingHorizontal: 12, paddingVertical: 12,
     color: c.text, fontSize: 15,
   },
   keyButtons: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   hint: { color: c.muted, fontSize: 13, lineHeight: 18 },
   model: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.card, borderRadius: radius.badge,
-    paddingHorizontal: 14, paddingVertical: 12, borderWidth: 2, borderColor: 'transparent',
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: radius.badge,
+    paddingHorizontal: 16, paddingVertical: 12, borderWidth: 2, borderColor: 'transparent',
   },
   modelOn: { borderColor: c.primary, backgroundColor: c.primarySoft },
   modelName: { color: c.text, fontSize: 15, fontWeight: '700' },

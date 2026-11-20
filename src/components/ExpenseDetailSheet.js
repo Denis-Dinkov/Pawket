@@ -7,7 +7,7 @@ import IconBadge from './ui/IconBadge';
 import Money from './ui/Money';
 import Pill from './ui/Pill';
 import Touch from './ui/Touch';
-import { colors, categoryById, BUCKETS, money, radius } from '../theme';
+import { colors, categoryById, BUCKETS, money, radius, tint } from '../theme';
 import { dayLabel, timeLabel, SOURCES } from '../format';
 import { feedback } from '../haptics';
 import { useStore } from '../store';
@@ -56,7 +56,7 @@ export function ExpenseDetail({ expense: snapshot, onDelete, onEdit, onBack }) {
         <IconBadge icon={cat?.icon || 'help'} color={bucket?.color || colors.muted} size={64} />
         <Text style={s.cat}>{cat?.name || t('Без категория')}</Text>
         <Money value={expense.goalId ? expense.amount : -expense.amount} size={38} color={expense.goalId ? colors.savings : colors.text} />
-        {bucket && <Pill small variant="soft" label={bucket.label} style={{ alignSelf: 'center', marginTop: 8 }} />}
+        {bucket && <Pill small variant="soft" label={bucket.label} style={{ alignSelf: 'center', marginTop: 8, backgroundColor: tint(bucket.color, 0.12) }} textStyle={{ color: bucket.color }} />}
       </View>
       <View style={s.card}>
         <Row icon="storefront-outline" label={t('Къде')} value={expense.merchant || '—'} />
@@ -146,17 +146,17 @@ export default function ExpenseDetailSheet({ expense, onClose, onDelete, onEdit 
 }
 
 const s = themed((colors) => ({
-  head: { alignItems: 'center', gap: 6, marginBottom: 18 },
-  cat: { color: colors.muted, fontSize: 14, fontWeight: '600', marginTop: 6 },
+  head: { alignItems: 'center', gap: 8, marginBottom: 20 },
+  cat: { color: colors.muted, fontSize: 14, fontWeight: '600', marginTop: 8 },
   card: { backgroundColor: colors.card, borderRadius: radius.tile, paddingHorizontal: 16, paddingVertical: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   label: { color: colors.muted, fontSize: 14, width: 78 },
   value: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600', textAlign: 'right' },
-  switchCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, marginTop: 10 },
+  switchCard: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginTop: 12 },
   switchLabel: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600' },
-  note: { color: colors.muted, fontSize: 13, lineHeight: 17, marginTop: 8, paddingHorizontal: 6 },
-  actions: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 18 },
-  dupeCard: { backgroundColor: colors.dangerSoft, borderRadius: 18, padding: 14, gap: 10, marginTop: 10 },
+  note: { color: colors.muted, fontSize: 13, lineHeight: 17, marginTop: 8, paddingHorizontal: 8 },
+  actions: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 20 },
+  dupeCard: { backgroundColor: colors.dangerSoft, borderRadius: 18, padding: 16, gap: 12, marginTop: 12 },
   dupeText: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   dupeActions: { flexDirection: 'row', gap: 8 },
 }));

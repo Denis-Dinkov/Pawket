@@ -49,10 +49,10 @@ export default function Pill({ label, icon, iconRight, onPress, variant: variant
 
 const s = themed((colors) => ({
   pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1,
   },
-  small: { paddingHorizontal: 10, paddingVertical: 5, gap: 4 },
+  small: { paddingHorizontal: 12, paddingVertical: 4, gap: 4 },
   text: { fontSize: 14, fontWeight: '600' },
   smallText: { fontSize: 12 },
 }));

@@ -1,4 +1,4 @@
-import React, { startTransition, useMemo, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, Keyboard, Platform, Switch } from 'react-native';
 import { Text, TextInput } from '../components/ui/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +82,11 @@ export default function AddScreen({ onDone, prefill = {} }) {
   };
   const [pickDate, setPickDate] = useState(false);
   const [repeat, setRepeat] = useState(!!prefill.repeat);
+  // Turning "Every month" on adds a hint at the very bottom; scroll so it isn't left under the keypad
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    if (repeat) requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  }, [repeat]);
   // Off: paid with money the user already had (another account, old savings), kept out of the month
   const [offBudget, setOffBudget] = useState(!!editing?.offBudget || !!prefill.offBudget);
   const [allCats, setAllCats] = useState(false);
@@ -227,16 +232,17 @@ export default function AddScreen({ onDone, prefill = {} }) {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={s.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
         {fromGoal && (
-          <Pill small variant="soft" icon="wallet-outline" label={t('От „{0}“ · {1}', { 0: fromGoal.name, 1: money(goalSaved(fromGoal, expenses)) })} style={{ alignSelf: 'center', marginBottom: 6 }} />
+          <Pill small variant="soft" icon="wallet-outline" label={t('От „{0}“ · {1}', { 0: fromGoal.name, 1: money(goalSaved(fromGoal, expenses)) })} style={{ alignSelf: 'center', marginBottom: 8 }} />
         )}
         {prefill.source === 'applepay' && !isIncome && !editing && (
-          <Pill small variant="ink" icon="logo-apple" label={t('Плащане с Apple Pay')} style={{ alignSelf: 'center', marginBottom: 6 }} />
+          <Pill small variant="ink" icon="logo-apple" label={t('Плащане с Apple Pay')} style={{ alignSelf: 'center', marginBottom: 8 }} />
         )}
 
         <Touch
@@ -287,7 +293,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
 
         {isIncome ? (
           <>
-            <Text style={[s.bucketLabel, { marginTop: 18, marginBottom: 10 }]}>{t('Вид доход')}</Text>
+            <Text style={[s.bucketLabel, { marginTop: 20, marginBottom: 12 }]}>{t('Вид доход')}</Text>
             <View style={s.grid}>
               {INCOME_KINDS.map((k) => {
                 const active = k.id === kind;
@@ -389,7 +395,7 @@ export default function AddScreen({ onDone, prefill = {} }) {
         {/* Rare options: folded away, so the usual path is amount → category → save */}
         {!isIncome && !fromGoal && !editing?.fromGoalId && (
           moreOpen ? (
-            <View style={[s.fields, { marginTop: 10 }]}>
+            <View style={[s.fields, { marginTop: 12 }]}>
           {!isIncome && !editing && !fromGoal && (
             <Touch
               haptic="select"
@@ -500,35 +506,35 @@ export default function AddScreen({ onDone, prefill = {} }) {
 
 const s = themed((c) => ({
   container: { paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   headerSide: { width: 60, minHeight: 44, justifyContent: 'center' },
   title: { color: c.text, fontSize: 16, fontWeight: '700' },
   cancel: { color: c.primary, fontSize: 15, fontWeight: '600' },
   amountWrap: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginTop: 8, gap: 4 },
   amount: { fontSize: 52, fontWeight: '800', letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
   currency: { fontSize: 28, color: c.muted, fontWeight: '700' },
-  chips: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  chips: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   remembered: { color: c.primary, fontSize: 13, textAlign: 'center', fontWeight: '600' },
   fields: { backgroundColor: c.card, borderRadius: radius.card, paddingHorizontal: 16, marginTop: 16 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50 },
   sep: { borderTopWidth: 1, borderColor: c.faint },
-  input: { flex: 1, minWidth: 0, paddingVertical: 13, fontSize: 15, color: c.text },
-  incomeHint: { color: c.muted, fontSize: 13, lineHeight: 18, marginTop: 10, marginHorizontal: 4 },
-  bucketRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  input: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 15, color: c.text },
+  incomeHint: { color: c.muted, fontSize: 13, lineHeight: 18, marginTop: 12, marginHorizontal: 4 },
+  bucketRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  bucketLabel: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  bucketLabel: { color: c.muted, fontSize: 13, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   quickRow: { paddingHorizontal: 20, gap: 8 },
   quickCell: { width: 84 },
   catFill: { width: '100%', maxWidth: '100%' },
   cat: {
     width: '23%', flexGrow: 1, maxWidth: '24%', minHeight: 74, borderRadius: 18, borderWidth: 1.5, borderColor: 'transparent',
-    backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 5, padding: 5,
+    backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 4, padding: 4,
   },
   newCat: { backgroundColor: 'transparent', borderColor: c.faint, borderStyle: 'dashed' },
   catText: { fontSize: 12, color: c.text, alignSelf: 'stretch', textAlign: 'center' },
   footer: { paddingHorizontal: 12, paddingTop: 8, backgroundColor: c.bg, borderTopWidth: 1, borderColor: c.faint, gap: 8 },
-  pad: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pad: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   // Three columns: 31% each plus the two 6 px gaps fit on every phone width
   key: { width: '31%', flexGrow: 1, height: 46, borderRadius: radius.field, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' },
   keyText: { color: c.text, fontSize: 22, fontWeight: '600' },

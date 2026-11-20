@@ -49,7 +49,7 @@ function Mood({ status, advice }) {
   if (status.score == null) {
     return (
       <Text style={s.text}>
-        {t('Спя, защото не знам колко е месечният ти доход. Задай го от настройките (⚙︎) и ще започна да следя {rule}.')}
+        {t('Спя, защото не знам колко е месечният ти доход. Задай го от настройките и ще започна да следя {rule}.')}
       </Text>
     );
   }
@@ -164,9 +164,9 @@ function Growth({ status }) {
     <>
       <View style={s.card}>
         <Text style={s.rowTitle}>
-          {status.xp} XP{status.next ? t(' · още {0} до „{1}“', { 0: status.next.xp - status.xp, 1: status.next.name }) : t(' · най-високият етап!')}
+          {status.xp} XP{status.next ? t(' · още {0} до „{1}“', { 0: status.next.xp - status.xp, 1: status.next.name }) : t(' · най-високият етап')}
         </Text>
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: 12 }}>
           <Bar value={status.progress} color={colors.primary} height={8} />
         </View>
       </View>
@@ -248,20 +248,20 @@ export default function PetStatSheet({ stat, onClose, status, pet, advice, canFe
 const s = themed((colors) => ({
   head: { alignItems: 'center', marginBottom: 8 },
   title: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 4 },
-  text: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 6 },
-  h2: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 18, marginBottom: 8 },
-  card: { backgroundColor: colors.card, borderRadius: radius.tile, padding: 14, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  text: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 8 },
+  h2: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 20, marginBottom: 8 },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, padding: 16, gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   rowTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   rowDetail: { color: colors.muted, fontSize: 13, marginTop: 2, lineHeight: 17 },
   badge: { fontSize: 14, fontWeight: '800' },
-  tip: { flexDirection: 'row', gap: 10, paddingVertical: 6, alignItems: 'flex-start' },
+  tip: { flexDirection: 'row', gap: 12, paddingVertical: 8, alignItems: 'flex-start' },
   tipText: { flex: 1, color: colors.text, fontSize: 14, lineHeight: 19 },
-  scale: { flexDirection: 'row', gap: 4, marginTop: 10 },
+  scale: { flexDirection: 'row', gap: 4, marginTop: 12 },
   scaleItem: { flex: 1, backgroundColor: colors.card, borderRadius: radius.badge, paddingVertical: 8, alignItems: 'center' },
   scaleLabel: { color: colors.text, fontSize: 11, fontWeight: '700' },
   scaleFrom: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  stage: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  stage: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
-  action: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 16, paddingVertical: 14 },
+  action: { alignSelf: 'stretch', justifyContent: 'center', marginTop: 16, paddingVertical: 16 },
 }));

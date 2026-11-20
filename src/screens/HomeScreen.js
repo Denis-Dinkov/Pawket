@@ -8,7 +8,7 @@ import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
 import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, categoryById, currentColorScheme, monthLower, shadow } from '../theme';
 import { monthOverview, dailyLimit, freeToSpend } from '../budget';
-import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
+import { petStatus, EXPRESSIONS, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
 import { weekMissions, streak, activityDays, MISSION_XP } from '../pet/missions';
 import { upcomingPayments, pendingSpend, goalProgress, monthForecast, firstOpenGoal } from '../plans';
@@ -44,7 +44,6 @@ import { t } from '../i18n';
 
 const RECENT = 3;
 const ROOM = 268;
-const MONTH_EMOJI = { ecstatic: '🤩', happy: '🐶', worried: '😟', sad: '😢', crying: '😭' };
 
 // One bar for the whole 50/30/20 split; the grey rest is the unspent income
 function SplitBar({ ov }) {
@@ -196,7 +195,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     ? petLine({ status, daily, advice, activeToday: hasExpenseToday || pet.lastActiveDay === dayKey(now), goal: goal && { name: goal.g.name, done: goal.p.done }, now }).text
     : ov.score == null
       ? t('За {0} няма доход — не мога да го оценя.', { 0: monthLower(month) })
-      : t('{0} завърши с {1}/100 {2}', { 0: MONTHS[month], 1: ov.score, 2: MONTH_EMOJI[expressionFor(ov.score)] });
+      : t('{0} завърши с {1}/100', { 0: MONTHS[month], 1: ov.score });
 
   // Add opens on top of the detail sheet, which is back (with the changes) once Add closes
   const edit = (e) => onAdd({ edit: e });
@@ -236,7 +235,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     ),
     missions: () => (
       <Touch onPress={() => onTab('pet')} accessibilityHint={t('Отваря {0}', { 0: pet.name })}>
-        <Card style={{ gap: 10 }}>
+        <Card style={{ gap: 12 }}>
           <View style={s.cardHead}>
             <Text style={s.h2}>{t('Мисии тази седмица')}</Text>
             <View style={s.streak}>
@@ -256,7 +255,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
     ),
     today: () => <TodayCard ov={ov} now={now} pending={pending} />,
     rule: () => (
-      <Card style={{ gap: 14 }}>
+      <Card style={{ gap: 16 }}>
         <View style={s.cardHead}>
           <Text style={s.h2}>{t('Правило {rule}')}</Text>
           {ov.score != null && ov.list.length > 0 && <Text style={s.score}>{ov.score}/100</Text>}
@@ -297,11 +296,11 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             ]}
             value={view}
             onChange={setView}
-            style={{ marginBottom: 6 }}
+            style={{ marginBottom: 8 }}
           />
         )}
         {ov.list.length === 0 ? (
-          <Card style={{ alignItems: 'center', gap: 10 }}>
+          <Card style={{ alignItems: 'center', gap: 12 }}>
             <Text style={s.empty}>{t('Няма разходи за {0}.', { 0: monthLower(month) })}</Text>
             <Pill icon="add" label={t('Добави първия')} variant="ink" onPress={() => onAdd({})} />
           </Card>
@@ -349,7 +348,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
           insetTop={insets.top}
           height={ROOM}
           bubble={bubble}
-          bubbleAction={canFeed && isCurrent ? { label: t('Без разходи днес 🦴'), onPress: feed } : null}
+          bubbleAction={canFeed && isCurrent ? { label: t('Без разходи днес'), onPress: feed } : null}
           onBubble={() => setAdviceOpen(true)}
           onStat={setStatOpen}
           bounceKey={pet.lastFedAt}
@@ -563,7 +562,7 @@ const s = themed((c) => ({
   gear: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.card, opacity: 0.92, alignItems: 'center', justifyContent: 'center' },
   sheet: {
     backgroundColor: c.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    marginTop: -30, paddingHorizontal: 16, paddingTop: 16, gap: 16, minHeight: 600,
+    marginTop: -32, paddingHorizontal: 16, paddingTop: 16, gap: 16, minHeight: 600,
   },
   label: { color: c.muted, fontSize: 13, fontWeight: '600' },
   moneyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
@@ -573,39 +572,39 @@ const s = themed((c) => ({
   split: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', gap: 2, backgroundColor: c.faint },
   legend: { flexDirection: 'row', gap: 8 },
   legendItem: { flex: 1, gap: 2 },
-  legendHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 9, height: 9, borderRadius: 3 },
   legendName: { color: c.text, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   legendValue: { color: c.muted, fontSize: 12 },
   incomeLine: { alignSelf: 'flex-start', marginTop: 2 },
-  forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, paddingHorizontal: 12, paddingVertical: 9 },
+  forecast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, paddingHorizontal: 12, paddingVertical: 8 },
   forecastText: { flex: 1, color: c.text, fontSize: 13, lineHeight: 18 },
-  duo: { flexDirection: 'row', gap: 10 },
-  mini: { flex: 1, backgroundColor: c.card, borderRadius: radius.card, padding: 14, gap: 4, borderWidth: 1, borderColor: c.faint },
-  miniHead: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  duo: { flexDirection: 'row', gap: 12 },
+  mini: { flex: 1, backgroundColor: c.card, borderRadius: radius.card, padding: 16, gap: 4, borderWidth: 1, borderColor: c.faint },
+  miniHead: { color: c.muted, fontSize: 13, fontWeight: '700' },
   miniValue: { color: c.text, fontSize: 15, fontWeight: '800' },
   miniSub: { color: c.muted, fontSize: 13 },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   h2: { color: c.text, fontSize: 16, fontWeight: '700' },
   score: { color: c.primary, fontSize: 15, fontWeight: '800' },
   bucketName: { color: c.text, fontSize: 15, fontWeight: '700' },
-  streak: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.warningSoft, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  streak: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.warningSoft, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4 },
   streakText: { color: c.text, fontSize: 13, fontWeight: '700' },
-  mission: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mission: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   missionText: { flex: 1, color: c.text, fontSize: 14, fontWeight: '600' },
   missionDone: { color: c.muted, textDecorationLine: 'line-through' },
   missionCount: { color: c.muted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   section: { color: c.text, fontSize: 18, fontWeight: '800' },
-  listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
+  listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 },
   empty: { color: c.muted, textAlign: 'center', fontSize: 14 },
-  layoutBtn: { alignSelf: 'center', marginTop: 6, borderColor: c.faint },
+  layoutBtn: { alignSelf: 'center', marginTop: 8, borderColor: c.faint },
   dockWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
   dockShadow: {
     backgroundColor: c.roomTo, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
     shadowColor: shadow.shadowColor, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
   },
   dock: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12,
     borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden',
   },
   dockPet: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

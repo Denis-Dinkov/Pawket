@@ -16,7 +16,8 @@ export default function Money({ value, size = 44, color = colors.text, prefix = 
   const final = splitMoney(target);
   return (
     <Text
-      style={[s.base, { fontSize: size, color, letterSpacing: -size * 0.03 }, style]}
+      // Tight tracking only on display sizes; small amounts keep the font's own spacing
+      style={[s.base, { fontSize: size, color, letterSpacing: size >= 28 ? -size * 0.02 : 0 }, style]}
       numberOfLines={1}
       adjustsFontSizeToFit
       maxFontSizeMultiplier={maxFontSizeMultiplier}

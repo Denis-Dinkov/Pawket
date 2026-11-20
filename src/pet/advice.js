@@ -56,7 +56,7 @@ export function getAdvice({ expenses, incomes, incomeEntries, recurring = [], ye
     add(100, {
       id: 'no-income', tone: 'tip', icon: 'cash-outline',
       title: t('Кажи ми колко е месечният ти доход 💤'),
-      text: t('Без доход не мога да сметна {rule}. Задай го от настройките (⚙︎) и се събуждам.'),
+      text: t('Без доход не мога да сметна {rule}. Задай го от настройките и се събуждам.'),
     });
     return finish(tips);
   }

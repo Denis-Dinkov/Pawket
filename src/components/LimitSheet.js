@@ -38,7 +38,7 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
         value={over ? daily.overToday : daily.leftToday}
         size={40}
         color={over || daily.eatenSavings > 0 ? colors.danger : colors.savings}
-        style={{ textAlign: 'center', marginTop: 6 }}
+        style={{ textAlign: 'center', marginTop: 8 }}
       />
       <Text style={s.sub}>{t('от {0} лимит за днес', { 0: exact(daily.todayLimit) })}</Text>
 
@@ -93,16 +93,16 @@ export default function LimitSheet({ visible, onClose, daily, now }) {
 const s = themed((c) => ({
   title: { color: c.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   sub: { color: c.muted, fontSize: 14, textAlign: 'center' },
-  alert: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderRadius: radius.field, padding: 12, marginTop: 16, backgroundColor: c.dangerSoft },
+  alert: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderRadius: radius.field, padding: 12, marginTop: 16, backgroundColor: c.dangerSoft },
   alertText: { flex: 1, color: c.text, fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  section: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 18, marginBottom: 8 },
-  card: { backgroundColor: c.card, borderRadius: radius.tile, padding: 14, gap: 10, marginTop: 16 },
+  section: { color: c.muted, fontSize: 13, fontWeight: '700', marginTop: 20, marginBottom: 8 },
+  card: { backgroundColor: c.card, borderRadius: radius.tile, padding: 16, gap: 12, marginTop: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
   rowLabel: { flex: 1, color: c.text, fontSize: 15 },
   rowValue: { color: c.text, fontSize: 15, fontVariant: ['tabular-nums'] },
   strong: { fontWeight: '800' },
   sep: { height: 1, backgroundColor: c.faint },
   tomorrow: { color: c.text, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 16 },
-  notes: { gap: 6, marginTop: 16 },
+  notes: { gap: 8, marginTop: 16 },
   note: { color: c.muted, fontSize: 14, lineHeight: 20 },
 }));

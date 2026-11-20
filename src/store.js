@@ -401,7 +401,7 @@ export function StoreProvider({ children }) {
       if (st.won) {
         // Only a day started in the morning earns XP; a late start is still allowed, just for the habit
         xp = new Date(session.startedAt).getHours() < NOSPEND_XP_BEFORE ? SESSION_XP.nospend : 0;
-        toastNext = { text: xp ? t('Ден без разходи! +{0} XP 🦴', { 0: xp }) : t('Ден без разходи! 🦴'), icon: 'trophy', celebrate: true };
+        toastNext = { text: xp ? t('Ден без разходи · +{0} XP', { 0: xp }) : t('Ден без разходи'), icon: 'trophy', celebrate: true };
       } else if (st.spent > 0) {
         toastNext = { text: t('Денят без разходи приключи — нищо, утре пак 🐾'), icon: 'paw-outline' };
       } else {
@@ -642,7 +642,7 @@ export function StoreProvider({ children }) {
           pet: existing ? d.pet : feedPet(d.pet),
         }));
         if (!before.done && before.saved + amount >= goal.target) {
-          showToast({ text: t('Целта „{0}“ е постигната! 🎉', { 0: goal.name }), icon: 'trophy', celebrate: true });
+          showToast({ text: t('Целта „{0}“ е постигната', { 0: goal.name }), icon: 'trophy', celebrate: true });
         }
       },
 
@@ -679,7 +679,7 @@ export function StoreProvider({ children }) {
             ],
           }));
           showToast({
-            text: before.saved + wish.amount >= goal.target && !before.done ? t('Целта „{0}“ е постигната! 🎉', { 0: goal.name }) : t('+{0} към „{1}“ вместо „{2}“ 💪', { 0: money(wish.amount), 1: goal.name, 2: wish.name }),
+            text: before.saved + wish.amount >= goal.target && !before.done ? t('Целта „{0}“ е постигната', { 0: goal.name }) : t('+{0} към „{1}“ вместо „{2}“ 💪', { 0: money(wish.amount), 1: goal.name, 2: wish.name }),
             icon: 'trophy',
             celebrate: true,
           });

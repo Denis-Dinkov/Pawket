@@ -18,6 +18,8 @@ import Bar from '../components/Bar';
 import Segmented from '../components/ui/Segmented';
 import { themed } from '../themed';
 import { t } from '../i18n';
+import { monthIncome } from '../budget';
+import { currentSplit } from '../split';
 
 function AmountField({ value, onChange, label, autoFocus }) {
   return (
@@ -28,7 +30,8 @@ function AmountField({ value, onChange, label, autoFocus }) {
         placeholder="0"
         placeholderTextColor={colors.placeholder}
         keyboardType="decimal-pad"
-        style={s.amountInput}
+        // The digits hug the euro sign instead of floating in the middle of the field
+        style={[s.amountInput, { textAlign: euroFirst() ? 'left' : 'right' }]}
         maxLength={10}
         autoFocus={autoFocus}
         accessibilityLabel={label}
@@ -223,7 +226,7 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
         ]}
         value={from}
         onChange={setFrom}
-        style={{ marginTop: 6, marginBottom: 10 }}
+        style={{ marginTop: 8, marginBottom: 12 }}
       />
       <Text style={[s.hint, { textAlign: 'center' }]}>
         {t('Остават {0}. {1}', { 0: money(left), 1: from === 'existing'
@@ -277,7 +280,7 @@ function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
         </Touch>
       </View>
       <Text style={s.hint}>{t('При по-кратък месец се записва на последния ден.')}</Text>
-      <View style={[s.chipRow, { justifyContent: 'center', marginTop: 18 }]}>
+      <View style={[s.chipRow, { justifyContent: 'center', marginTop: 20 }]}>
         <Pill
           icon={rule.paused ? 'play' : 'pause'}
           label={rule.paused ? t('Продължи') : t('Спри временно')}
@@ -299,11 +302,16 @@ const deadlineLabel = (iso) => {
 };
 
 export default function PlansScreen({ onAdd }) {
-  const { goals, recurring, expenses, wishes, addGoal, updateGoal, removeGoal, contributeGoal, updateRecurring, removeRecurring, showToast, addWish, resolveWish, removeWish } =
+  const { goals, recurring, expenses, incomes, incomeEntries, wishes, addGoal, updateGoal, removeGoal, contributeGoal, updateRecurring, removeRecurring, showToast, addWish, resolveWish, removeWish } =
     useStore();
   const [wishOpen, setWishOpen] = useState(false);
   const now = new Date();
-  const needs = useMemo(() => averageNeeds(expenses, new Date()), [expenses]);
+  // Without earlier months the planned needs budget is the base, not the few expenses logged so far
+  const needs = useMemo(() => {
+    const d = new Date();
+    const planned = monthIncome({ incomes, incomeEntries }, d.getFullYear(), d.getMonth()).total * currentSplit(d).needs;
+    return averageNeeds(expenses, d, 3, planned);
+  }, [expenses, incomes, incomeEntries]);
   const openWishes = useMemo(() => wishes.filter((w) => !w.decision), [wishes]);
   const hasEmergency = goals.some((g) => g.kind === 'emergency');
   const [goalEdit, setGoalEdit] = useState(null); // goal | 'new' | null
@@ -339,7 +347,7 @@ export default function PlansScreen({ onAdd }) {
           {/* A new expense with "Всеки месец" already on: its first payment and the rule in one step */}
           <Pill small icon="add" label={t('Ново')} variant="soft" onPress={() => onAdd({ repeat: true })} accessibilityLabel={t('Ново повтарящо се плащане')} />
         </View>
-        {monthlyTotal > 0 && <Text style={[s.hint, { marginTop: -6 }]}>{t('Общо {0} на месец', { 0: money(monthlyTotal) })}</Text>}
+        {monthlyTotal > 0 && <Text style={[s.hint, { marginTop: -8 }]}>{t('Общо {0} на месец', { 0: money(monthlyTotal) })}</Text>}
         {recurring.length === 0 ? (
           <Card style={s.emptyCard}>
             <Ionicons name="repeat" size={30} color={colors.primary} />
@@ -373,7 +381,7 @@ export default function PlansScreen({ onAdd }) {
         </View>
         {!hasEmergency && needs > 0 && (
           <Touch onPress={() => setGoalEdit({ preset: { kind: 'emergency' } })}>
-            <Card style={[s.goalHead, { borderColor: colors.needs }]}>
+            <Card style={s.goalHead}>
               <IconBadge icon="umbrella" color={colors.needs} size={44} />
               <View style={{ flex: 1 }}>
                 <Text style={s.goalName}>{t('Създай авариен фонд')}</Text>
@@ -384,12 +392,17 @@ export default function PlansScreen({ onAdd }) {
           </Touch>
         )}
         {list.length === 0 ? (
-          <Card style={s.emptyCard}>
-            <Ionicons name="flag-outline" size={30} color={colors.savings} />
-            <Text style={s.emptyTitle}>{t('Спестявай за нещо конкретно')}</Text>
-            <Text style={s.hintCenter}>{t('Ваканция, нов телефон, резерв. Заделеното се брои към спестяванията.')}</Text>
-            <Pill icon="add" label={t('Създай цел')} variant="ink" onPress={() => setGoalEdit('new')} />
-          </Card>
+          // A compact row, like the emergency fund above: one big empty state per screen is enough
+          <Touch onPress={() => setGoalEdit('new')} accessibilityLabel={t('Създай цел')}>
+            <Card style={s.goalHead}>
+              <IconBadge icon="flag-outline" color={colors.savings} size={44} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.goalName}>{t('Спестявай за нещо конкретно')}</Text>
+                <Text style={s.hint}>{t('Ваканция, нов телефон, резерв. Заделеното се брои към спестяванията.')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+            </Card>
+          </Touch>
         ) : (
           list.map(({ g, saved, left, progress, done }) => {
             const perMonth = monthlyNeeded(g, saved, now);
@@ -410,7 +423,7 @@ export default function PlansScreen({ onAdd }) {
                 </Touch>
                 <Bar value={progress} color={colors.savings} height={8} label={`${g.name}: ${pct(progress)}`} />
                 <Text style={s.hint}>
-                    {done ? t('Постигната! 🎉') : perMonth ? t('≈ {0} на месец до срока', { 0: money(Math.ceil(perMonth)) }) : t('Остават {0}', { 0: money(left) })}
+                    {done ? t('Постигната') : perMonth ? t('≈ {0} на месец до срока', { 0: money(Math.ceil(perMonth)) }) : t('Остават {0}', { 0: money(left) })}
                 </Text>
                 <View style={s.goalFoot}>
                   {/* Paying the cost out of the goal doesn't count as spending again */}
@@ -438,18 +451,23 @@ export default function PlansScreen({ onAdd }) {
         </View>
         {openWishes.length === 0 ? (
           <Appear index={1}>
-            <Card style={s.emptyCard}>
-              <Ionicons name="hourglass-outline" size={28} color={colors.wants} />
-              <Text style={s.emptyTitle}>{t('Искаш нещо скъпо?')}</Text>
-              <Text style={s.hintCenter}>{t('Запиши го и изчакай 2 дни. Ако още го искаш, купуваш.')}</Text>
-            </Card>
+            <Touch onPress={() => setWishOpen(true)} accessibilityLabel={t('Желание')}>
+              <Card style={s.goalHead}>
+                <IconBadge icon="hourglass-outline" color={colors.wants} size={44} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.goalName}>{t('Искаш нещо скъпо?')}</Text>
+                  <Text style={s.hint}>{t('Запиши го и изчакай 2 дни. Ако още го искаш, купуваш.')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Card>
+            </Touch>
           </Appear>
         ) : (
           openWishes.map((w, i) => {
             const left = wishHoursLeft(w, now);
             return (
               <Appear key={w.id} index={i + 1}>
-                <Card style={{ gap: 10 }}>
+                <Card style={{ gap: 12 }}>
                   <View style={s.goalHead}>
                     <IconBadge icon={left ? 'hourglass' : 'checkmark-done'} color={colors.wants} size={44} />
                     <View style={{ flex: 1 }}>
@@ -557,7 +575,7 @@ const s = themed((c) => ({
   title: { color: c.text, fontSize: 26, fontWeight: '800' },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   section: { color: c.text, fontSize: 18, fontWeight: '800' },
-  emptyCard: { alignItems: 'center', gap: 10, paddingVertical: 24 },
+  emptyCard: { alignItems: 'center', gap: 12, paddingVertical: 24 },
   emptyTitle: { color: c.text, fontSize: 16, fontWeight: '700', textAlign: 'center' },
   hint: { color: c.muted, fontSize: 13, lineHeight: 18 },
   hintCenter: { color: c.muted, fontSize: 14, lineHeight: 19, textAlign: 'center', maxWidth: 320 },
@@ -566,14 +584,14 @@ const s = themed((c) => ({
   goalName: { color: c.text, fontSize: 16, fontWeight: '700' },
   goalPct: { color: c.text, fontSize: 18, fontWeight: '800' },
   goalFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
-  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 2, minHeight: 56 },
+  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 2, minHeight: 56 },
   sep: { borderTopWidth: 1, borderColor: c.faint },
   ruleName: { color: c.text, fontSize: 15, fontWeight: '600' },
   ruleAmount: { color: c.text, fontSize: 15, fontWeight: '700' },
-  sheetTitle: { color: c.text, fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 6 },
-  label: { color: c.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 16, marginBottom: 6 },
-  textInput: { backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 14, paddingVertical: 13, fontSize: 16, color: c.text },
-  amountRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginVertical: 6 },
+  sheetTitle: { color: c.text, fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
+  label: { color: c.muted, fontSize: 13, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  textInput: { backgroundColor: c.card, borderRadius: radius.badge, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: c.text },
+  amountRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginVertical: 8 },
   amountInput: { fontSize: 40, fontWeight: '800', color: c.text, minWidth: 80, textAlign: 'center', padding: 0 },
   currency: { fontSize: 24, color: c.muted, fontWeight: '700' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },

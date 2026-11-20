@@ -22,7 +22,7 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
       <Text style={s.title}>
         {t('Доходи · {0} {1}', { 0: MONTHS[month], 1: year })}
       </Text>
-      <Money value={info.total} size={36} color={colors.savings} prefix="+" style={{ textAlign: 'center', marginTop: 6 }} />
+      <Money value={info.total} size={36} color={colors.savings} prefix="+" style={{ textAlign: 'center', marginTop: 8 }} />
 
       <View style={s.card}>
         <View style={s.row}>
@@ -67,8 +67,8 @@ export default function IncomeSheet({ visible, onClose, info, year, month, onAdd
 
 const s = themed((colors) => ({
   title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  card: { backgroundColor: colors.card, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 4, marginTop: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+  card: { backgroundColor: colors.card, borderRadius: radius.tile, paddingHorizontal: 16, paddingVertical: 4, marginTop: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   sep: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.faint },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   sub: { color: colors.muted, fontSize: 13, marginTop: 2 },
@@ -76,8 +76,8 @@ const s = themed((colors) => ({
   struck: { textDecorationLine: 'line-through', color: colors.muted },
   hint: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 8 },
   add: {
-    flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.savings, borderRadius: radius.pill, paddingVertical: 15, marginTop: 18,
+    flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 16, marginTop: 20,
   },
   addText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
 }));

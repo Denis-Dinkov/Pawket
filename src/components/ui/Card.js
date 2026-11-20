@@ -9,6 +9,6 @@ export default function Card({ style, children, elevated = false }) {
 }
 
 const s = themed((colors) => ({
-  card: { backgroundColor: colors.card, borderRadius: radius.card, padding: 18, borderWidth: 1, borderColor: colors.faint },
+  card: { backgroundColor: colors.card, borderRadius: radius.card, padding: 20, borderWidth: 1, borderColor: colors.faint },
   elevated: { borderWidth: 0, ...shadow },
 }));

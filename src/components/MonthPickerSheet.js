@@ -32,7 +32,7 @@ export default function MonthPickerSheet({ visible, onClose, expenses, year, mon
     <Sheet visible={visible} onClose={onClose}>
       <Text style={s.title}>{t('Избери месец')}</Text>
       {years.map((y) => (
-        <View key={y} style={{ marginTop: 14 }}>
+        <View key={y} style={{ marginTop: 16 }}>
           <Text style={s.year}>{y}</Text>
           <View style={s.grid}>
             {MONTHS.map((name, m) => {

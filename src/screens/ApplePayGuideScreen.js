@@ -18,16 +18,18 @@ const STEPS = [
   tList(['Избери „Транзакция“', 'Отбележи картите си от Wallet. Избери „Изпълни веднага“ и натисни „Напред“.']),
   tList(['Добави „Запиши плащане“', 'Нова празна автоматизация → потърси „Pawket“ → действие „Запиши плащане“.']),
   tList(['Свържи сумата и магазина', 'Докосни „Сума“ и избери променливата „Сума“, после „Търговец“ → „Търговец“.']),
-  tList(['Готово!', 'След всяко плащане Pawket записва разхода сам — дори при заключен телефон — обновява бюджета и ти изпраща известие. Новите плащания са оцветени, докато не ги погледнеш.']),
+  tList(['Готово', 'След всяко плащане Pawket записва разхода сам — дори при заключен телефон — обновява бюджета и ти изпраща известие. Новите плащания са оцветени, докато не ги погледнеш.']),
 ];
 
 // Guide for the Shortcuts automation that records every Apple Pay payment ("Запиши плащане", works while locked).
 // The older "Open URLs" automation stays as an option for people who want to fill in the expense themselves.
 export default function ApplePayGuideScreen({ onClose, onTry }) {
   const [copied, setCopied] = useState(false);
-  // The action sends a notification for every payment it records, so setting it up is the moment to ask
+  // The action sends a notification for every payment it records, so setting it up is the moment to ask.
+  // A short pause first, so the intro that says so is on screen before iOS asks.
   useEffect(() => {
-    requestReminderPermission().catch(() => {});
+    const id = setTimeout(() => requestReminderPermission().catch(() => {}), 1200);
+    return () => clearTimeout(id);
   }, []);
   const copy = async () => {
     await Clipboard.setStringAsync(APPLE_PAY_TEMPLATE);
@@ -48,7 +50,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
         <IconBadge icon="logo-apple" color={colors.ink} size={64} solid />
         <Text style={s.h1}>{t('Запис след Apple Pay')}</Text>
         <Text style={s.sub}>
-          {t('След всяко плащане Pawket записва разхода сам, без да го отваряш. Категорията я помня по магазина.')}
+          {t('След всяко плащане Pawket записва разхода сам, без да го отваряш, и ти праща известие. Категорията я помня по магазина.')}
         </Text>
       </View>
 
@@ -67,7 +69,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
       </Card>
 
       <Text style={s.section}>{t('Или: да се отваря „Нов разход“')}</Text>
-      <Text style={[s.note, { marginBottom: 10 }]}>
+      <Text style={[s.note, { marginBottom: 12 }]}>
         {t('Вместо „Запиши плащане“ добави „URL кодиране“ на „Търговец“ и „Отвори URL адреси“ с шаблона отдолу ([Сума] → „Сума“, [Търговец] → резултата от „URL кодиране“). Тогава сам избираш категорията, но iOS не отваря приложения при заключен телефон и такова плащане се губи.')}
       </Text>
       <Touch onPress={copy} style={s.template}>
@@ -84,7 +86,7 @@ export default function ApplePayGuideScreen({ onClose, onTry }) {
         icon="flash-outline"
         label={t('Пробвай как изглежда')}
         variant="soft"
-        style={{ alignSelf: 'center', marginTop: 18 }}
+        style={{ alignSelf: 'center', marginTop: 20 }}
         onPress={() => onTry({ amount: 4.8, merchant: 'Starbucks', source: 'applepay' })}
       />
 
@@ -111,11 +113,11 @@ const s = themed((colors) => ({
   numText: { color: colors.primary, fontWeight: '800' },
   stepTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   stepText: { color: colors.muted, fontSize: 14, lineHeight: 19, marginTop: 2 },
-  section: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 10 },
+  section: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 12 },
   // A code block stays dark in both themes
   template: { backgroundColor: '#2A1E16', borderRadius: radius.card, padding: 16, gap: 12 },
   code: { color: '#F3E6D8', fontFamily: 'Courier', fontSize: 13, lineHeight: 19 },
-  copy: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  copy: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 },
   copyText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   notes: { marginTop: 20, gap: 4 },
   note: { color: colors.muted, fontSize: 13, lineHeight: 18 },
