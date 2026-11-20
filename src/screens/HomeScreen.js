@@ -10,7 +10,7 @@ import { colors, BUCKETS, MONTHS, money, moneyShort, limitMoney, pct, radius, ca
 import { monthOverview, sortByDateDesc, dailyLimit, freeToSpend } from '../budget';
 import { petStatus, EXPRESSIONS, expressionFor, dayKey } from '../pet/logic';
 import { getAdvice } from '../pet/advice';
-import { weekMissions, streak, activityDays } from '../pet/missions';
+import { weekMissions, streak, activityDays, MISSION_XP } from '../pet/missions';
 import { upcomingPayments, pendingSpend, goalProgress, monthForecast, firstOpenGoal } from '../plans';
 import { sameDay, plural, dayLabel } from '../format';
 import { tapFeedback } from '../haptics';
@@ -44,8 +44,6 @@ import { outfitOf } from '../pet/outfit';
 import { t } from '../i18n';
 
 const RECENT = 3;
-// A small limit shows its cents ("от 6,08 €"): rounded to "6 €" it didn't add up to the month
-const limitText = limitMoney;
 const ROOM = 268;
 const MONTH_EMOJI = { ecstatic: '🤩', happy: '🐶', worried: '😟', sad: '😢', crying: '😭' };
 
@@ -113,7 +111,7 @@ const DockHeader = memo(
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.dockAmount}>{money(Math.round(remaining))}</Text>
-              {perDay != null && <Text style={s.dockSub}>{perDay >= 0 ? t('{0} за днес', { 0: limitText(perDay) }) : t('{0} над лимита днес', { 0: limitText(-perDay) })}</Text>}
+              {perDay != null && <Text style={s.dockSub}>{perDay >= 0 ? t('{0} за днес', { 0: limitMoney(perDay) }) : t('{0} над лимита днес', { 0: limitMoney(-perDay) })}</Text>}
             </View>
           </LinearGradient>
         </Touch>
@@ -202,10 +200,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
       ? t('За {0} няма доход — не мога да го оценя.', { 0: monthLower(month) })
       : t('{0} завърши с {1}/100 {2}', { 0: MONTHS[month], 1: ov.score, 2: MONTH_EMOJI[expressionFor(ov.score)] });
 
-  // Add opens on top of the sheet it comes from, which slides away underneath (see useOnTop)
-  const openAdd = onAdd;
   // Add opens on top of the detail sheet, which is back (with the changes) once Add closes
-  const edit = (e) => openAdd({ edit: e });
+  const edit = (e) => onAdd({ edit: e });
 
   // The room shrinks into a header bar once it scrolls away; the dog stays on screen
   const dockAt = ROOM - 80;
@@ -254,7 +250,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
             <View key={m.id} style={s.mission} accessible accessibilityLabel={`${m.title}: ${m.done ? t('изпълнена') : t('{0} от {1}', { 0: m.n, 1: m.of })}`}>
               <Ionicons name={m.done ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={m.done ? colors.savings : colors.muted} />
               <Text style={[s.missionText, m.done && s.missionDone]} numberOfLines={2}>{m.title}</Text>
-              <Text style={s.missionCount}>{m.done ? '+25 XP' : `${m.n}/${m.of}`}</Text>
+              <Text style={s.missionCount}>{m.done ? `+${MISSION_XP} XP` : `${m.n}/${m.of}`}</Text>
             </View>
           ))}
         </Card>
@@ -433,8 +429,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                     daily.eatenSavings > 0
                       ? t('Изхарчени {0} от спестяванията', { 0: moneyShort(daily.eatenSavings) })
                       : daily.overToday > 0
-                        ? t('Над днешния лимит с {0}', { 0: limitText(daily.overToday) })
-                        : t('Остават {0} от {1} за днес', { 0: limitText(daily.leftToday), 1: limitText(daily.todayLimit) })
+                        ? t('Над днешния лимит с {0}', { 0: limitMoney(daily.overToday) })
+                        : t('Остават {0} от {1} за днес', { 0: limitMoney(daily.leftToday), 1: limitMoney(daily.todayLimit) })
                   }
                 >
                   <View style={s.todayHead}>
@@ -452,7 +448,7 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
                   {/* Before anything is spent today the caption would only repeat the number above it */}
                   {(todayBad || daily.spentToday > 0) && (
                     <Text style={[s.miniSub, todayBad && { color: colors.danger, fontWeight: '700' }]} numberOfLines={1}>
-                      {daily.eatenSavings > 0 ? t('лимит 0 €') : t('от {0} лимит', { 0: limitText(daily.todayLimit) })}
+                      {daily.eatenSavings > 0 ? t('лимит 0 €') : t('от {0} лимит', { 0: limitMoney(daily.todayLimit) })}
                     </Text>
                   )}
                 </Touch>
@@ -523,7 +519,8 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         expression={status.expression}
         stageKey={status.stage.key}
         bubble={bubble}
-        remaining={heroValue}
+        // The same number as the card: past the whole income, how far over it
+        remaining={overIncome ? free.free + free.reserve : heroValue}
         perDay={isCurrent && daily ? daily.leftToday : null}
       />
 
@@ -545,10 +542,10 @@ export default function HomeScreen({ year, month, onMonthChange, onOpenSettings,
         month={month}
         onDelete={removeIncome}
         onEdit={(e) => {
-          openAdd({ editIncome: e });
+          onAdd({ editIncome: e });
         }}
         onAdd={() => {
-          openAdd({ mode: 'income' });
+          onAdd({ mode: 'income' });
         }}
       />
       <PetStatSheet

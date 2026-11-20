@@ -19,8 +19,6 @@ import Segmented from '../components/ui/Segmented';
 import { themed } from '../themed';
 import { t } from '../i18n';
 
-const toText = amountText;
-
 function AmountField({ value, onChange, label, autoFocus }) {
   return (
     <View style={[s.amountRow, euroFirst() && { flexDirection: 'row-reverse' }]}>
@@ -52,23 +50,30 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
   const [kind, setKind] = useState(goal?.kind || preset?.kind || 'goal');
   const [name, setName] = useState(goal?.name || preset?.name || '');
   const [icon, setIcon] = useState(goal?.icon || preset?.icon || GOAL_ICONS[0]);
-  const [target, setTarget] = useState(toText(goal?.target || preset?.target));
+  const [target, setTarget] = useState(amountText(goal?.target || preset?.target));
   const [cover, setCover] = useState(3); // months of needs for the emergency fund
   const pickKind = (k) => {
     setKind(k);
     if (k === 'emergency') {
       setName(t('Авариен фонд'));
       setIcon('umbrella');
-      setTarget(toText(Math.ceil((needs * cover) / 10) * 10));
+      setTarget(amountText(Math.ceil((needs * cover) / 10) * 10));
     }
     if (k === 'fund' && months === 0) setMonths(12);
   };
-  const [months, setMonths] = useState(() => {
+  const [months, setMonthsState] = useState(() => {
     if (!goal?.deadline) return 0;
     const d = new Date(goal.deadline);
     const now = new Date();
     return Math.max(0, (d.getFullYear() - now.getFullYear()) * 12 + d.getMonth() - now.getMonth());
   });
+  // An edit keeps the goal's own deadline unless a deadline was picked: one already past counts as 0 months
+  // here, and saving it as "no deadline" would drop it unasked
+  const [monthsPicked, setMonthsPicked] = useState(false);
+  const setMonths = (m) => {
+    setMonthsState(m);
+    setMonthsPicked(true);
+  };
   const valid = name.trim() && parseAmount(target) > 0;
   const kindHint = {
     goal: t('Нещо, за което спестяваш: ваканция, телефон, курс.'),
@@ -86,7 +91,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
           haptic="success"
           disabled={!valid}
           style={[s.primaryBtn, !valid && { opacity: 0.4 }]}
-          onPress={() => onSave({ name, icon, kind: kind === 'goal' ? null : kind, target: parseAmount(target), deadline: deadline?.toISOString() || null })}
+          onPress={() => onSave({ name, icon, kind: kind === 'goal' ? null : kind, target: parseAmount(target), deadline: goal && !monthsPicked ? goal.deadline || null : deadline?.toISOString() || null })}
         >
           <Text style={s.primaryBtnText}>{goal ? t('Запази') : t('Създай цел')}</Text>
         </Touch>
@@ -106,7 +111,7 @@ function GoalSheet({ goal, visible, onClose, onSave, onDelete, needs = 0, preset
               variant={cover === m ? 'active' : 'outline'}
               onPress={() => {
                 setCover(m);
-                setTarget(toText(Math.ceil((needs * m) / 10) * 10));
+                setTarget(amountText(Math.ceil((needs * m) / 10) * 10));
               }}
             />
           ))}
@@ -230,14 +235,14 @@ function DepositSheet({ goal, visible, onClose, onSave, saved }) {
         {[20, 50, 100].map((n) => (
           <Pill key={n} small haptic="select" label={money(n)} variant="outline" onPress={() => setAmount(String(n))} />
         ))}
-        {left > 0 && <Pill small haptic="select" label={t('Всичко {0}', { 0: money(left) })} variant="outline" onPress={() => setAmount(toText(Math.round(left * 100) / 100))} />}
+        {left > 0 && <Pill small haptic="select" label={t('Всичко {0}', { 0: money(left) })} variant="outline" onPress={() => setAmount(amountText(Math.round(left * 100) / 100))} />}
       </View>
     </Sheet>
   );
 }
 
 function RecurringSheet({ rule, visible, onClose, onSave, onDelete }) {
-  const [amount, setAmount] = useState(toText(rule?.amount));
+  const [amount, setAmount] = useState(amountText(rule?.amount));
   const [day, setDay] = useState(rule?.day || 1);
   const cat = rule && categoryById(rule.categoryId);
   if (!rule) return null;

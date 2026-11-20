@@ -22,7 +22,8 @@ const PROVIDER_IDS = Object.keys(PROVIDERS);
 // The conversation outlives the screen (closing the sheet and coming back continues it) but not the app:
 // a new launch starts fresh, with a fresh snapshot of the numbers.
 // messages: [{ id, role: 'user' | 'assistant', text, error?: { kind, message } }]
-let kept = { messages: [], snapshot: null };
+// day: when the snapshot was taken; the app can stay open for days, and a new day gets fresh numbers
+let kept = { messages: [], snapshot: null, day: null };
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -214,8 +215,12 @@ export default function ChatScreen({ onClose }) {
       setModelsOpen(true);
       return;
     }
-    // The numbers are read once per conversation, so the dog doesn't change its story halfway through
-    if (!kept.snapshot) kept.snapshot = financeSnapshot(data, new Date());
+    // The numbers are read once per conversation and day, so the dog doesn't change its story halfway through
+    const today = new Date().toDateString();
+    if (!kept.snapshot || kept.day !== today) {
+      kept.snapshot = financeSnapshot(data, new Date());
+      kept.day = today;
+    }
     const reply = { id: newId(), role: 'assistant', text: '' };
     const next = [...history, { id: newId(), role: 'user', text: question }];
     setMessages([...next, reply]);

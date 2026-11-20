@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, defaultPetName } from '../store';
 import { colors, money, radius, euroFirst } from '../theme';
 import { getIncome } from '../budget';
+import { currentSplit } from '../split';
 import { cleanAmountInput, amountText, parseAmount } from '../format';
 import Pet from '../pet/Pet';
 import Touch from '../components/ui/Touch';
@@ -22,6 +23,7 @@ export default function OnboardingScreen() {
   const [incomeText, setIncomeText] = useState(amountText(existing));
   const [name, setName] = useState(defaultPetName);
   const income = parseAmount(incomeText);
+  const split = currentSplit();
 
   return (
     <LinearGradient colors={[colors.heroFrom, colors.heroTo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
@@ -56,9 +58,9 @@ export default function OnboardingScreen() {
             </View>
             {income > 0 && (
               <View style={s.split}>
-                <Text style={[s.splitItem, { color: colors.needs }]}>{t('Нужди {0}', { 0: money(income * 0.5) })}</Text>
-                <Text style={[s.splitItem, { color: colors.wants }]}>{t('Желания {0}', { 0: money(income * 0.3) })}</Text>
-                <Text style={[s.splitItem, { color: colors.savings }]}>{t('Спестявания {0}', { 0: money(income * 0.2) })}</Text>
+                <Text style={[s.splitItem, { color: colors.needs }]}>{t('Нужди {0}', { 0: money(income * split.needs) })}</Text>
+                <Text style={[s.splitItem, { color: colors.wants }]}>{t('Желания {0}', { 0: money(income * split.wants) })}</Text>
+                <Text style={[s.splitItem, { color: colors.savings }]}>{t('Спестявания {0}', { 0: money(income * split.savings) })}</Text>
               </View>
             )}
             <Text style={[s.label, { marginTop: 18 }]}>{t('Как да се казвам?')}</Text>

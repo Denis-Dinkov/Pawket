@@ -109,3 +109,12 @@ test('score: on the rule is 100, over income is capped at 15, no income is null'
   const early = budgetScore({ income: 2000, byBucket: { needs: 0, wants: 500, savings: 0 }, dayFrac: 0.3, split });
   assert.ok(early < 100);
 });
+
+test('category rows add up to the total, with unknown categories as one "No category" row', () => {
+  const { categoryRows } = require('../src/theme');
+  const ov = overview([exp(120, 'groceries', 3), exp(40, null, 4), exp(15, 'gone-category', 5), exp(25, 'dining', 6)]);
+  const rows = categoryRows(ov.byCategory, ov.total);
+  assert.deepEqual(rows.map((r) => [r.id, r.value]), [['groceries', 120], [null, 55], ['dining', 25]]);
+  near(rows.reduce((a, r) => a + r.value, 0), ov.total);
+  assert.deepEqual(categoryRows(overview([]).byCategory, 0), []);
+});

@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/ui/AppText';
 import { useStore } from '../store';
-import { colors, currentColorScheme, BUCKETS, getCategories, MONTHS, money, pct, radius, monthLower } from '../theme';
+import { colors, currentColorScheme, BUCKETS, categoryById, categoryRows, MONTHS, money, pct, radius, monthLower } from '../theme';
 import { monthOverview, filterMonth, summarize, shiftMonth } from '../budget';
 import { getAdvice } from '../pet/advice';
 import { stageFor, petStatus } from '../pet/logic';
@@ -63,9 +63,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
   const { total, byCategory } = ov;
   const status = useMemo(() => (pet ? petStatus({ expenses, incomes, incomeEntries, pet, now }) : null), [expenses, incomes, incomeEntries, pet, now]);
 
-  const cats = getCategories(true).filter((c) => byCategory[c.id])
-    .map((c) => ({ ...c, value: byCategory[c.id], before: prev.byCategory[c.id] || 0 }))
-    .sort((a, b) => b.value - a.value);
+  const before = categoryRows(prev.byCategory, prev.total);
+  const cats = categoryRows(byCategory, total).map((c) => ({ ...c, before: before.find((b) => b.id === c.id)?.value || 0 }));
   const maxCat = cats[0]?.value || 1;
 
   return (
@@ -98,7 +97,7 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
                 const bucketColor = BUCKETS[c.bucket].color;
                 return (
                   <Touch
-                    key={c.id}
+                    key={c.id ?? 'none'}
                     onPress={() => setCategory(c)}
                     style={[s.catRow, i > 0 && s.sep]}
                     accessibilityLabel={t('{0}: {1}, {2} от общо', { 0: c.name, 1: money(c.value), 2: pct(c.value / (total || 1)) })}
@@ -204,7 +203,8 @@ export default function StatsScreen({ year, month, onMonthChange, onAdd, onOpenS
               <Text style={s.catSheetTotal}>{money(category.value)}</Text>
             </View>
             <ExpenseList
-              expenses={ov.list.filter((e) => e.categoryId === category.id)}
+              // The "No category" row (id null) holds every expense without a known category
+              expenses={ov.list.filter((e) => (category.id ? e.categoryId === category.id : !categoryById(e.categoryId)))}
               showFilters={false}
               onSelect={setSelected}
               onLongPress={(e) => confirmDelete(e, () => removeExpense(e.id))}

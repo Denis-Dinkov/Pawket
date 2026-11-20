@@ -157,6 +157,20 @@ export const getCategories = (includeArchived = false) => [
 export const categoryById = (id) =>
   CATEGORIES.find((c) => c.id === id) || customCategories.find((c) => c.id === id);
 
+/**
+ * A month's spending per category, largest first: summarize()'s byCategory as rows { ...category, value }.
+ * Spending without a known category (an automatic payment from a shop Pawket couldn't guess) is one
+ * "No category" row with id null, so the rows always add up to the total.
+ */
+export function categoryRows(byCategory, total) {
+  const rows = getCategories(true)
+    .filter((c) => byCategory[c.id])
+    .map((c) => ({ ...c, value: byCategory[c.id] }));
+  const rest = total - rows.reduce((a, c) => a + c.value, 0);
+  if (rest > 0.005) rows.push({ id: null, name: t('Без категория'), icon: 'help', bucket: 'wants', shade: colors.muted, value: rest });
+  return rows.sort((a, b) => b.value - a.value);
+}
+
 // The icons to choose from for a new category
 export const CATEGORY_ICONS = [
   'cart', 'basket', 'restaurant', 'cafe', 'beer', 'pizza', 'fast-food', 'car', 'bus', 'bicycle',

@@ -5,7 +5,7 @@ import Card from './ui/Card';
 import IconBadge from './ui/IconBadge';
 import Money from './ui/Money';
 import Bar from './Bar';
-import { colors, BUCKETS, getCategories, money, pct } from '../theme';
+import { colors, BUCKETS, categoryRows, money, pct } from '../theme';
 import { sameDay, plural } from '../format';
 import { dailyLimit, countsInBudget, bucketOf } from '../budget';
 import { themed } from '../themed';
@@ -56,17 +56,13 @@ export function TodayCard({ ov, now, pending = 0 }) {
 
 // "Top categories": the three categories with the most spending this month
 export function TopCategoriesCard({ ov }) {
-  const top = getCategories(true)
-    .filter((c) => ov.byCategory[c.id])
-    .map((c) => ({ ...c, value: ov.byCategory[c.id] }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 3);
+  const top = categoryRows(ov.byCategory, ov.total).slice(0, 3);
   return (
     <Card style={{ gap: 12 }}>
       <Text style={s.h2}>{t('Топ категории')}</Text>
       {top.length === 0 && <Text style={s.muted}>{t('Още няма разходи този месец.')}</Text>}
       {top.map((c) => (
-        <View key={c.id} style={s.cat}>
+        <View key={c.id ?? 'none'} style={s.cat}>
           <IconBadge icon={c.icon} color={BUCKETS[c.bucket].color} size={36} />
           <View style={{ flex: 1, gap: 5 }}>
             <View style={s.head}>
