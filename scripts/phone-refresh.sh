@@ -25,6 +25,16 @@ cd "$ROOT"
 
 log() { print -r -- "$(date '+%F %T') $*"; }
 
+# Signing needs an Apple ID in Xcode, which only the user can add (password and two-factor code).
+# Without one every build fails, so say so on screen, once a day rather than every 15 minutes.
+notify_signin() {
+  local stamp="$STATE_DIR/signin-notified" today="$(date +%F)"
+  log "Xcode has no Apple ID: sign in under Xcode → Settings → Accounts"
+  [[ "$(cat "$stamp" 2>/dev/null)" == "$today" ]] && return
+  print -r -- "$today" > "$stamp"
+  osascript -e 'display notification "Sign in under Xcode → Settings → Accounts, or Pawket on the iPhone stops opening when its 7-day signature runs out." with title "Pawket can'\''t be signed" sound name "Basso"' >/dev/null 2>&1 || true
+}
+
 # Newest profile for our bundle id: sets profile_file, profile_uuid, seconds_left, profile_devices
 read_profile() {
   profile_file="" profile_uuid="" seconds_left=0 profile_devices=()
@@ -106,8 +116,12 @@ if [[ -n "$reason" ]]; then
   for device in $unregistered; do
     build "id=$device" || log "could not register $device (unlock it and keep it near the Mac)"
   done
-  # The final generic build is signed with the newest profile, whichever phones it ended up listing
-  build "generic/platform=iOS"
+  # The final generic build is signed with the newest profile, whichever phones it ended up listing.
+  # Its output is kept so a missing Apple ID can be told apart from other failures.
+  if ! build "generic/platform=iOS" 2>&1 | tee "$STATE_DIR/last-build.log"; then
+    grep -qE "No Accounts|session has expired" "$STATE_DIR/last-build.log" && notify_signin
+    exit 1
+  fi
   read_profile
   print -r -- "$revision $profile_uuid" > "$BUILT"
 else
